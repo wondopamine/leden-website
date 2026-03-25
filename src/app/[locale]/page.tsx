@@ -6,18 +6,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { fetchCafeInfo, fetchMenuItems } from "@/lib/data";
 import { getLocalizedString, formatPrice } from "@/lib/utils/format";
 import { use } from "react";
+import { DoodleUnderline } from "@/components/doodles";
 import {
-  DoodleCoffeeCup,
-  DoodleHeart,
-  DoodleStar,
-  DoodleCroissant,
-  DoodleLeaf,
-  DoodleSparkles,
-  DoodleUnderline,
-  StickerSince1994,
-  StickerFreshDaily,
-  StickerYum,
-} from "@/components/doodles";
+  StickerCoffee,
+  StickerCroissant,
+  StickerHeart,
+  StickerStar,
+  StickerLeaf,
+  StickerSoup,
+} from "@/components/stickers";
 
 type Props = {
   params: Promise<{ locale: string }>;
@@ -59,36 +56,24 @@ function HeroSection({
         }}
       />
 
-      {/* Scattered doodles — positioned absolutely around the hero */}
-      <DoodleCoffeeCup
-        className="absolute left-[5%] top-[15%] hidden h-16 w-16 text-primary/25 sm:block doodle-float"
-        aria-hidden="true"
-      />
-      <DoodleStar
-        className="absolute right-[8%] top-[20%] hidden h-10 w-10 text-primary/20 sm:block doodle-float"
-        aria-hidden="true"
-      />
-      <DoodleCroissant
-        className="absolute left-[8%] bottom-[20%] hidden h-14 w-14 text-primary/20 sm:block doodle-float"
-        aria-hidden="true"
-      />
-      <DoodleHeart
-        className="absolute right-[12%] bottom-[25%] hidden h-8 w-8 text-primary/25 sm:block doodle-wiggle"
-        aria-hidden="true"
-      />
-      <DoodleSparkles
-        className="absolute left-[20%] top-[30%] hidden h-8 w-8 text-primary/15 sm:block doodle-float"
-        aria-hidden="true"
-      />
-      <DoodleLeaf
-        className="absolute right-[5%] top-[50%] hidden h-10 w-10 text-green-700/15 sm:block doodle-float"
-        aria-hidden="true"
-      />
+      {/* Bold character stickers — scattered around the hero */}
+      <div className="absolute left-[3%] top-[12%] hidden sm:block doodle-float" style={{ "--doodle-rotate": "-8deg" } as React.CSSProperties}>
+        <StickerCoffee className="h-20 w-20 drop-shadow-lg lg:h-24 lg:w-24" />
+      </div>
+      <div className="absolute right-[5%] top-[18%] hidden sm:block doodle-wiggle" style={{ "--doodle-rotate": "12deg" } as React.CSSProperties}>
+        <StickerStar className="h-14 w-14 drop-shadow-md lg:h-16 lg:w-16" />
+      </div>
+      <div className="absolute left-[6%] bottom-[18%] hidden sm:block doodle-float" style={{ "--doodle-rotate": "5deg", animationDelay: "1s" } as React.CSSProperties}>
+        <StickerCroissant className="h-16 w-16 drop-shadow-md lg:h-20 lg:w-20" />
+      </div>
+      <div className="absolute right-[8%] bottom-[22%] hidden sm:block doodle-wiggle" style={{ "--doodle-rotate": "-6deg", animationDelay: "0.5s" } as React.CSSProperties}>
+        <StickerHeart className="h-12 w-12 drop-shadow-md lg:h-14 lg:w-14" />
+      </div>
 
       <div className="relative mx-auto flex min-h-[75vh] max-w-4xl flex-col items-center justify-center px-4 text-center">
-        {/* Since 1994 sticker — floating top right */}
-        <div className="absolute right-4 top-20 hidden sm:block doodle-pop" style={{ animationDelay: "0.8s", "--doodle-rotate": "8deg" } as React.CSSProperties}>
-          <StickerSince1994 />
+        {/* Leaf sticker — floating top right */}
+        <div className="absolute right-8 top-24 hidden sm:block doodle-pop" style={{ animationDelay: "0.8s", "--doodle-rotate": "8deg" } as React.CSSProperties}>
+          <StickerLeaf className="h-16 w-16 drop-shadow-lg" />
         </div>
 
         {/* Small tag */}
@@ -171,8 +156,8 @@ async function FeaturedSection({
   return (
     <section className="relative mx-auto max-w-5xl px-4 py-20">
       {/* Floating sticker near section header */}
-      <div className="absolute -right-2 top-16 hidden lg:block doodle-pop" style={{ animationDelay: "0.3s", "--doodle-rotate": "-5deg" } as React.CSSProperties}>
-        <StickerYum />
+      <div className="absolute -right-4 top-12 hidden lg:block doodle-pop" style={{ animationDelay: "0.3s", "--doodle-rotate": "-8deg" } as React.CSSProperties}>
+        <StickerHeart className="h-14 w-14 drop-shadow-lg" />
       </div>
 
       <div className="flex items-end justify-between">
@@ -195,23 +180,25 @@ async function FeaturedSection({
       </div>
 
       <div className="relative mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Decorative doodles between cards */}
-        <DoodleHeart
-          className="absolute -left-8 top-1/2 hidden h-6 w-6 text-primary/20 lg:block doodle-wiggle"
-        />
-        <DoodleSparkles
-          className="absolute -right-6 top-1/3 hidden h-8 w-8 text-primary/15 lg:block doodle-float"
-        />
+        {/* Character stickers between cards */}
+        <div className="absolute -left-12 top-1/2 hidden lg:block doodle-wiggle" style={{ "--doodle-rotate": "10deg" } as React.CSSProperties}>
+          <StickerStar className="h-10 w-10 drop-shadow-md" />
+        </div>
 
         {featured.map((item, i) => (
           <Link key={item._id} href="/menu">
             <Card
               className="group relative cursor-pointer overflow-hidden border-border/50 transition-all hover:border-primary/30 hover:shadow-md"
             >
-              {/* "Fresh daily" sticker on first card */}
+              {/* Sticker on select cards */}
               {i === 0 && (
-                <div className="absolute right-2 top-2 z-10 doodle-pop" style={{ animationDelay: "0.6s" } as React.CSSProperties}>
-                  <StickerFreshDaily text={locale === "fr" ? "Frais du jour" : "Fresh daily"} />
+                <div className="absolute -right-3 -top-3 z-10 doodle-pop" style={{ animationDelay: "0.6s", "--doodle-rotate": "15deg" } as React.CSSProperties}>
+                  <StickerCoffee className="h-12 w-12 drop-shadow-lg" />
+                </div>
+              )}
+              {i === 2 && (
+                <div className="absolute -left-3 -top-3 z-10 doodle-pop" style={{ animationDelay: "0.9s", "--doodle-rotate": "-10deg" } as React.CSSProperties}>
+                  <StickerCroissant className="h-11 w-11 drop-shadow-lg" />
                 </div>
               )}
               <div className="flex h-36 items-center justify-center bg-gradient-to-br from-muted/40 to-muted/20 text-4xl transition-transform group-hover:scale-105">
@@ -250,16 +237,16 @@ async function FeaturedSection({
 function AboutSection({ t }: { t: ReturnType<typeof useTranslations> }) {
   return (
     <section id="about" className="relative scroll-mt-20 bg-secondary/40 px-4 py-20">
-      {/* Scattered doodles */}
-      <DoodleCoffeeCup
-        className="absolute left-[5%] top-10 hidden h-12 w-12 text-primary/15 lg:block doodle-float"
-      />
-      <DoodleStar
-        className="absolute right-[8%] bottom-12 hidden h-8 w-8 text-primary/15 lg:block doodle-wiggle"
-      />
+      {/* Character stickers */}
+      <div className="absolute left-[4%] top-8 hidden lg:block doodle-float" style={{ "--doodle-rotate": "-12deg" } as React.CSSProperties}>
+        <StickerSoup className="h-16 w-16 drop-shadow-lg" />
+      </div>
+      <div className="absolute right-[5%] bottom-8 hidden lg:block doodle-wiggle" style={{ "--doodle-rotate": "8deg" } as React.CSSProperties}>
+        <StickerLeaf className="h-14 w-14 drop-shadow-md" />
+      </div>
 
       <div className="mx-auto max-w-3xl text-center">
-        <DoodleCoffeeCup className="mx-auto h-12 w-12 text-primary/40" />
+        <StickerCoffee className="mx-auto h-16 w-16 drop-shadow-md" />
         <h2
           className="mt-4 text-3xl tracking-tight sm:text-4xl"
           style={{ fontFamily: "var(--font-display)" }}
@@ -304,8 +291,10 @@ function AboutSection({ t }: { t: ReturnType<typeof useTranslations> }) {
             <p className="mt-1 text-xs uppercase tracking-wider text-muted-foreground">
               TripAdvisor
             </p>
-            {/* Tiny heart next to rating */}
-            <DoodleHeart className="absolute -right-5 -top-1 h-4 w-4 text-primary/30 doodle-wiggle" />
+            {/* Tiny heart sticker next to rating */}
+            <div className="absolute -right-6 -top-2 doodle-wiggle" style={{ "--doodle-rotate": "15deg" } as React.CSSProperties}>
+              <StickerHeart className="h-6 w-6 drop-shadow-sm" />
+            </div>
           </div>
         </div>
       </div>
@@ -333,10 +322,10 @@ async function HoursSection({
 
   return (
     <section className="relative mx-auto max-w-5xl px-4 py-20">
-      {/* Decorative leaf */}
-      <DoodleLeaf
-        className="absolute right-[3%] top-14 hidden h-12 w-12 text-green-700/12 lg:block doodle-float"
-      />
+      {/* Character sticker */}
+      <div className="absolute right-[2%] top-10 hidden lg:block doodle-float" style={{ "--doodle-rotate": "10deg" } as React.CSSProperties}>
+        <StickerCroissant className="h-14 w-14 drop-shadow-md" />
+      </div>
 
       <h2
         className="text-center text-3xl tracking-tight sm:text-4xl"
@@ -386,10 +375,10 @@ async function HoursSection({
 
         {/* Location + contact */}
         <Card className="relative border-border/50">
-          {/* Little croissant doodle */}
-          <DoodleCroissant
-            className="absolute -right-3 -top-4 h-10 w-10 text-primary/20 doodle-wiggle"
-          />
+          {/* Sticker on card corner */}
+          <div className="absolute -right-4 -top-4 doodle-pop" style={{ animationDelay: "0.4s", "--doodle-rotate": "12deg" } as React.CSSProperties}>
+            <StickerStar className="h-10 w-10 drop-shadow-md" />
+          </div>
           <CardContent className="flex flex-col justify-between p-6">
             <div>
               <h3 className="mb-5 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
