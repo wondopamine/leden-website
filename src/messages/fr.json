@@ -1,7 +1,10 @@
 {
   "common": {
     "orderNow": "Commander",
+    "orderForPickup": "Commander pour cueillette",
     "viewMenu": "Voir le menu",
+    "viewFullMenu": "Voir le menu complet",
+    "ourStory": "Notre histoire",
     "language": "English",
     "cart": "Panier",
     "home": "Accueil",
@@ -21,22 +24,28 @@
   },
   "landing": {
     "hero": {
+      "tag": "Village Valois, Pointe-Claire",
       "title": "Cafe Le Den",
       "subtitle": "Fait maison avec amour depuis 1994",
-      "description": "Pain frais, lattés de spécialité et repas maison au cœur du Village Valois, Pointe-Claire."
+      "description": "Pain frais cuit chaque jour, lattés de spécialité uniques et repas maison préparés avec soin — au cœur du Village Valois.",
+      "since": "Depuis 1994"
     },
     "about": {
       "title": "Notre histoire",
-      "description": "Depuis plus de 30 ans, Cafe Le Den est un lieu de rassemblement bien-aimé dans le Village Valois. Dirigé par Gina et Josh, nous sommes fiers de notre pain maison, de nos soupes fraîches et de nos boissons de spécialité soigneusement préparées. Chaque article est fait avec amour et les meilleurs ingrédients."
+      "description": "Depuis plus de 30 ans, Cafe Le Den est le salon du quartier dans le Village Valois. Dirigé par Gina et Josh, nous cuisons notre pain frais chaque matin, mijotons nos soupes de A à Z et préparons nos boissons de spécialité avec soin. Du latté pistache à notre célèbre soupe aigre-piquante — chaque article est fait avec amour et les meilleurs ingrédients.",
+      "years": "Années",
+      "ranking": "à Pointe-Claire"
     },
     "hours": {
-      "title": "Heures et emplacement",
+      "title": "Visitez-nous",
       "address": "121 Donegani, Pointe-Claire, QC",
-      "openDaily": "Ouvert tous les jours",
-      "closed": "Fermé"
+      "openDaily": "Heures",
+      "closed": "Fermé",
+      "findUs": "Trouvez-nous"
     },
     "featured": {
-      "title": "Favoris des clients"
+      "title": "Favoris des clients",
+      "subtitle": "Les plats et boissons qui font revenir nos clients"
     }
   },
   "menu": {
