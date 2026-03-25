@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 
 type OrderItem = {
   name: string;
   price: number;
   quantity: number;
   modifiers: { name: string; option: string; priceAdjustment: number }[];
+  menuItemId?: string;
 };
 
 type OrderBody = {
@@ -15,13 +17,75 @@ type OrderBody = {
   total: number;
 };
 
+const GST_RATE = 0.05;
+const QST_RATE = 0.09975;
+
 export async function POST(request: Request) {
   try {
     const body: OrderBody = await request.json();
-    const { items, customerInfo, pickupTime, total } = body;
+    const { items, customerInfo, pickupTime, locale } = body;
 
     const orderNumber = `LD-${Date.now().toString(36).toUpperCase()}`;
 
+    // Compute tax server-side for integrity
+    const subtotal = items.reduce((sum, item) => {
+      const modTotal = item.modifiers.reduce(
+        (m, mod) => m + mod.priceAdjustment,
+        0
+      );
+      return sum + (item.price + modTotal) * item.quantity;
+    }, 0);
+    const taxGst = subtotal * GST_RATE;
+    const taxQst = subtotal * QST_RATE;
+    const total = subtotal + taxGst + taxQst;
+
+    // Persist to Supabase if configured
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY
+      );
+
+      const { data: order, error: orderError } = await supabase
+        .from("orders")
+        .insert({
+          order_number: orderNumber,
+          customer_name: customerInfo.name,
+          customer_phone: customerInfo.phone,
+          pickup_time: pickupTime || null,
+          status: "new",
+          subtotal: subtotal.toFixed(2),
+          tax_gst: taxGst.toFixed(2),
+          tax_qst: taxQst.toFixed(2),
+          total: total.toFixed(2),
+          locale: locale || "en",
+        })
+        .select("id")
+        .single();
+
+      if (orderError) {
+        console.error("Failed to save order:", orderError);
+      } else if (order) {
+        const orderItems = items.map((item) => ({
+          order_id: order.id,
+          menu_item_id: item.menuItemId || null,
+          menu_item_name: item.name,
+          price: item.price.toFixed(2),
+          quantity: item.quantity,
+          modifiers: item.modifiers,
+        }));
+
+        const { error: itemsError } = await supabase
+          .from("order_items")
+          .insert(orderItems);
+
+        if (itemsError) {
+          console.error("Failed to save order items:", itemsError);
+        }
+      }
+    }
+
+    // Send notification email via Resend
     const itemsList = items
       .map((item) => {
         const modText =
@@ -32,7 +96,6 @@ export async function POST(request: Request) {
       })
       .join("\n");
 
-    // Send notification email to cafe via Resend
     if (process.env.RESEND_API_KEY) {
       try {
         await fetch("https://api.resend.com/emails", {

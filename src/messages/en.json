@@ -5,7 +5,7 @@
     "viewMenu": "View Menu",
     "viewFullMenu": "See Full Menu",
     "ourStory": "Our Story",
-    "language": "Français",
+    "language": "Language",
     "cart": "Cart",
     "home": "Home",
     "menu": "Menu",
@@ -29,6 +29,11 @@
       "subtitle": "Homemade with love since 1994",
       "description": "Fresh bread baked daily, specialty lattes you won't find anywhere else, and homemade meals crafted with care — right in the heart of Valois Village.",
       "since": "Serving since 1994"
+    },
+    "reviews": {
+      "title": "What Our Guests Say",
+      "subtitle": "Real reviews from our community",
+      "onGoogle": "on Google"
     },
     "about": {
       "title": "Our Story",

@@ -6,7 +6,8 @@ import { useCartStore } from "@/lib/cart-store";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import { ShoppingBag, ChevronDown, Globe } from "lucide-react";
 
 export function Header() {
   const t = useTranslations("common");
@@ -16,16 +17,36 @@ export function Header() {
   const locale = params.locale as string;
   const itemCount = useCartStore((s) => s.items.length);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [langOpen, setLangOpen] = useState(false);
+  const langRef = useRef<HTMLDivElement>(null);
 
-  const switchLocale = () => {
-    const newLocale = locale === "en" ? "fr" : "en";
+  const switchLocale = (newLocale: string) => {
     router.replace(pathname, { locale: newLocale });
+    setLangOpen(false);
   };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (langRef.current && !langRef.current.contains(e.target as Node)) {
+        setLangOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const navItems = [
     { href: "/", label: t("home") },
     { href: "/menu", label: t("menu") },
   ] as const;
+
+  const languages = [
+    { code: "en", label: "English", flag: "EN" },
+    { code: "fr", label: "Français", flag: "FR" },
+  ];
+
+  const currentLang = languages.find((l) => l.code === locale) || languages[0];
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-md">
@@ -45,17 +66,41 @@ export function Header() {
               {item.label}
             </Link>
           ))}
-          <button
-            onClick={switchLocale}
-            className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-          >
-            {t("language")}
-          </button>
+
+          {/* Language dropdown */}
+          <div className="relative" ref={langRef}>
+            <button
+              onClick={() => setLangOpen(!langOpen)}
+              className="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <Globe className="h-4 w-4" />
+              {currentLang.flag}
+              <ChevronDown className={`h-3 w-3 transition-transform ${langOpen ? "rotate-180" : ""}`} />
+            </button>
+            {langOpen && (
+              <div className="absolute right-0 top-full mt-2 w-36 overflow-hidden rounded-lg border border-border bg-popover shadow-lg">
+                {languages.map((lang) => (
+                  <button
+                    key={lang.code}
+                    onClick={() => switchLocale(lang.code)}
+                    className={`flex w-full items-center gap-2 px-3 py-2.5 text-sm transition-colors hover:bg-accent ${
+                      locale === lang.code ? "bg-accent/50 font-medium" : ""
+                    }`}
+                  >
+                    <span className="text-xs font-semibold text-muted-foreground">{lang.flag}</span>
+                    {lang.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Cart icon */}
           <Link href="/order">
-            <Button size="sm" className="relative">
-              {t("orderNow")}
+            <Button size="icon" variant="ghost" className="relative h-9 w-9">
+              <ShoppingBag className="h-5 w-5" />
               {itemCount > 0 && (
-                <span className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">
+                <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">
                   {itemCount}
                 </span>
               )}
@@ -64,12 +109,13 @@ export function Header() {
         </nav>
 
         {/* Mobile nav */}
-        <div className="flex items-center gap-3 md:hidden">
+        <div className="flex items-center gap-2 md:hidden">
+          {/* Cart icon */}
           <Link href="/order">
-            <Button size="sm" className="relative">
-              {t("orderNow")}
+            <Button size="icon" variant="ghost" className="relative h-9 w-9">
+              <ShoppingBag className="h-5 w-5" />
               {itemCount > 0 && (
-                <span className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">
+                <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">
                   {itemCount}
                 </span>
               )}
@@ -106,15 +152,31 @@ export function Header() {
                     {item.label}
                   </Link>
                 ))}
-                <button
-                  onClick={() => {
-                    switchLocale();
-                    setMobileOpen(false);
-                  }}
-                  className="text-left text-lg text-muted-foreground"
-                >
-                  {t("language")}
-                </button>
+                {/* Language selector in mobile menu */}
+                <div className="mt-2 border-t border-border pt-4">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <Globe className="mr-1 inline h-3.5 w-3.5" />
+                    {t("language")}
+                  </p>
+                  <div className="flex gap-2">
+                    {languages.map((lang) => (
+                      <button
+                        key={lang.code}
+                        onClick={() => {
+                          switchLocale(lang.code);
+                          setMobileOpen(false);
+                        }}
+                        className={`rounded-full border px-4 py-1.5 text-sm transition-all ${
+                          locale === lang.code
+                            ? "border-foreground bg-foreground text-background"
+                            : "border-border text-muted-foreground hover:border-foreground/40"
+                        }`}
+                      >
+                        {lang.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </nav>
             </SheetContent>
           </Sheet>

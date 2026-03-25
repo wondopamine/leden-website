@@ -14,20 +14,13 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { useCartStore } from "@/lib/cart-store";
 import { getLocalizedString, formatPrice } from "@/lib/utils/format";
+import { getMenuItemImage } from "@/lib/menu-images";
 import type { MenuItem, Category } from "@/lib/sanity/types";
 
 type Props = {
   categories: Category[];
   items: MenuItem[];
   locale: string;
-};
-
-const categoryEmoji: Record<string, string> = {
-  coffee: "\u2615",
-  tea: "\uD83C\uDF75",
-  breakfast: "\uD83C\uDF73",
-  lunch: "\uD83C\uDF5C",
-  pastries: "\uD83E\uDD50",
 };
 
 export function MenuContent({ categories, items, locale }: Props) {
@@ -89,7 +82,6 @@ export function MenuContent({ categories, items, locale }: Props) {
             return (
               <section key={cat._id}>
                 <h2 className="mb-4 text-lg font-semibold text-muted-foreground">
-                  {categoryEmoji[cat.slug] || ""}{" "}
                   {getLocalizedString(cat.name, locale)}
                 </h2>
                 <div className="space-y-2">
@@ -148,6 +140,7 @@ function MenuItemCard({
 }) {
   const t = useTranslations("menu");
   const disabled = !item.available;
+  const imgSrc = getMenuItemImage(item._id, item.category.slug);
 
   return (
     <button
@@ -159,9 +152,15 @@ function MenuItemCard({
           : "cursor-pointer hover:border-border hover:bg-accent/30 hover:shadow-sm active:scale-[0.995]"
       } ${justAdded ? "ring-2 ring-primary/40 bg-primary/5" : ""}`}
     >
-      {/* Emoji thumbnail */}
-      <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-muted/40 text-2xl sm:h-20 sm:w-20 sm:text-3xl">
-        {categoryEmoji[item.category.slug] || "\uD83C\uDF7D"}
+      {/* Photo thumbnail */}
+      <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-muted/40 sm:h-20 sm:w-20">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={imgSrc}
+          alt={getLocalizedString(item.name, locale)}
+          className="h-full w-full object-cover"
+          loading="lazy"
+        />
       </div>
 
       {/* Item info */}
@@ -244,6 +243,7 @@ function ItemDetailDialog({
 
   const unitPrice = item.price + modifierTotal;
   const totalPrice = unitPrice * quantity;
+  const imgSrc = getMenuItemImage(item._id, item.category.slug);
 
   const handleAdd = () => {
     const modifiers = item.modifiers.map((mod, idx) => {
@@ -275,9 +275,14 @@ function ItemDetailDialog({
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-md gap-0 p-0 overflow-hidden">
-        {/* Hero area */}
-        <div className="flex h-40 items-center justify-center bg-muted/30 text-5xl">
-          {categoryEmoji[item.category.slug] || "\uD83C\uDF7D"}
+        {/* Hero area with photo */}
+        <div className="relative h-48 overflow-hidden bg-muted/30">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={imgSrc}
+            alt={getLocalizedString(item.name, locale)}
+            className="h-full w-full object-cover"
+          />
         </div>
 
         <div className="p-5">

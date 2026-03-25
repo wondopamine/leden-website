@@ -5,7 +5,7 @@
     "viewMenu": "Voir le menu",
     "viewFullMenu": "Voir le menu complet",
     "ourStory": "Notre histoire",
-    "language": "English",
+    "language": "Langue",
     "cart": "Panier",
     "home": "Accueil",
     "menu": "Menu",
@@ -29,6 +29,11 @@
       "subtitle": "Fait maison avec amour depuis 1994",
       "description": "Pain frais cuit chaque jour, lattés de spécialité uniques et repas maison préparés avec soin — au cœur du Village Valois.",
       "since": "Depuis 1994"
+    },
+    "reviews": {
+      "title": "Ce que disent nos clients",
+      "subtitle": "De vrais avis de notre communauté",
+      "onGoogle": "sur Google"
     },
     "about": {
       "title": "Notre histoire",

@@ -136,3 +136,17 @@
   stroke-dasharray: 200;
   animation: doodle-draw 1.5s ease-out forwards;
 }
+
+/* Review carousel infinite scroll */
+@keyframes scroll-reviews {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.review-carousel {
+  animation: scroll-reviews 40s linear infinite;
+}
+
+.review-carousel:hover {
+  animation-play-state: paused;
+}
