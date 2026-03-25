@@ -96,3 +96,43 @@
     @apply font-sans;
   }
 }
+
+/* Doodle animations */
+@keyframes doodle-float {
+  0%, 100% { transform: translateY(0) rotate(var(--doodle-rotate, 0deg)); }
+  50% { transform: translateY(-8px) rotate(calc(var(--doodle-rotate, 0deg) + 3deg)); }
+}
+
+@keyframes doodle-wiggle {
+  0%, 100% { transform: rotate(var(--doodle-rotate, 0deg)); }
+  25% { transform: rotate(calc(var(--doodle-rotate, 0deg) + 4deg)); }
+  75% { transform: rotate(calc(var(--doodle-rotate, 0deg) - 4deg)); }
+}
+
+@keyframes doodle-draw {
+  from { stroke-dashoffset: 200; }
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes doodle-pop {
+  0% { transform: scale(0) rotate(var(--doodle-rotate, 0deg)); opacity: 0; }
+  60% { transform: scale(1.15) rotate(var(--doodle-rotate, 0deg)); opacity: 1; }
+  100% { transform: scale(1) rotate(var(--doodle-rotate, 0deg)); opacity: 1; }
+}
+
+.doodle-float {
+  animation: doodle-float 4s ease-in-out infinite;
+}
+
+.doodle-wiggle {
+  animation: doodle-wiggle 3s ease-in-out infinite;
+}
+
+.doodle-pop {
+  animation: doodle-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.doodle-draw path {
+  stroke-dasharray: 200;
+  animation: doodle-draw 1.5s ease-out forwards;
+}
