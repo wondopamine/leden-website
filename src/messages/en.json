@@ -1,0 +1,78 @@
+{
+  "common": {
+    "orderNow": "Order Now",
+    "viewMenu": "View Menu",
+    "language": "Français",
+    "cart": "Cart",
+    "home": "Home",
+    "menu": "Menu",
+    "about": "About",
+    "close": "Close",
+    "back": "Back",
+    "add": "Add",
+    "remove": "Remove",
+    "total": "Estimated Total",
+    "subtotal": "Subtotal",
+    "tax": "Tax",
+    "continueShopping": "Continue Shopping",
+    "emptyCart": "Your cart is empty",
+    "phone": "Phone",
+    "name": "Name"
+  },
+  "landing": {
+    "hero": {
+      "title": "Cafe Le Den",
+      "subtitle": "Homemade with love since 1994",
+      "description": "Fresh bread, specialty lattes, and homemade meals in the heart of Valois Village, Pointe-Claire."
+    },
+    "about": {
+      "title": "Our Story",
+      "description": "For over 30 years, Cafe Le Den has been a beloved gathering place in Valois Village. Run by Gina and Josh, we take pride in our homemade bread, fresh soups, and carefully crafted specialty drinks. Every item is made with love and the finest ingredients."
+    },
+    "hours": {
+      "title": "Hours & Location",
+      "address": "121 Donegani, Pointe-Claire, QC",
+      "openDaily": "Open Daily",
+      "closed": "Closed"
+    },
+    "featured": {
+      "title": "Customer Favorites"
+    }
+  },
+  "menu": {
+    "title": "Our Menu",
+    "allCategories": "All",
+    "soldOut": "Sold Out",
+    "addToOrder": "Add to Order",
+    "customize": "Customize",
+    "search": "Search menu..."
+  },
+  "order": {
+    "title": "Your Order",
+    "pickupTime": "Pickup Time",
+    "pickupTimeDescription": "Choose when you'd like to pick up your order",
+    "asap": "As soon as possible",
+    "scheduleFor": "Schedule for later",
+    "selectTime": "Select a time",
+    "customerInfo": "Your Information",
+    "nameRequired": "Name is required for pickup",
+    "phoneRequired": "Phone number for order updates",
+    "placeOrder": "Place Order",
+    "processing": "Submitting...",
+    "payInPerson": "Payment is collected in person at pickup.",
+    "errorSubmitting": "Something went wrong. Please try again.",
+    "itemsInCart": "{count, plural, =0 {No items} =1 {1 item} other {# items}}"
+  },
+  "confirmation": {
+    "title": "Order Placed!",
+    "thankYou": "Thank you! Your order has been sent to the cafe.",
+    "orderNumber": "Order Number",
+    "pickupAt": "Pick up at",
+    "paymentNote": "Please pay in person when you pick up your order.",
+    "backToMenu": "Back to Menu"
+  },
+  "footer": {
+    "rights": "All rights reserved.",
+    "madeWith": "Made with love in Pointe-Claire"
+  }
+}

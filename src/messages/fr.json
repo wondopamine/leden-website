@@ -1,0 +1,78 @@
+{
+  "common": {
+    "orderNow": "Commander",
+    "viewMenu": "Voir le menu",
+    "language": "English",
+    "cart": "Panier",
+    "home": "Accueil",
+    "menu": "Menu",
+    "about": "À propos",
+    "close": "Fermer",
+    "back": "Retour",
+    "add": "Ajouter",
+    "remove": "Retirer",
+    "total": "Total estimé",
+    "subtotal": "Sous-total",
+    "tax": "Taxes",
+    "continueShopping": "Continuer vos achats",
+    "emptyCart": "Votre panier est vide",
+    "phone": "Téléphone",
+    "name": "Nom"
+  },
+  "landing": {
+    "hero": {
+      "title": "Cafe Le Den",
+      "subtitle": "Fait maison avec amour depuis 1994",
+      "description": "Pain frais, lattés de spécialité et repas maison au cœur du Village Valois, Pointe-Claire."
+    },
+    "about": {
+      "title": "Notre histoire",
+      "description": "Depuis plus de 30 ans, Cafe Le Den est un lieu de rassemblement bien-aimé dans le Village Valois. Dirigé par Gina et Josh, nous sommes fiers de notre pain maison, de nos soupes fraîches et de nos boissons de spécialité soigneusement préparées. Chaque article est fait avec amour et les meilleurs ingrédients."
+    },
+    "hours": {
+      "title": "Heures et emplacement",
+      "address": "121 Donegani, Pointe-Claire, QC",
+      "openDaily": "Ouvert tous les jours",
+      "closed": "Fermé"
+    },
+    "featured": {
+      "title": "Favoris des clients"
+    }
+  },
+  "menu": {
+    "title": "Notre menu",
+    "allCategories": "Tout",
+    "soldOut": "Épuisé",
+    "addToOrder": "Ajouter à la commande",
+    "customize": "Personnaliser",
+    "search": "Rechercher dans le menu..."
+  },
+  "order": {
+    "title": "Votre commande",
+    "pickupTime": "Heure de cueillette",
+    "pickupTimeDescription": "Choisissez quand vous souhaitez récupérer votre commande",
+    "asap": "Dès que possible",
+    "scheduleFor": "Planifier pour plus tard",
+    "selectTime": "Sélectionnez une heure",
+    "customerInfo": "Vos informations",
+    "nameRequired": "Le nom est requis pour la cueillette",
+    "phoneRequired": "Numéro de téléphone pour les mises à jour",
+    "placeOrder": "Passer la commande",
+    "processing": "Envoi en cours...",
+    "payInPerson": "Le paiement se fait en personne lors de la cueillette.",
+    "errorSubmitting": "Une erreur est survenue. Veuillez réessayer.",
+    "itemsInCart": "{count, plural, =0 {Aucun article} =1 {1 article} other {# articles}}"
+  },
+  "confirmation": {
+    "title": "Commande envoyée!",
+    "thankYou": "Merci! Votre commande a été envoyée au café.",
+    "orderNumber": "Numéro de commande",
+    "pickupAt": "Cueillette à",
+    "paymentNote": "Veuillez payer en personne lors de la cueillette de votre commande.",
+    "backToMenu": "Retour au menu"
+  },
+  "footer": {
+    "rights": "Tous droits réservés.",
+    "madeWith": "Fait avec amour à Pointe-Claire"
+  }
+}
