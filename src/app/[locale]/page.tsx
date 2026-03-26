@@ -7,7 +7,6 @@ import { fetchCafeInfo, fetchMenuItems } from "@/lib/data";
 import { getLocalizedString, formatPrice } from "@/lib/utils/format";
 import { use } from "react";
 import { DoodleUnderline } from "@/components/doodles";
-import { StickerCoffee, StickerCroissant } from "@/components/stickers";
 import { categoryImages } from "@/lib/menu-images";
 import { getGooglePlaceData, type PlaceData } from "@/lib/google-places";
 
@@ -76,50 +75,24 @@ async function HeroSection({
 
   return (
     <section className="relative overflow-hidden">
-      {/* Warm gradient background with subtle texture */}
-      <div className="absolute inset-0 bg-gradient-to-b from-primary/8 via-secondary/40 to-background" />
-      <div
-        className="absolute inset-0 opacity-[0.03]"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-        }}
-      />
-
-      {/* Character stickers — coffee & croissant only, hero section */}
-      <div className="absolute left-[3%] top-[15%] hidden sm:block doodle-float" style={{ "--doodle-rotate": "-8deg" } as React.CSSProperties}>
-        <StickerCoffee className="h-18 w-18 drop-shadow-lg lg:h-22 lg:w-22" />
-      </div>
-      <div className="absolute right-[4%] top-[12%] hidden sm:block doodle-wiggle" style={{ "--doodle-rotate": "10deg" } as React.CSSProperties}>
-        <StickerCroissant className="h-16 w-16 drop-shadow-md lg:h-18 lg:w-18" />
-      </div>
-      <div className="absolute left-[7%] bottom-[20%] hidden sm:block doodle-float" style={{ "--doodle-rotate": "6deg", animationDelay: "1s" } as React.CSSProperties}>
-        <StickerCroissant className="h-14 w-14 drop-shadow-md lg:h-16 lg:w-16" />
-      </div>
-      <div className="absolute right-[6%] bottom-[18%] hidden sm:block doodle-wiggle" style={{ "--doodle-rotate": "-10deg", animationDelay: "0.5s" } as React.CSSProperties}>
-        <StickerCoffee className="h-14 w-14 drop-shadow-md lg:h-16 lg:w-16" />
-      </div>
-      <div className="absolute left-[18%] top-[8%] hidden lg:block doodle-float" style={{ "--doodle-rotate": "15deg", animationDelay: "1.5s" } as React.CSSProperties}>
-        <StickerCoffee className="h-10 w-10 drop-shadow-sm" />
-      </div>
+      {/* Clean background matching logo cream tone */}
+      <div className="absolute inset-0 bg-gradient-to-b from-[#f2ead5] via-[#f2ead5]/60 to-background" />
 
       <div className="relative mx-auto flex min-h-[75vh] max-w-4xl flex-col items-center justify-center px-4 text-center">
         {/* Small tag */}
-        <span className="mb-6 inline-block rounded-full border border-primary/20 bg-primary/8 px-4 py-1.5 text-xs font-medium uppercase tracking-widest text-primary">
+        <span className="mb-6 inline-block rounded-full border border-[#2D5A3D]/20 bg-[#2D5A3D]/8 px-4 py-1.5 text-xs font-medium uppercase tracking-widest text-[#2D5A3D]">
           {t("hero.tag")}
         </span>
 
-        <h1
-          className="relative text-5xl leading-[1.1] tracking-tight sm:text-6xl lg:text-7xl"
-          style={{ fontFamily: "var(--font-display)" }}
-        >
-          {t("hero.title")}
-          <DoodleUnderline className="absolute -bottom-2 left-1/2 h-3 w-3/4 -translate-x-1/2 text-primary/30" />
-        </h1>
+        {/* Logo image */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/logo.png"
+          alt="Cafe Le Den — Café · Sandwicherie"
+          className="h-auto w-[280px] sm:w-[360px] lg:w-[420px]"
+        />
 
-        <p
-          className="mt-5 text-xl text-primary/80 sm:text-2xl"
-          style={{ fontFamily: "var(--font-display)" }}
-        >
+        <p className="mt-4 text-lg text-[#2D5A3D]/70 sm:text-xl" style={{ fontFamily: "var(--font-display)" }}>
           {t("hero.subtitle")}
         </p>
 
