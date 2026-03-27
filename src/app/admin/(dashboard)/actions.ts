@@ -16,9 +16,9 @@ export async function updateOrderStatus(
 ) {
   const supabase = await createClient();
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session) throw new Error("Unauthorized");
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
 
   const { error } = await supabase
     .from("orders")

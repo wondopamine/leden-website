@@ -30,3 +30,12 @@ export const categoryImages: Record<string, string> = {
 export function getMenuItemImage(itemId: string, categorySlug: string): string {
   return menuItemImages[itemId] || categoryImages[categorySlug] || categoryImages.coffee;
 }
+
+export function getItemImageUrl(item: {
+  _id: string;
+  category: { slug: string };
+  image?: { asset: { _ref: string } };
+}): string {
+  if (item.image?.asset?._ref?.startsWith("http")) return item.image.asset._ref;
+  return getMenuItemImage(item._id, item.category.slug);
+}

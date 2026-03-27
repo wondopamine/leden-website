@@ -14,9 +14,9 @@ type CategoryInput = {
 export async function saveCategory(input: CategoryInput) {
   const supabase = await createClient();
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session) throw new Error("Unauthorized");
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
 
   if (input.id) {
     const { error } = await supabase
@@ -49,9 +49,9 @@ export async function saveCategory(input: CategoryInput) {
 export async function deleteCategory(id: string) {
   const supabase = await createClient();
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session) throw new Error("Unauthorized");
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
 
   const { error } = await supabase.from("categories").delete().eq("id", id);
   if (error) throw new Error(error.message);

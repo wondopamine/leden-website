@@ -7,9 +7,9 @@ import { redirect } from "next/navigation";
 export async function createMenuItem(formData: FormData) {
   const supabase = await createClient();
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session) throw new Error("Unauthorized");
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
 
   const categoryId = formData.get("category_id") as string;
   const { data: item, error } = await supabase
@@ -42,9 +42,9 @@ export async function createMenuItem(formData: FormData) {
 export async function updateMenuItem(formData: FormData) {
   const supabase = await createClient();
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session) throw new Error("Unauthorized");
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
 
   const id = formData.get("id") as string;
 
@@ -78,9 +78,9 @@ export async function updateMenuItem(formData: FormData) {
 export async function deleteMenuItem(id: string) {
   const supabase = await createClient();
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session) throw new Error("Unauthorized");
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
 
   const { error } = await supabase.from("menu_items").delete().eq("id", id);
   if (error) throw new Error(error.message);
@@ -95,9 +95,9 @@ export async function toggleMenuItemAvailability(
 ) {
   const supabase = await createClient();
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session) throw new Error("Unauthorized");
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
 
   const { error } = await supabase
     .from("menu_items")

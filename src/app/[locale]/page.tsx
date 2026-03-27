@@ -7,7 +7,7 @@ import { fetchCafeInfo, fetchMenuItems } from "@/lib/data";
 import { getLocalizedString, formatPrice } from "@/lib/utils/format";
 import { use } from "react";
 import { DoodleUnderline } from "@/components/doodles";
-import { categoryImages } from "@/lib/menu-images";
+import { getItemImageUrl } from "@/lib/menu-images";
 import { getGooglePlaceData, type PlaceData } from "@/lib/google-places";
 
 type Props = {
@@ -176,7 +176,7 @@ async function FeaturedSection({
 
       <div className="relative mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {featured.map((item) => {
-          const imgSrc = categoryImages[item.category.slug] || categoryImages.coffee;
+          const imgSrc = getItemImageUrl(item);
           return (
             <Link key={item._id} href="/menu">
               <Card className="group relative cursor-pointer overflow-hidden border-border/50 transition-all hover:border-primary/30 hover:shadow-md">

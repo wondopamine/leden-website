@@ -163,7 +163,7 @@ export function OrderCard({ order }: { order: Order }) {
                 )}
               </span>
               <span className="text-stone-500">
-                ${(item.price * item.quantity).toFixed(2)}
+                ${((item.price + item.modifiers.reduce((s, m) => s + m.priceAdjustment, 0)) * item.quantity).toFixed(2)}
               </span>
             </li>
           ))}

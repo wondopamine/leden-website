@@ -14,7 +14,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { useCartStore } from "@/lib/cart-store";
 import { getLocalizedString, formatPrice } from "@/lib/utils/format";
-import { getMenuItemImage } from "@/lib/menu-images";
+import { getItemImageUrl } from "@/lib/menu-images";
 import type { MenuItem, Category } from "@/lib/sanity/types";
 
 type Props = {
@@ -140,7 +140,7 @@ function MenuItemCard({
 }) {
   const t = useTranslations("menu");
   const disabled = !item.available;
-  const imgSrc = getMenuItemImage(item._id, item.category.slug);
+  const imgSrc = getItemImageUrl(item);
 
   return (
     <button
@@ -243,7 +243,7 @@ function ItemDetailDialog({
 
   const unitPrice = item.price + modifierTotal;
   const totalPrice = unitPrice * quantity;
-  const imgSrc = getMenuItemImage(item._id, item.category.slug);
+  const imgSrc = getItemImageUrl(item);
 
   const handleAdd = () => {
     const modifiers = item.modifiers.map((mod, idx) => {
