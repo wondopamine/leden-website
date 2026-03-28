@@ -12,6 +12,8 @@ import { getGooglePlaceData, type PlaceData } from "@/lib/google-places";
 import type { MenuItem } from "@/lib/sanity/types";
 import type { CafeInfo } from "@/lib/sanity/types";
 
+export const dynamic = "force-dynamic";
+
 type Props = {
   params: Promise<{ locale: string }>;
 };

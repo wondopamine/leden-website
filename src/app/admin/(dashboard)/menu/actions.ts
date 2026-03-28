@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath, updateTag } from "next/cache";
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
@@ -36,10 +36,7 @@ export async function createMenuItem(formData: FormData) {
     await saveModifiers(supabase, item.id, JSON.parse(modifiersJson));
   }
 
-  updateTag("menu-items");
-  updateTag("categories");
   revalidatePath("/admin/menu");
-  revalidatePath("/");
   redirect("/admin/menu");
 }
 
@@ -76,10 +73,7 @@ export async function updateMenuItem(formData: FormData) {
     await saveModifiers(supabase, id, JSON.parse(modifiersJson));
   }
 
-  updateTag("menu-items");
-  updateTag("categories");
   revalidatePath("/admin/menu");
-  revalidatePath("/");
 }
 
 export async function deleteMenuItem(id: string) {
@@ -92,10 +86,7 @@ export async function deleteMenuItem(id: string) {
   const { error } = await supabase.from("menu_items").delete().eq("id", id);
   if (error) throw new Error(error.message);
 
-  updateTag("menu-items");
-  updateTag("categories");
   revalidatePath("/admin/menu");
-  revalidatePath("/");
 }
 
 export async function toggleMenuItemAvailability(
@@ -115,9 +106,7 @@ export async function toggleMenuItemAvailability(
 
   if (error) throw new Error(error.message);
 
-  updateTag("menu-items");
   revalidatePath("/admin/menu");
-  revalidatePath("/");
 }
 
 type ModifierInput = {

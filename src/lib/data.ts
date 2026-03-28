@@ -1,4 +1,3 @@
-import { unstable_cache } from "next/cache";
 import {
   getCategories as getSupabaseCategories,
   getMenuItems as getSupabaseMenuItems,
@@ -19,7 +18,7 @@ import type { MenuItem, Category, CafeInfo } from "./sanity/types";
 const useSupabase = !!process.env.NEXT_PUBLIC_SUPABASE_URL;
 const useSanity = !!process.env.NEXT_PUBLIC_SANITY_PROJECT_ID;
 
-async function _fetchCategories(): Promise<Category[]> {
+export async function fetchCategories(): Promise<Category[]> {
   if (useSupabase) {
     try {
       return await getSupabaseCategories();
@@ -37,7 +36,7 @@ async function _fetchCategories(): Promise<Category[]> {
   return sampleCategories;
 }
 
-async function _fetchMenuItems(): Promise<MenuItem[]> {
+export async function fetchMenuItems(): Promise<MenuItem[]> {
   if (useSupabase) {
     try {
       return await getSupabaseMenuItems();
@@ -55,7 +54,7 @@ async function _fetchMenuItems(): Promise<MenuItem[]> {
   return sampleMenuItems;
 }
 
-async function _fetchCafeInfo(): Promise<CafeInfo> {
+export async function fetchCafeInfo(): Promise<CafeInfo> {
   if (useSupabase) {
     try {
       return await getSupabaseCafeInfo();
@@ -72,22 +71,3 @@ async function _fetchCafeInfo(): Promise<CafeInfo> {
   }
   return sampleCafeInfo;
 }
-
-// Cache for 5 minutes — menu/categories/cafe info rarely change
-export const fetchCategories = unstable_cache(
-  _fetchCategories,
-  ["categories"],
-  { revalidate: 300, tags: ["categories"] }
-);
-
-export const fetchMenuItems = unstable_cache(
-  _fetchMenuItems,
-  ["menu-items"],
-  { revalidate: 300, tags: ["menu-items"] }
-);
-
-export const fetchCafeInfo = unstable_cache(
-  _fetchCafeInfo,
-  ["cafe-info"],
-  { revalidate: 300, tags: ["cafe-info"] }
-);

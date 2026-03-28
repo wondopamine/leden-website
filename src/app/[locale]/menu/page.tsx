@@ -3,6 +3,8 @@ import { use } from "react";
 import { fetchCategories, fetchMenuItems } from "@/lib/data";
 import { MenuContent } from "@/components/menu/menu-content";
 
+export const dynamic = "force-dynamic";
+
 type Props = {
   params: Promise<{ locale: string }>;
 };
