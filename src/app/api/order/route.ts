@@ -27,6 +27,19 @@ export async function POST(request: Request) {
 
     const orderNumber = `LD-${Date.now().toString(36).toUpperCase()}`;
 
+    // Convert pickup time "HH:MM" to a full ISO timestamp (today's date)
+    let pickupTimestamp: string | null = null;
+    if (pickupTime) {
+      if (pickupTime.includes("T") || pickupTime.includes("-")) {
+        // Already a full timestamp/date string
+        pickupTimestamp = pickupTime;
+      } else {
+        // Time-only like "10:30" — attach today's date
+        const today = new Date().toISOString().split("T")[0];
+        pickupTimestamp = `${today}T${pickupTime}:00`;
+      }
+    }
+
     // Compute tax server-side for integrity
     const subtotal = items.reduce((sum, item) => {
       const modTotal = item.modifiers.reduce(
@@ -52,7 +65,7 @@ export async function POST(request: Request) {
           order_number: orderNumber,
           customer_name: customerInfo.name,
           customer_phone: customerInfo.phone,
-          pickup_time: pickupTime || null,
+          pickup_time: pickupTimestamp,
           status: "new",
           subtotal: subtotal.toFixed(2),
           tax_gst: taxGst.toFixed(2),
@@ -65,6 +78,10 @@ export async function POST(request: Request) {
 
       if (orderError) {
         console.error("Failed to save order:", orderError);
+        return NextResponse.json(
+          { error: "Failed to save order" },
+          { status: 500 }
+        );
       } else if (order) {
         const orderItems = items.map((item) => ({
           order_id: order.id,
