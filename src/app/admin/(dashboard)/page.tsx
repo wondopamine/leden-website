@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { OrdersDashboard } from "@/components/admin/orders-dashboard";
 import { AnalyticsDashboard } from "@/components/admin/analytics-dashboard";
@@ -73,8 +74,10 @@ export default async function AdminDashboardPage() {
       {/* Live orders board */}
       <OrdersDashboard initialOrders={todayOrders} />
 
-      {/* Order analysis */}
-      <AnalyticsDashboard />
+      {/* Order analysis — loads independently */}
+      <Suspense fallback={<div className="h-64 animate-pulse rounded-lg bg-stone-100" />}>
+        <AnalyticsDashboard />
+      </Suspense>
     </div>
   );
 }

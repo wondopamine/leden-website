@@ -129,10 +129,10 @@ export async function fetchAnalytics(period: Period): Promise<AnalyticsData> {
   const supabase = createClient();
   const { start, end } = getDateRange(period);
 
-  // Fetch orders for the period
+  // Fetch orders with items in a single joined query
   let query = supabase
     .from("orders")
-    .select("id, status, total, created_at")
+    .select("id, status, total, created_at, order_items(menu_item_name, quantity, price)")
     .lte("created_at", end.toISOString())
     .order("created_at", { ascending: true });
 
@@ -141,26 +141,16 @@ export async function fetchAnalytics(period: Period): Promise<AnalyticsData> {
   }
 
   const { data: orders } = await query;
-  const allOrders = orders ?? [];
+  const allOrders = (orders ?? []) as Array<{
+    id: string;
+    status: string;
+    total: number;
+    created_at: string;
+    order_items: Array<{ menu_item_name: string; quantity: number; price: number }>;
+  }>;
 
-  // Fetch order items for the period
-  const orderIds = allOrders.map((o) => o.id);
-  let items: Array<{ menu_item_name: string; quantity: number; price: number }> = [];
-
-  if (orderIds.length > 0) {
-    // Fetch in batches to avoid URL length limits
-    const batchSize = 100;
-    const allItems: typeof items = [];
-    for (let i = 0; i < orderIds.length; i += batchSize) {
-      const batch = orderIds.slice(i, i + batchSize);
-      const { data } = await supabase
-        .from("order_items")
-        .select("menu_item_name, quantity, price")
-        .in("order_id", batch);
-      if (data) allItems.push(...data);
-    }
-    items = allItems;
-  }
+  // Flatten order items from the joined query
+  const items = allOrders.flatMap((o) => o.order_items ?? []);
 
   // Calculate stats
   const nonCancelled = allOrders.filter((o) => o.status !== "cancelled");

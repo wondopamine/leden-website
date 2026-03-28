@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { setRequestLocale } from "next-intl/server";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
@@ -6,9 +7,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { fetchCafeInfo, fetchMenuItems } from "@/lib/data";
 import { getLocalizedString, formatPrice } from "@/lib/utils/format";
 import { use } from "react";
-import { DoodleUnderline } from "@/components/doodles";
 import { getItemImageUrl } from "@/lib/menu-images";
 import { getGooglePlaceData, type PlaceData } from "@/lib/google-places";
+import type { MenuItem } from "@/lib/sanity/types";
+import type { CafeInfo } from "@/lib/sanity/types";
 
 type Props = {
   params: Promise<{ locale: string }>;
@@ -22,12 +24,59 @@ export default function HomePage({ params }: Props) {
 
   return (
     <>
-      <HeroSection t={t} tc={tc} locale={locale} />
-      <FeaturedSection locale={locale} t={t} tc={tc} />
-      <ReviewsSection t={t} />
-      <AboutSection t={t} />
-      <HoursSection locale={locale} t={t} />
+      {/* Hero renders instantly — no data dependency */}
+      <HeroShell t={t} tc={tc}>
+        <Suspense>
+          <HeroGoogleBadge t={t} />
+        </Suspense>
+      </HeroShell>
+
+      {/* Data-dependent sections wrapped in Suspense */}
+      <Suspense fallback={<SectionsSkeleton />}>
+        <HomePageSections locale={locale} t={t} tc={tc} />
+      </Suspense>
     </>
+  );
+}
+
+/* ─── Parallel data fetch for all sections ─────────────────── */
+async function HomePageSections({
+  locale,
+  t,
+  tc,
+}: {
+  locale: string;
+  t: ReturnType<typeof useTranslations>;
+  tc: ReturnType<typeof useTranslations>;
+}) {
+  const [items, info, place] = await Promise.all([
+    fetchMenuItems(),
+    fetchCafeInfo(),
+    getGooglePlaceData(),
+  ]);
+
+  return (
+    <>
+      <FeaturedSection locale={locale} t={t} tc={tc} items={items} />
+      <ReviewsSection t={t} place={place} />
+      <AboutSection t={t} place={place} />
+      <HoursSection locale={locale} t={t} info={info} place={place} />
+    </>
+  );
+}
+
+/* ─── Skeleton for loading state ───────────────────────────── */
+function SectionsSkeleton() {
+  return (
+    <div className="mx-auto max-w-5xl px-4 py-20">
+      <div className="h-8 w-48 animate-pulse rounded bg-muted/40" />
+      <div className="mt-4 h-4 w-64 animate-pulse rounded bg-muted/30" />
+      <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="h-64 animate-pulse rounded-xl bg-muted/20" />
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -61,30 +110,25 @@ function GoogleIcon({ className }: { className?: string }) {
   );
 }
 
-/* ─── Hero ─────────────────────────────────────────────────── */
-async function HeroSection({
+/* ─── Hero (renders instantly, no data fetch) ──────────────── */
+function HeroShell({
   t,
   tc,
-  locale,
+  children,
 }: {
   t: ReturnType<typeof useTranslations>;
   tc: ReturnType<typeof useTranslations>;
-  locale: string;
+  children: React.ReactNode;
 }) {
-  const place = await getGooglePlaceData();
-
   return (
     <section className="relative overflow-hidden">
-      {/* Clean background matching logo cream tone */}
       <div className="absolute inset-0 bg-gradient-to-b from-[#f2ead5] via-[#f2ead5]/60 to-background" />
 
       <div className="relative mx-auto flex min-h-[75vh] max-w-4xl flex-col items-center justify-center px-4 text-center">
-        {/* Small tag */}
         <span className="mb-6 inline-block rounded-full border border-[#2D5A3D]/20 bg-[#2D5A3D]/8 px-4 py-1.5 text-xs font-medium uppercase tracking-widest text-[#2D5A3D]">
           {t("hero.tag")}
         </span>
 
-        {/* Logo image */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/logo.png"
@@ -120,37 +164,51 @@ async function HeroSection({
           </a>
         </div>
 
-        {/* Social proof — Google Maps (live data) */}
-        <a
-          href={place.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-12 flex items-center gap-2.5 rounded-full border border-border/60 bg-background/60 px-4 py-2 text-sm text-muted-foreground backdrop-blur-sm transition-colors hover:border-primary/30 hover:text-foreground"
-        >
-          <GoogleIcon className="h-4.5 w-4.5" />
-          <Stars count={Math.round(place.rating)} />
-          <span className="font-medium">{place.rating}/5</span>
-          <span className="text-muted-foreground/60">&middot;</span>
-          <span>{place.reviewCount}+ reviews</span>
-          <span className="text-muted-foreground/60">&middot;</span>
-          <span>{t("hero.since")}</span>
-        </a>
+        {/* Google badge streamed in via Suspense */}
+        {children}
       </div>
     </section>
   );
 }
 
-/* ─── Featured ─────────────────────────────────────────────── */
-async function FeaturedSection({
+/* ─── Hero Google badge (async, streams in) ────────────────── */
+async function HeroGoogleBadge({
+  t,
+}: {
+  t: ReturnType<typeof useTranslations>;
+}) {
+  const place = await getGooglePlaceData();
+
+  return (
+    <a
+      href={place.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="mt-12 flex items-center gap-2.5 rounded-full border border-border/60 bg-background/60 px-4 py-2 text-sm text-muted-foreground backdrop-blur-sm transition-colors hover:border-primary/30 hover:text-foreground"
+    >
+      <GoogleIcon className="h-4.5 w-4.5" />
+      <Stars count={Math.round(place.rating)} />
+      <span className="font-medium">{place.rating}/5</span>
+      <span className="text-muted-foreground/60">&middot;</span>
+      <span>{place.reviewCount}+ reviews</span>
+      <span className="text-muted-foreground/60">&middot;</span>
+      <span>{t("hero.since")}</span>
+    </a>
+  );
+}
+
+/* ─── Featured (receives data as props) ────────────────────── */
+function FeaturedSection({
   locale,
   t,
   tc,
+  items,
 }: {
   locale: string;
   t: ReturnType<typeof useTranslations>;
   tc: ReturnType<typeof useTranslations>;
+  items: MenuItem[];
 }) {
-  const items = await fetchMenuItems();
   const featured = items.filter((item) => item.available).slice(0, 4);
 
   return (
@@ -220,14 +278,14 @@ async function FeaturedSection({
   );
 }
 
-/* ─── Reviews carousel (real Google reviews) ───────────────── */
-async function ReviewsSection({
+/* ─── Reviews carousel (receives data as props) ────────────── */
+function ReviewsSection({
   t,
+  place,
 }: {
   t: ReturnType<typeof useTranslations>;
+  place: PlaceData;
 }) {
-  const place = await getGooglePlaceData();
-  // Duplicate for seamless infinite scroll
   const doubledReviews = [...place.reviews, ...place.reviews];
 
   return (
@@ -261,9 +319,7 @@ async function ReviewsSection({
         </div>
       </div>
 
-      {/* Carousel */}
       <div className="relative mt-10">
-        {/* Fade edges */}
         <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-secondary/30 to-transparent" />
         <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-secondary/30 to-transparent" />
 
@@ -307,7 +363,6 @@ async function ReviewsSection({
         </div>
       </div>
 
-      {/* Mobile Google badge */}
       <div className="mt-6 flex justify-center sm:hidden">
         <a
           href={place.url}
@@ -327,14 +382,14 @@ async function ReviewsSection({
   );
 }
 
-/* ─── About ────────────────────────────────────────────────── */
-async function AboutSection({
+/* ─── About (receives data as props) ──────────────────────── */
+function AboutSection({
   t,
+  place,
 }: {
   t: ReturnType<typeof useTranslations>;
+  place: PlaceData;
 }) {
-  const place = await getGooglePlaceData();
-
   return (
     <section
       id="about"
@@ -395,18 +450,18 @@ async function AboutSection({
   );
 }
 
-/* ─── Hours ────────────────────────────────────────────────── */
-async function HoursSection({
+/* ─── Hours (receives data as props) ──────────────────────── */
+function HoursSection({
   locale,
   t,
+  info,
+  place,
 }: {
   locale: string;
   t: ReturnType<typeof useTranslations>;
+  info: CafeInfo;
+  place: PlaceData;
 }) {
-  const [info, place] = await Promise.all([
-    fetchCafeInfo(),
-    getGooglePlaceData(),
-  ]);
   const dayNames: Record<string, { en: string; fr: string }> = {
     Monday: { en: "Mon", fr: "Lun" },
     Tuesday: { en: "Tue", fr: "Mar" },
@@ -426,7 +481,6 @@ async function HoursSection({
         {t("hours.title")}
       </h2>
       <div className="mt-10 grid gap-8 md:grid-cols-2">
-        {/* Hours */}
         <Card className="border-border/50">
           <CardContent className="p-6">
             <h3 className="mb-5 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
@@ -467,7 +521,6 @@ async function HoursSection({
           </CardContent>
         </Card>
 
-        {/* Location + contact */}
         <Card className="border-border/50">
           <CardContent className="flex flex-col justify-between p-6">
             <div>

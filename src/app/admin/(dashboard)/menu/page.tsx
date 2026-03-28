@@ -7,15 +7,10 @@ import { MenuItemRow } from "@/components/admin/menu-item-row";
 export default async function MenuPage() {
   const supabase = await createClient();
 
-  const { data: categories } = await supabase
-    .from("categories")
-    .select("*")
-    .order("sort_order");
-
-  const { data: items } = await supabase
-    .from("menu_items")
-    .select("*, category:categories(id, name_en, slug)")
-    .order("sort_order");
+  const [{ data: categories }, { data: items }] = await Promise.all([
+    supabase.from("categories").select("*").order("sort_order"),
+    supabase.from("menu_items").select("*, category:categories(id, name_en, slug)").order("sort_order"),
+  ]);
 
   const allCategories = categories ?? [];
   const allItems = items ?? [];
