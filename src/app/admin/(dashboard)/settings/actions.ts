@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath, revalidateTag } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
 type HourEntry = {
@@ -43,7 +43,7 @@ export async function updateCafeInfo(input: CafeInfoUpdate) {
 
   if (error) throw new Error(error.message);
 
-  revalidateTag("cafe-info", "max");
+  updateTag("cafe-info");
   revalidatePath("/admin/settings");
   revalidatePath("/");
 }
