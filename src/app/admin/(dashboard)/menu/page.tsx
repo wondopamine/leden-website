@@ -9,7 +9,7 @@ export default async function MenuPage() {
 
   const [{ data: categories }, { data: items }] = await Promise.all([
     supabase.from("categories").select("*").order("sort_order"),
-    supabase.from("menu_items").select("*, category:categories(id, name_en, slug)").order("sort_order"),
+    supabase.from("menu_items").select("*, category:categories(id, name_en, slug)").order("sort_order").order("name_en"),
   ]);
 
   const allCategories = categories ?? [];

@@ -29,9 +29,10 @@ export function MenuContent({ categories, items, locale }: Props) {
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [addedItemId, setAddedItemId] = useState<string | null>(null);
 
+  const visibleItems = items.filter((item) => item.status !== "hidden");
   const filteredItems = activeCategory
-    ? items.filter((item) => item.category.slug === activeCategory)
-    : items;
+    ? visibleItems.filter((item) => item.category.slug === activeCategory)
+    : visibleItems;
 
   const handleItemAdded = useCallback((itemId: string) => {
     setAddedItemId(itemId);
@@ -75,7 +76,7 @@ export function MenuContent({ categories, items, locale }: Props) {
       {activeCategory === null ? (
         <div className="mt-6 space-y-10">
           {categories.map((cat) => {
-            const catItems = items.filter(
+            const catItems = visibleItems.filter(
               (item) => item.category.slug === cat.slug
             );
             if (catItems.length === 0) return null;
@@ -139,8 +140,10 @@ function MenuItemCard({
   justAdded: boolean;
 }) {
   const t = useTranslations("menu");
-  const disabled = !item.available;
+  const disabled = item.status === "sold_out";
   const imgSrc = getItemImageUrl(item);
+  const cartItems = useCartStore((s) => s.items);
+  const cartCount = cartItems.filter((ci) => ci.menuItemId === item._id).reduce((sum, ci) => sum + ci.quantity, 0);
 
   return (
     <button
@@ -153,7 +156,7 @@ function MenuItemCard({
       } ${justAdded ? "ring-2 ring-primary/40 bg-primary/5" : ""}`}
     >
       {/* Photo thumbnail */}
-      <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-muted/40 sm:h-20 sm:w-20">
+      <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-muted/40 sm:h-20 sm:w-20">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={imgSrc}
@@ -161,6 +164,12 @@ function MenuItemCard({
           className="h-full w-full object-cover"
           loading="lazy"
         />
+        {/* Quantity badge on thumbnail */}
+        {!disabled && cartCount > 0 && (
+          <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground shadow-sm">
+            {cartCount}
+          </span>
+        )}
       </div>
 
       {/* Item info */}
@@ -183,20 +192,14 @@ function MenuItemCard({
         )}
       </div>
 
-      {/* Add indicator */}
+      {/* Add indicator — shows count when in cart, + when not */}
       {!disabled && (
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
-          {justAdded ? (
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path
-                d="M3 8.5L6.5 12L13 4"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          ) : (
+        cartCount > 0 ? (
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
+            {cartCount}
+          </div>
+        ) : (
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path
                 d="M8 3v10M3 8h10"
@@ -205,8 +208,8 @@ function MenuItemCard({
                 strokeLinecap="round"
               />
             </svg>
-          )}
-        </div>
+          </div>
+        )
       )}
     </button>
   );

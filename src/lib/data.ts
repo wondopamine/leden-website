@@ -46,7 +46,11 @@ export async function fetchMenuItems(): Promise<MenuItem[]> {
   }
   if (useSanity) {
     try {
-      return await getSanityMenuItems();
+      const items = await getSanityMenuItems();
+      return items.map((item) => ({
+        ...item,
+        status: item.status ?? (item.available ? "available" : "hidden"),
+      }));
     } catch {
       // fall through
     }

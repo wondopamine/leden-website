@@ -127,10 +127,6 @@ function HeroShell({
       <div className="absolute inset-0 bg-gradient-to-b from-[#f2ead5] via-[#f2ead5]/60 to-background" />
 
       <div className="relative mx-auto flex min-h-[75vh] max-w-4xl flex-col items-center justify-center px-4 text-center">
-        <span className="mb-6 inline-block rounded-full border border-[#2D5A3D]/20 bg-[#2D5A3D]/8 px-4 py-1.5 text-xs font-medium uppercase tracking-widest text-[#2D5A3D]">
-          {t("hero.tag")}
-        </span>
-
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/logo.png"
@@ -146,7 +142,7 @@ function HeroShell({
           {t("hero.description")}
         </p>
 
-        <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row sm:gap-4">
+        <div className="mt-10">
           <Link href="/menu">
             <Button
               size="lg"
@@ -155,15 +151,6 @@ function HeroShell({
               {tc("orderForPickup")}
             </Button>
           </Link>
-          <a href="#about">
-            <Button
-              size="lg"
-              variant="ghost"
-              className="h-12 rounded-full px-8 text-base text-muted-foreground hover:text-foreground"
-            >
-              {tc("ourStory")} &darr;
-            </Button>
-          </a>
         </div>
 
         {/* Google badge streamed in via Suspense */}
@@ -211,7 +198,7 @@ function FeaturedSection({
   tc: ReturnType<typeof useTranslations>;
   items: MenuItem[];
 }) {
-  const featured = items.filter((item) => item.available).slice(0, 4);
+  const featured = items.filter((item) => item.status === "available").slice(0, 4);
 
   return (
     <section className="relative mx-auto max-w-5xl px-4 py-20">

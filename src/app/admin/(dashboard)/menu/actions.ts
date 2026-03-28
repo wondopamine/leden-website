@@ -23,6 +23,7 @@ export async function createMenuItem(formData: FormData) {
       price: parseFloat(formData.get("price") as string),
       category_id: categoryId,
       available: formData.get("available") === "true",
+      status: formData.get("available") === "true" ? "available" : "hidden",
       image_url: imageUrl,
     })
     .select("id")
@@ -60,6 +61,7 @@ export async function updateMenuItem(formData: FormData) {
       price: parseFloat(formData.get("price") as string),
       category_id: formData.get("category_id") as string,
       available: formData.get("available") === "true",
+      status: formData.get("available") === "true" ? "available" : "hidden",
       image_url: imageUrl,
     })
     .eq("id", id);
@@ -89,9 +91,9 @@ export async function deleteMenuItem(id: string) {
   revalidatePath("/admin/menu");
 }
 
-export async function toggleMenuItemAvailability(
+export async function updateMenuItemStatus(
   id: string,
-  available: boolean
+  status: "available" | "sold_out" | "hidden"
 ) {
   const supabase = await createClient();
   const {
@@ -101,7 +103,7 @@ export async function toggleMenuItemAvailability(
 
   const { error } = await supabase
     .from("menu_items")
-    .update({ available })
+    .update({ status, available: status !== "hidden" })
     .eq("id", id);
 
   if (error) throw new Error(error.message);

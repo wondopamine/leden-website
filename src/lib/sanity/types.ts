@@ -29,6 +29,7 @@ export type MenuItem = {
     };
   };
   available: boolean;
+  status: "available" | "sold_out" | "hidden";
   modifiers: Modifier[];
 };
 

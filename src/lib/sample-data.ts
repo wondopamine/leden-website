@@ -19,6 +19,7 @@ export const sampleMenuItems: MenuItem[] = [
     price: 5.75,
     category: { _id: "cat-1", name: { en: "Coffee & Lattes", fr: "Café et lattés" }, slug: "coffee" },
     available: true,
+    status: "available" as const,
     modifiers: [
       {
         name: { en: "Size", fr: "Taille" },
@@ -47,6 +48,7 @@ export const sampleMenuItems: MenuItem[] = [
     price: 6.25,
     category: { _id: "cat-2", name: { en: "Tea & Matcha", fr: "Thé et matcha" }, slug: "tea" },
     available: true,
+    status: "available" as const,
     modifiers: [
       {
         name: { en: "Size", fr: "Taille" },
@@ -67,6 +69,7 @@ export const sampleMenuItems: MenuItem[] = [
     price: 5.75,
     category: { _id: "cat-1", name: { en: "Coffee & Lattes", fr: "Café et lattés" }, slug: "coffee" },
     available: true,
+    status: "available" as const,
     modifiers: [
       {
         name: { en: "Size", fr: "Taille" },
@@ -94,6 +97,7 @@ export const sampleMenuItems: MenuItem[] = [
     price: 6.25,
     category: { _id: "cat-2", name: { en: "Tea & Matcha", fr: "Thé et matcha" }, slug: "tea" },
     available: true,
+    status: "available" as const,
     modifiers: [
       {
         name: { en: "Size", fr: "Taille" },
@@ -114,6 +118,7 @@ export const sampleMenuItems: MenuItem[] = [
     price: 4.50,
     category: { _id: "cat-1", name: { en: "Coffee & Lattes", fr: "Café et lattés" }, slug: "coffee" },
     available: true,
+    status: "available" as const,
     modifiers: [
       {
         name: { en: "Size", fr: "Taille" },
@@ -143,6 +148,7 @@ export const sampleMenuItems: MenuItem[] = [
     price: 14.50,
     category: { _id: "cat-3", name: { en: "Breakfast", fr: "Petit-déjeuner" }, slug: "breakfast" },
     available: true,
+    status: "available" as const,
     modifiers: [],
   },
   {
@@ -155,6 +161,7 @@ export const sampleMenuItems: MenuItem[] = [
     price: 12.00,
     category: { _id: "cat-3", name: { en: "Breakfast", fr: "Petit-déjeuner" }, slug: "breakfast" },
     available: true,
+    status: "available" as const,
     modifiers: [
       {
         name: { en: "Add-on", fr: "Supplément" },
@@ -175,6 +182,7 @@ export const sampleMenuItems: MenuItem[] = [
     price: 8.50,
     category: { _id: "cat-4", name: { en: "Lunch", fr: "Déjeuner" }, slug: "lunch" },
     available: true,
+    status: "available" as const,
     modifiers: [],
   },
   {
@@ -187,6 +195,7 @@ export const sampleMenuItems: MenuItem[] = [
     price: 9.50,
     category: { _id: "cat-4", name: { en: "Lunch", fr: "Déjeuner" }, slug: "lunch" },
     available: true,
+    status: "available" as const,
     modifiers: [],
   },
   {
@@ -199,6 +208,7 @@ export const sampleMenuItems: MenuItem[] = [
     price: 13.50,
     category: { _id: "cat-4", name: { en: "Lunch", fr: "Déjeuner" }, slug: "lunch" },
     available: true,
+    status: "available" as const,
     modifiers: [],
   },
   {
@@ -211,6 +221,7 @@ export const sampleMenuItems: MenuItem[] = [
     price: 3.75,
     category: { _id: "cat-5", name: { en: "Pastries", fr: "Pâtisseries" }, slug: "pastries" },
     available: true,
+    status: "available" as const,
     modifiers: [],
   },
   {
@@ -223,6 +234,7 @@ export const sampleMenuItems: MenuItem[] = [
     price: 4.25,
     category: { _id: "cat-5", name: { en: "Pastries", fr: "Pâtisseries" }, slug: "pastries" },
     available: true,
+    status: "available" as const,
     modifiers: [],
   },
 ];

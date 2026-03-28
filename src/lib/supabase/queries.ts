@@ -48,7 +48,8 @@ export async function getMenuItems(): Promise<MenuItem[]> {
       slug: row.category.slug,
     },
     image: row.image_url ? { asset: { _ref: row.image_url } } : undefined,
-    available: row.available,
+    available: row.status ? row.status !== "hidden" : row.available,
+    status: (row.status as "available" | "sold_out" | "hidden") ?? (row.available ? "available" : "hidden"),
     modifiers: (row.modifiers ?? [])
       .sort(
         (a: { sort_order: number }, b: { sort_order: number }) =>
