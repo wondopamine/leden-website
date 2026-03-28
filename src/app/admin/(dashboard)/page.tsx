@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { OrdersDashboard } from "@/components/admin/orders-dashboard";
+import { AnalyticsDashboard } from "@/components/admin/analytics-dashboard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ClipboardList, DollarSign, Clock, CheckCircle } from "lucide-react";
 
@@ -71,6 +72,9 @@ export default async function AdminDashboardPage() {
 
       {/* Live orders board */}
       <OrdersDashboard initialOrders={todayOrders} />
+
+      {/* Order analysis */}
+      <AnalyticsDashboard />
     </div>
   );
 }
