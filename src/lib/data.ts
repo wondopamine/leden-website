@@ -77,17 +77,17 @@ async function _fetchCafeInfo(): Promise<CafeInfo> {
 export const fetchCategories = unstable_cache(
   _fetchCategories,
   ["categories"],
-  { revalidate: 300 }
+  { revalidate: 300, tags: ["categories"] }
 );
 
 export const fetchMenuItems = unstable_cache(
   _fetchMenuItems,
   ["menu-items"],
-  { revalidate: 300 }
+  { revalidate: 300, tags: ["menu-items"] }
 );
 
 export const fetchCafeInfo = unstable_cache(
   _fetchCafeInfo,
   ["cafe-info"],
-  { revalidate: 300 }
+  { revalidate: 300, tags: ["cafe-info"] }
 );

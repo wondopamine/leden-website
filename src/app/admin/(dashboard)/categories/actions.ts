@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
 type CategoryInput = {
@@ -41,6 +41,8 @@ export async function saveCategory(input: CategoryInput) {
     if (error) throw new Error(error.message);
   }
 
+  revalidateTag("categories", "max");
+  revalidateTag("menu-items", "max");
   revalidatePath("/admin/categories");
   revalidatePath("/admin/menu");
   revalidatePath("/");
@@ -56,6 +58,8 @@ export async function deleteCategory(id: string) {
   const { error } = await supabase.from("categories").delete().eq("id", id);
   if (error) throw new Error(error.message);
 
+  revalidateTag("categories", "max");
+  revalidateTag("menu-items", "max");
   revalidatePath("/admin/categories");
   revalidatePath("/admin/menu");
   revalidatePath("/");
