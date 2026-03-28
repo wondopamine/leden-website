@@ -12,6 +12,7 @@ export async function createMenuItem(formData: FormData) {
   if (!user) throw new Error("Unauthorized");
 
   const categoryId = formData.get("category_id") as string;
+  const imageUrl = (formData.get("image_url") as string) || null;
   const { data: item, error } = await supabase
     .from("menu_items")
     .insert({
@@ -22,6 +23,7 @@ export async function createMenuItem(formData: FormData) {
       price: parseFloat(formData.get("price") as string),
       category_id: categoryId,
       available: formData.get("available") === "true",
+      image_url: imageUrl,
     })
     .select("id")
     .single();
@@ -47,6 +49,7 @@ export async function updateMenuItem(formData: FormData) {
   if (!user) throw new Error("Unauthorized");
 
   const id = formData.get("id") as string;
+  const imageUrl = (formData.get("image_url") as string) || null;
 
   const { error } = await supabase
     .from("menu_items")
@@ -58,6 +61,7 @@ export async function updateMenuItem(formData: FormData) {
       price: parseFloat(formData.get("price") as string),
       category_id: formData.get("category_id") as string,
       available: formData.get("available") === "true",
+      image_url: imageUrl,
     })
     .eq("id", id);
 

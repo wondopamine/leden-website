@@ -61,7 +61,7 @@ export function MenuItemRow({ item }: Props) {
         <span className="text-sm font-medium">
           ${Number(item.price).toFixed(2)}
         </span>
-        <Button variant="ghost" size="icon" className="h-8 w-8" render={<Link href={`/admin/menu/${item.id}/edit`} />}>
+        <Button variant="ghost" size="icon" className="h-8 w-8" nativeButton={false} render={<Link href={`/admin/menu/${item.id}/edit`} />}>
           <Pencil className="h-4 w-4" />
         </Button>
         <Button

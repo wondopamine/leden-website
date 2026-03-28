@@ -36,6 +36,7 @@ export default async function EditMenuItemPage({ params }: Props) {
     price: Number(item.price),
     category_id: item.category_id,
     available: item.available,
+    image_url: item.image_url as string | null,
     modifiers: (item.modifiers ?? [])
       .sort((a: { sort_order: number }, b: { sort_order: number }) => a.sort_order - b.sort_order)
       .map((mod: { name_en: string; name_fr: string; options: { name_en: string; name_fr: string; price_adjustment: number; sort_order: number }[] }) => ({
@@ -54,7 +55,7 @@ export default async function EditMenuItemPage({ params }: Props) {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" render={<Link href="/admin/menu" />}>
+        <Button variant="ghost" size="icon" nativeButton={false} render={<Link href="/admin/menu" />}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <h1 className="text-2xl font-bold text-stone-900">

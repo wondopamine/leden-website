@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Upload, ImageIcon, X, Loader2 } from "lucide-react";
 
 type Category = {
   id: string;
@@ -35,6 +35,7 @@ type MenuItemData = {
   price: number;
   category_id: string;
   available: boolean;
+  image_url?: string | null;
   modifiers: Modifier[];
 };
 
@@ -52,9 +53,41 @@ export function MenuItemForm({
   submitLabel,
 }: Props) {
   const [available, setAvailable] = useState(initialData?.available ?? true);
+  const [imageUrl, setImageUrl] = useState<string | null>(
+    initialData?.image_url ?? null
+  );
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [modifiers, setModifiers] = useState<Modifier[]>(
     initialData?.modifiers ?? []
   );
+
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    const body = new FormData();
+    body.append("file", file);
+
+    const res = await fetch("/api/upload-menu-image", { method: "POST", body });
+    const data = await res.json();
+
+    if (!res.ok) {
+      alert(`Upload failed: ${data.error}`);
+      setUploading(false);
+      return;
+    }
+
+    setImageUrl(data.url);
+    setUploading(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  function removeImage() {
+    setImageUrl(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
 
   function addModifier() {
     setModifiers([
@@ -104,11 +137,75 @@ export function MenuItemForm({
         <input type="hidden" name="id" value={initialData.id} />
       )}
       <input type="hidden" name="available" value={available.toString()} />
+      <input type="hidden" name="image_url" value={imageUrl ?? ""} />
       <input
         type="hidden"
         name="modifiers_json"
         value={JSON.stringify(modifiers)}
       />
+
+      {/* Image */}
+      <div className="space-y-2">
+        <Label>Photo</Label>
+        <div className="flex items-start gap-4">
+          {imageUrl ? (
+            <div className="relative group">
+              <img
+                src={imageUrl}
+                alt="Menu item"
+                className="h-32 w-32 rounded-lg object-cover border border-stone-200"
+              />
+              <button
+                type="button"
+                onClick={removeImage}
+                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          ) : (
+            <div className="h-32 w-32 rounded-lg border-2 border-dashed border-stone-300 flex flex-col items-center justify-center text-stone-400">
+              <ImageIcon className="h-8 w-8 mb-1" />
+              <span className="text-xs">No photo</span>
+            </div>
+          )}
+          <div className="flex flex-col gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              className="hidden"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+            >
+              {uploading ? (
+                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+              ) : (
+                <Upload className="mr-1 h-3 w-3" />
+              )}
+              {uploading ? "Uploading..." : imageUrl ? "Change Photo" : "Upload Photo"}
+            </Button>
+            {imageUrl && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={removeImage}
+                className="text-red-500 hover:text-red-600"
+              >
+                <Trash2 className="mr-1 h-3 w-3" />
+                Remove
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Names */}
       <div className="grid gap-4 sm:grid-cols-2">

@@ -24,7 +24,7 @@ export default async function MenuPage() {
             Manage your menu items
           </p>
         </div>
-        <Button render={<Link href="/admin/menu/new" />}>
+        <Button nativeButton={false} render={<Link href="/admin/menu/new" />}>
           <Plus className="mr-2 h-4 w-4" />
           Add Item
         </Button>

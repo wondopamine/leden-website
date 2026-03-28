@@ -15,7 +15,7 @@ export default async function NewMenuItemPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" render={<Link href="/admin/menu" />}>
+        <Button variant="ghost" size="icon" nativeButton={false} render={<Link href="/admin/menu" />}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <h1 className="text-2xl font-bold text-stone-900">New Menu Item</h1>
