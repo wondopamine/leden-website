@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useTransition } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -61,6 +62,8 @@ export function MenuItemForm({
   const [modifiers, setModifiers] = useState<Modifier[]>(
     initialData?.modifiers ?? []
   );
+  const [isPending, startTransition] = useTransition();
+  const isEdit = !!initialData?.id;
 
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -131,8 +134,23 @@ export function MenuItemForm({
     setModifiers(updated);
   }
 
+  function handleSubmit(formData: FormData) {
+    if (isEdit) {
+      startTransition(async () => {
+        try {
+          await action(formData);
+          toast.success("Changes saved");
+        } catch {
+          toast.error("Failed to save changes");
+        }
+      });
+    } else {
+      action(formData);
+    }
+  }
+
   return (
-    <form action={action} className="space-y-6 max-w-2xl">
+    <form action={handleSubmit} className="space-y-6 max-w-2xl">
       {initialData?.id && (
         <input type="hidden" name="id" value={initialData.id} />
       )}
@@ -400,7 +418,9 @@ export function MenuItemForm({
       </Card>
 
       <div className="flex gap-3">
-        <Button type="submit">{submitLabel}</Button>
+        <Button type="submit" disabled={isPending}>
+          {isPending ? "Saving..." : submitLabel}
+        </Button>
       </div>
     </form>
   );

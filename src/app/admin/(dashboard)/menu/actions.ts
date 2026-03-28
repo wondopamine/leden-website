@@ -80,7 +80,6 @@ export async function updateMenuItem(formData: FormData) {
   updateTag("categories");
   revalidatePath("/admin/menu");
   revalidatePath("/");
-  redirect("/admin/menu");
 }
 
 export async function deleteMenuItem(id: string) {
