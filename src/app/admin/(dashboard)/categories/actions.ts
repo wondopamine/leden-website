@@ -11,6 +11,12 @@ type CategoryInput = {
   sort_order: number;
 };
 
+function friendlyError(msg: string): string {
+  if (msg.includes("unique") || msg.includes("duplicate")) return "A category with this slug already exists.";
+  if (msg.includes("foreign key") || msg.includes("referenced")) return "Cannot delete this category because it has menu items. Move or delete them first.";
+  return "Something went wrong. Please try again.";
+}
+
 export async function saveCategory(input: CategoryInput) {
   const supabase = await createClient();
   const {
@@ -29,7 +35,7 @@ export async function saveCategory(input: CategoryInput) {
       })
       .eq("id", input.id);
 
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(friendlyError(error.message));
   } else {
     const { error } = await supabase.from("categories").insert({
       name_en: input.name_en,
@@ -38,7 +44,7 @@ export async function saveCategory(input: CategoryInput) {
       sort_order: input.sort_order,
     });
 
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(friendlyError(error.message));
   }
 
   revalidatePath("/admin/categories");
@@ -53,7 +59,7 @@ export async function deleteCategory(id: string) {
   if (!user) throw new Error("Unauthorized");
 
   const { error } = await supabase.from("categories").delete().eq("id", id);
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(friendlyError(error.message));
 
   revalidatePath("/admin/categories");
   revalidatePath("/admin/menu");

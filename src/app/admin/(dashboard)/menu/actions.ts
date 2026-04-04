@@ -4,6 +4,13 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
+function friendlyError(msg: string): string {
+  if (msg.includes("unique") || msg.includes("duplicate")) return "An item with this name already exists.";
+  if (msg.includes("foreign key") || msg.includes("fk_")) return "The selected category no longer exists.";
+  if (msg.includes("not-null")) return "Please fill in all required fields.";
+  return "Something went wrong. Please try again.";
+}
+
 export async function createMenuItem(formData: FormData) {
   const supabase = await createClient();
   const {
@@ -29,9 +36,8 @@ export async function createMenuItem(formData: FormData) {
     .select("id")
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(friendlyError(error.message));
 
-  // Handle modifiers
   const modifiersJson = formData.get("modifiers_json") as string;
   if (modifiersJson && item) {
     await saveModifiers(supabase, item.id, JSON.parse(modifiersJson));
@@ -66,9 +72,8 @@ export async function updateMenuItem(formData: FormData) {
     })
     .eq("id", id);
 
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(friendlyError(error.message));
 
-  // Replace modifiers: delete existing, insert new
   await supabase.from("modifiers").delete().eq("menu_item_id", id);
   const modifiersJson = formData.get("modifiers_json") as string;
   if (modifiersJson) {
@@ -86,7 +91,7 @@ export async function deleteMenuItem(id: string) {
   if (!user) throw new Error("Unauthorized");
 
   const { error } = await supabase.from("menu_items").delete().eq("id", id);
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(friendlyError(error.message));
 
   revalidatePath("/admin/menu");
 }
@@ -106,7 +111,7 @@ export async function updateMenuItemStatus(
     .update({ status, available: status !== "hidden" })
     .eq("id", id);
 
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(friendlyError(error.message));
 
   revalidatePath("/admin/menu");
 }
@@ -125,7 +130,7 @@ type ModifierInput = {
 async function saveModifiers(supabase: any, menuItemId: string, modifiers: ModifierInput[]) {
   for (let i = 0; i < modifiers.length; i++) {
     const mod = modifiers[i];
-    const { data: modifier } = await supabase
+    const { data: modifier, error: modError } = await supabase
       .from("modifiers")
       .insert({
         menu_item_id: menuItemId,
@@ -136,8 +141,13 @@ async function saveModifiers(supabase: any, menuItemId: string, modifiers: Modif
       .select("id")
       .single();
 
+    if (modError) {
+      console.error("Failed to save modifier:", modError);
+      throw new Error("Failed to save modifiers. Please try again.");
+    }
+
     if (modifier && mod.options.length > 0) {
-      await supabase.from("modifier_options").insert(
+      const { error: optError } = await supabase.from("modifier_options").insert(
         mod.options.map((opt, j) => ({
           modifier_id: modifier.id,
           name_en: opt.name_en,
@@ -146,6 +156,11 @@ async function saveModifiers(supabase: any, menuItemId: string, modifiers: Modif
           sort_order: j,
         }))
       );
+
+      if (optError) {
+        console.error("Failed to save modifier options:", optError);
+        throw new Error("Failed to save modifier options. Please try again.");
+      }
     }
   }
 }
