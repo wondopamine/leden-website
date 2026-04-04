@@ -83,7 +83,12 @@
     "title": "Order Placed!",
     "thankYou": "Thank you! Your order has been sent to the cafe.",
     "orderNumber": "Order Number",
+    "pickupTime": "Pickup Time",
+    "asap": "As soon as possible",
     "pickupAt": "Pick up at",
+    "items": "Items",
+    "subtotal": "Subtotal",
+    "total": "Total",
     "paymentNote": "Please pay in person when you pick up your order.",
     "backToMenu": "Back to Menu"
   },

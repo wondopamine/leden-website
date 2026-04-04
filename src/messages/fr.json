@@ -83,7 +83,12 @@
     "title": "Commande envoyée!",
     "thankYou": "Merci! Votre commande a été envoyée au café.",
     "orderNumber": "Numéro de commande",
+    "pickupTime": "Heure de cueillette",
+    "asap": "Dès que possible",
     "pickupAt": "Cueillette à",
+    "items": "Articles",
+    "subtotal": "Sous-total",
+    "total": "Total",
     "paymentNote": "Veuillez payer en personne lors de la cueillette de votre commande.",
     "backToMenu": "Retour au menu"
   },
