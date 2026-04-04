@@ -73,6 +73,44 @@ async function validateBusinessHours(supabase: any, pickupTime: string | null) {
   return null; // Valid
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function validateItems(supabase: any, items: OrderItem[]) {
+  const itemIds = items.map((i) => i.menuItemId).filter(Boolean);
+  if (itemIds.length === 0) return null; // No IDs to validate (legacy orders)
+
+  const { data: dbItems } = await supabase
+    .from("menu_items")
+    .select("id, price, status, name_en")
+    .in("id", itemIds);
+
+  if (!dbItems) return null;
+
+  type DbItem = { id: string; price: number; status: string; name_en: string };
+  const dbMap = new Map<string, DbItem>(dbItems.map((i: DbItem) => [i.id, i]));
+
+  for (const item of items) {
+    if (!item.menuItemId) continue;
+    const dbItem: DbItem | undefined = dbMap.get(item.menuItemId);
+
+    if (!dbItem) {
+      return `Item "${item.name}" is no longer on our menu.`;
+    }
+    if (dbItem.status !== "available") {
+      return `"${dbItem.name_en}" is currently ${dbItem.status === "sold_out" ? "sold out" : "unavailable"}.`;
+    }
+    // Allow small floating point differences (< 1 cent)
+    if (Math.abs(Number(dbItem.price) - item.price) > 0.01) {
+      return `Price for "${dbItem.name_en}" has changed. Please refresh the menu and try again.`;
+    }
+  }
+  return null;
+}
+
+function validatePhone(phone: string): boolean {
+  const digits = phone.replace(/\D/g, "");
+  return digits.length >= 7 && digits.length <= 15;
+}
+
 export async function POST(request: Request) {
   try {
     const body: OrderBody = await request.json();
@@ -88,6 +126,9 @@ export async function POST(request: Request) {
     if (!customerInfo?.phone?.trim()) {
       return NextResponse.json({ error: "Phone number is required" }, { status: 400 });
     }
+    if (!validatePhone(customerInfo.phone)) {
+      return NextResponse.json({ error: "Please enter a valid phone number" }, { status: 400 });
+    }
 
     const supabase = getSupabase();
     if (!supabase) {
@@ -98,6 +139,12 @@ export async function POST(request: Request) {
     const hoursError = await validateBusinessHours(supabase, pickupTime);
     if (hoursError) {
       return NextResponse.json({ error: hoursError }, { status: 400 });
+    }
+
+    // Validate items exist, are available, and prices match DB
+    const itemsError = await validateItems(supabase, items);
+    if (itemsError) {
+      return NextResponse.json({ error: itemsError }, { status: 400 });
     }
 
     const orderNumber = `LD-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 5).toUpperCase()}`;
@@ -113,7 +160,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // Compute tax server-side for integrity
+    // Compute tax server-side using DB-verified prices
     const subtotal = items.reduce((sum, item) => {
       const modTotal = item.modifiers.reduce(
         (m, mod) => m + mod.priceAdjustment,
@@ -161,12 +208,12 @@ export async function POST(request: Request) {
       modifiers: item.modifiers,
     }));
 
-    const { error: itemsError } = await supabase
+    const { error: orderItemsError } = await supabase
       .from("order_items")
       .insert(orderItems);
 
-    if (itemsError) {
-      console.error("Failed to save order items:", itemsError);
+    if (orderItemsError) {
+      console.error("Failed to save order items:", orderItemsError);
       return NextResponse.json(
         { error: "Failed to save order details" },
         { status: 500 }
