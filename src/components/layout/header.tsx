@@ -51,8 +51,9 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4">
-        <Link href="/" className="text-xl font-semibold tracking-tight">
-          Cafe Le Den
+        <Link href="/" className="shrink-0">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-header.png" alt="Cafe Le Den" className="h-10 w-auto" />
         </Link>
 
         {/* Desktop nav */}

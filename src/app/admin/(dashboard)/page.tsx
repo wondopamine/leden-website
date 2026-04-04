@@ -22,10 +22,9 @@ export default async function AdminDashboardPage() {
     .order("created_at", { ascending: false });
 
   const todayOrders = orders ?? [];
-  const totalRevenue = todayOrders.reduce(
-    (sum, o) => sum + Number(o.total),
-    0
-  );
+  const totalRevenue = todayOrders
+    .filter((o) => o.status !== "cancelled")
+    .reduce((sum, o) => sum + Number(o.total), 0);
   const activeOrders = todayOrders.filter(
     (o) => o.status === "new" || o.status === "preparing" || o.status === "ready"
   ).length;
