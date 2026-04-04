@@ -14,8 +14,8 @@ export const menuItemImages: Record<string, string> = {
   "item-8":  "https://images.unsplash.com/photo-1547592166-23ac45744acd?w=400&h=400&fit=crop&q=80", // Hot & Sour Soup
   "item-9":  "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=400&h=400&fit=crop&q=80", // Wonton Soup
   "item-10": "https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=400&h=400&fit=crop&q=80", // Grilled Chicken Sandwich
-  "item-11": "https://images.unsplash.com/photo-1555507036-ab1f4038024a?w=400&h=400&fit=crop&q=80", // Butter Croissant
-  "item-12": "https://images.unsplash.com/photo-1606313564200-e75d5e30476c?w=400&h=400&fit=crop&q=80", // Chocolate Brownie
+  "item-11": "https://images.unsplash.com/photo-1549903072-7e6e6e9f1e3c?w=400&h=400&fit=crop&q=80", // Butter Croissant
+  "item-12": "https://images.unsplash.com/photo-1606890737304-57a1ca8a5b62?w=400&h=400&fit=crop&q=80", // Chocolate Brownie
 };
 
 // Category-level fallback images
@@ -24,7 +24,7 @@ export const categoryImages: Record<string, string> = {
   tea:       "https://images.unsplash.com/photo-1536256263959-770b48d82b0a?w=400&h=300&fit=crop&q=80",
   breakfast: "https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?w=400&h=300&fit=crop&q=80",
   lunch:     "https://images.unsplash.com/photo-1547592166-23ac45744acd?w=400&h=300&fit=crop&q=80",
-  pastries:  "https://images.unsplash.com/photo-1555507036-ab1f4038024a?w=400&h=300&fit=crop&q=80",
+  pastries:  "https://images.unsplash.com/photo-1549903072-7e6e6e9f1e3c?w=400&h=300&fit=crop&q=80",
 };
 
 export function getMenuItemImage(itemId: string, categorySlug: string): string {

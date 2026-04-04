@@ -151,7 +151,7 @@ function MenuItemCard({
       disabled={disabled}
       className={`group flex w-full items-center gap-4 rounded-xl border border-border/50 bg-card p-3 text-left transition-all sm:p-4 ${
         disabled
-          ? "cursor-not-allowed opacity-50"
+          ? "cursor-not-allowed opacity-70"
           : "cursor-pointer hover:border-border hover:bg-accent/30 hover:shadow-sm active:scale-[0.995]"
       } ${justAdded ? "ring-2 ring-primary/40 bg-primary/5" : ""}`}
     >
