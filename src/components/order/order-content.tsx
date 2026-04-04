@@ -10,8 +10,87 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { formatPrice } from "@/lib/utils/format";
 import { useState } from "react";
+import type { CafeInfo } from "@/lib/sanity/types";
 
-export function OrderContent({ locale }: { locale: string }) {
+type Props = {
+  locale: string;
+  cafeInfo: CafeInfo;
+};
+
+function getTodayHours(cafeInfo: CafeInfo) {
+  const dayName = new Date().toLocaleDateString("en-US", { weekday: "long" });
+  return cafeInfo.hours.find((h) => h.day === dayName);
+}
+
+function isCafeOpen(cafeInfo: CafeInfo): boolean {
+  const today = getTodayHours(cafeInfo);
+  if (!today || today.closed) return false;
+
+  const now = new Date();
+  const [openH, openM] = today.open.split(":").map(Number);
+  const [closeH, closeM] = today.close.split(":").map(Number);
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const openMin = openH * 60 + openM;
+  const closeMin = closeH * 60 + closeM;
+
+  return nowMin >= openMin && nowMin < closeMin;
+}
+
+function getNextOpenInfo(cafeInfo: CafeInfo): string {
+  const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const todayIdx = new Date().getDay();
+
+  // Check remaining time today
+  const today = getTodayHours(cafeInfo);
+  if (today && !today.closed) {
+    const now = new Date();
+    const [openH, openM] = today.open.split(":").map(Number);
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    const openMin = openH * 60 + openM;
+    if (nowMin < openMin) {
+      return `${today.open}`;
+    }
+  }
+
+  // Check next days
+  for (let i = 1; i <= 7; i++) {
+    const dayIdx = (todayIdx + i) % 7;
+    const dayName = days[dayIdx];
+    const dayHours = cafeInfo.hours.find((h) => h.day === dayName);
+    if (dayHours && !dayHours.closed) {
+      return `${dayName} ${dayHours.open}`;
+    }
+  }
+  return "";
+}
+
+function generateTimeSlots(cafeInfo: CafeInfo): string[] {
+  const today = getTodayHours(cafeInfo);
+  if (!today || today.closed) return [];
+
+  const now = new Date();
+  const leadTime = cafeInfo.pickupLeadTime || 15;
+  const [openH, openM] = today.open.split(":").map(Number);
+  const [closeH, closeM] = today.close.split(":").map(Number);
+  const openMin = openH * 60 + openM;
+  const closeMin = closeH * 60 + closeM;
+
+  // Earliest possible pickup: now + lead time, rounded up to next 15-min slot
+  const earliestMin = Math.max(
+    Math.ceil((now.getHours() * 60 + now.getMinutes() + leadTime) / 15) * 15,
+    openMin
+  );
+
+  const slots: string[] = [];
+  for (let m = earliestMin; m < closeMin; m += 15) {
+    const h = Math.floor(m / 60);
+    const min = m % 60;
+    slots.push(`${h.toString().padStart(2, "0")}:${min.toString().padStart(2, "0")}`);
+  }
+  return slots.slice(0, 8);
+}
+
+export function OrderContent({ locale, cafeInfo }: Props) {
   const t = useTranslations("order");
   const tc = useTranslations("common");
   const router = useRouter();
@@ -28,6 +107,9 @@ export function OrderContent({ locale }: { locale: string }) {
   const clearCart = useCartStore((s) => s.clearCart);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const cafeOpen = isCafeOpen(cafeInfo);
+  const timeSlots = generateTimeSlots(cafeInfo);
 
   if (items.length === 0) {
     return (
@@ -46,6 +128,7 @@ export function OrderContent({ locale }: { locale: string }) {
 
   const handleSubmitOrder = async () => {
     if (!customerInfo.name || !customerInfo.phone) return;
+    if (!cafeOpen) return;
     setLoading(true);
     setError(null);
 
@@ -59,6 +142,7 @@ export function OrderContent({ locale }: { locale: string }) {
             price: item.price,
             quantity: item.quantity,
             modifiers: item.modifiers,
+            menuItemId: item.menuItemId,
           })),
           customerInfo,
           pickupTime,
@@ -67,13 +151,16 @@ export function OrderContent({ locale }: { locale: string }) {
         }),
       });
 
-      if (!res.ok) throw new Error("Failed to submit order");
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to submit order");
+      }
 
       const data = await res.json();
       clearCart();
       router.push(`/order/confirmation?order=${data.orderNumber}`);
-    } catch {
-      setError(t("errorSubmitting"));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("errorSubmitting"));
       setLoading(false);
     }
   };
@@ -81,6 +168,20 @@ export function OrderContent({ locale }: { locale: string }) {
   return (
     <>
       <h1 className="text-3xl font-bold">{t("title")}</h1>
+
+      {/* Closed banner */}
+      {!cafeOpen && (
+        <Card className="mt-6 border-amber-200 bg-amber-50">
+          <CardContent className="p-4">
+            <p className="font-medium text-amber-800">{t("orderingClosed")}</p>
+            {getNextOpenInfo(cafeInfo) && (
+              <p className="mt-1 text-sm text-amber-700">
+                {t("opensAt", { time: getNextOpenInfo(cafeInfo) })}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Cart items */}
       <Card className="mt-8">
@@ -137,63 +238,67 @@ export function OrderContent({ locale }: { locale: string }) {
       </Card>
 
       {/* Pickup time */}
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle className="text-base">{t("pickupTime")}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="mb-3 text-sm text-muted-foreground">
-            {t("pickupTimeDescription")}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant={!pickupTime ? "default" : "outline"}
-              size="sm"
-              onClick={() => setPickupTime(null)}
-            >
-              {t("asap")}
-            </Button>
-            {generateTimeSlots().map((time) => (
+      {cafeOpen && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="text-base">{t("pickupTime")}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="mb-3 text-sm text-muted-foreground">
+              {t("pickupTimeDescription")}
+            </p>
+            <div className="flex flex-wrap gap-2">
               <Button
-                key={time}
-                variant={pickupTime === time ? "default" : "outline"}
+                variant={!pickupTime ? "default" : "outline"}
                 size="sm"
-                onClick={() => setPickupTime(time)}
+                onClick={() => setPickupTime(null)}
               >
-                {time}
+                {t("asap")}
               </Button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+              {timeSlots.map((time) => (
+                <Button
+                  key={time}
+                  variant={pickupTime === time ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setPickupTime(time)}
+                >
+                  {time}
+                </Button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Customer info */}
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle className="text-base">{t("customerInfo")}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <Label htmlFor="name">{tc("name")} *</Label>
-            <Input
-              id="name"
-              placeholder={t("nameRequired")}
-              value={customerInfo.name}
-              onChange={(e) => setCustomerInfo({ name: e.target.value })}
-            />
-          </div>
-          <div>
-            <Label htmlFor="phone">{tc("phone")} *</Label>
-            <Input
-              id="phone"
-              type="tel"
-              placeholder={t("phoneRequired")}
-              value={customerInfo.phone}
-              onChange={(e) => setCustomerInfo({ phone: e.target.value })}
-            />
-          </div>
-        </CardContent>
-      </Card>
+      {cafeOpen && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="text-base">{t("customerInfo")}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="name">{tc("name")} *</Label>
+              <Input
+                id="name"
+                placeholder={t("nameRequired")}
+                value={customerInfo.name}
+                onChange={(e) => setCustomerInfo({ name: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="phone">{tc("phone")} *</Label>
+              <Input
+                id="phone"
+                type="tel"
+                placeholder={t("phoneRequired")}
+                value={customerInfo.phone}
+                onChange={(e) => setCustomerInfo({ phone: e.target.value })}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Order summary */}
       <Card className="mt-6">
@@ -219,31 +324,22 @@ export function OrderContent({ locale }: { locale: string }) {
           </div>
           <p className="mt-3 text-xs text-muted-foreground">{t("payInPerson")}</p>
           {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
-          <Button
-            className="mt-6 w-full"
-            size="lg"
-            disabled={!customerInfo.name || !customerInfo.phone || loading}
-            onClick={handleSubmitOrder}
-          >
-            {loading ? t("processing") : t("placeOrder")}
-          </Button>
+          {cafeOpen ? (
+            <Button
+              className="mt-6 w-full"
+              size="lg"
+              disabled={!customerInfo.name || !customerInfo.phone || loading}
+              onClick={handleSubmitOrder}
+            >
+              {loading ? t("processing") : t("placeOrder")}
+            </Button>
+          ) : (
+            <Button className="mt-6 w-full" size="lg" disabled>
+              {t("orderingClosed")}
+            </Button>
+          )}
         </CardContent>
       </Card>
     </>
   );
-}
-
-function generateTimeSlots(): string[] {
-  const now = new Date();
-  const slots: string[] = [];
-  const startMinutes = Math.ceil((now.getHours() * 60 + now.getMinutes() + 20) / 15) * 15;
-
-  for (let m = startMinutes; m < 15 * 60; m += 15) {
-    const h = Math.floor(m / 60);
-    const min = m % 60;
-    if (h >= 7 && h < 15) {
-      slots.push(`${h.toString().padStart(2, "0")}:${min.toString().padStart(2, "0")}`);
-    }
-  }
-  return slots.slice(0, 8);
 }

@@ -75,6 +75,8 @@
     "processing": "Envoi en cours...",
     "payInPerson": "Le paiement se fait en personne lors de la cueillette.",
     "errorSubmitting": "Une erreur est survenue. Veuillez réessayer.",
+    "orderingClosed": "Les commandes sont présentement fermées",
+    "opensAt": "Nous ouvrons à {time}",
     "itemsInCart": "{count, plural, =0 {Aucun article} =1 {1 article} other {# articles}}"
   },
   "confirmation": {

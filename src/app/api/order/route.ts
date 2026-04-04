@@ -20,21 +20,94 @@ type OrderBody = {
 const GST_RATE = 0.05;
 const QST_RATE = 0.09975;
 
+function getSupabase() {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return null;
+  }
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function validateBusinessHours(supabase: any, pickupTime: string | null) {
+  const { data: cafeInfo } = await supabase
+    .from("cafe_info")
+    .select("hours, pickup_lead_time")
+    .limit(1)
+    .single();
+
+  if (!cafeInfo) return null; // Can't validate without cafe info, allow order
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const info = cafeInfo as any;
+  const hours = info.hours as { day: string; open: string; close: string; closed: boolean }[];
+  const dayName = new Date().toLocaleDateString("en-US", { weekday: "long" });
+  const today = hours.find((h) => h.day === dayName);
+
+  if (!today || today.closed) {
+    return "The cafe is closed today. Please try again during business hours.";
+  }
+
+  const now = new Date();
+  const [openH, openM] = today.open.split(":").map(Number);
+  const [closeH, closeM] = today.close.split(":").map(Number);
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const openMin = openH * 60 + openM;
+  const closeMin = closeH * 60 + closeM;
+
+  if (nowMin < openMin || nowMin >= closeMin) {
+    return `The cafe is currently closed. Hours today: ${today.open} - ${today.close}.`;
+  }
+
+  // Validate pickup time is within hours
+  if (pickupTime && !pickupTime.includes("T")) {
+    const [pH, pM] = pickupTime.split(":").map(Number);
+    const pickupMin = pH * 60 + pM;
+    if (pickupMin < openMin || pickupMin >= closeMin) {
+      return `Pickup time must be between ${today.open} and ${today.close}.`;
+    }
+  }
+
+  return null; // Valid
+}
+
 export async function POST(request: Request) {
   try {
     const body: OrderBody = await request.json();
     const { items, customerInfo, pickupTime, locale } = body;
 
-    const orderNumber = `LD-${Date.now().toString(36).toUpperCase()}`;
+    // Basic validation
+    if (!items || items.length === 0) {
+      return NextResponse.json({ error: "No items in order" }, { status: 400 });
+    }
+    if (!customerInfo?.name?.trim()) {
+      return NextResponse.json({ error: "Name is required" }, { status: 400 });
+    }
+    if (!customerInfo?.phone?.trim()) {
+      return NextResponse.json({ error: "Phone number is required" }, { status: 400 });
+    }
+
+    const supabase = getSupabase();
+    if (!supabase) {
+      return NextResponse.json({ error: "Service unavailable" }, { status: 503 });
+    }
+
+    // Validate business hours
+    const hoursError = await validateBusinessHours(supabase, pickupTime);
+    if (hoursError) {
+      return NextResponse.json({ error: hoursError }, { status: 400 });
+    }
+
+    const orderNumber = `LD-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 5).toUpperCase()}`;
 
     // Convert pickup time "HH:MM" to a full ISO timestamp (today's date)
     let pickupTimestamp: string | null = null;
     if (pickupTime) {
       if (pickupTime.includes("T") || pickupTime.includes("-")) {
-        // Already a full timestamp/date string
         pickupTimestamp = pickupTime;
       } else {
-        // Time-only like "10:30" — attach today's date
         const today = new Date().toISOString().split("T")[0];
         pickupTimestamp = `${today}T${pickupTime}:00`;
       }
@@ -52,68 +125,66 @@ export async function POST(request: Request) {
     const taxQst = subtotal * QST_RATE;
     const total = subtotal + taxGst + taxQst;
 
-    // Persist to Supabase if configured
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL,
-        process.env.SUPABASE_SERVICE_ROLE_KEY
+    // Persist order
+    const { data: order, error: orderError } = await supabase
+      .from("orders")
+      .insert({
+        order_number: orderNumber,
+        customer_name: customerInfo.name.trim(),
+        customer_phone: customerInfo.phone.trim(),
+        pickup_time: pickupTimestamp,
+        status: "new",
+        subtotal: subtotal.toFixed(2),
+        tax_gst: taxGst.toFixed(2),
+        tax_qst: taxQst.toFixed(2),
+        total: total.toFixed(2),
+        locale: locale || "en",
+      })
+      .select("id")
+      .single();
+
+    if (orderError) {
+      console.error("Failed to save order:", orderError);
+      return NextResponse.json(
+        { error: "Failed to save order" },
+        { status: 500 }
       );
+    }
 
-      const { data: order, error: orderError } = await supabase
-        .from("orders")
-        .insert({
-          order_number: orderNumber,
-          customer_name: customerInfo.name,
-          customer_phone: customerInfo.phone,
-          pickup_time: pickupTimestamp,
-          status: "new",
-          subtotal: subtotal.toFixed(2),
-          tax_gst: taxGst.toFixed(2),
-          tax_qst: taxQst.toFixed(2),
-          total: total.toFixed(2),
-          locale: locale || "en",
-        })
-        .select("id")
-        .single();
+    // Persist order items
+    const orderItems = items.map((item) => ({
+      order_id: order.id,
+      menu_item_id: item.menuItemId || null,
+      menu_item_name: item.name,
+      price: item.price.toFixed(2),
+      quantity: item.quantity,
+      modifiers: item.modifiers,
+    }));
 
-      if (orderError) {
-        console.error("Failed to save order:", orderError);
-        return NextResponse.json(
-          { error: "Failed to save order" },
-          { status: 500 }
-        );
-      } else if (order) {
-        const orderItems = items.map((item) => ({
-          order_id: order.id,
-          menu_item_id: item.menuItemId || null,
-          menu_item_name: item.name,
-          price: item.price.toFixed(2),
-          quantity: item.quantity,
-          modifiers: item.modifiers,
-        }));
+    const { error: itemsError } = await supabase
+      .from("order_items")
+      .insert(orderItems);
 
-        const { error: itemsError } = await supabase
-          .from("order_items")
-          .insert(orderItems);
-
-        if (itemsError) {
-          console.error("Failed to save order items:", itemsError);
-        }
-      }
+    if (itemsError) {
+      console.error("Failed to save order items:", itemsError);
+      return NextResponse.json(
+        { error: "Failed to save order details" },
+        { status: 500 }
+      );
     }
 
     // Send notification email via Resend
-    const itemsList = items
-      .map((item) => {
-        const modText =
-          item.modifiers.length > 0
-            ? ` (${item.modifiers.map((m) => `${m.name}: ${m.option}`).join(", ")})`
-            : "";
-        return `  ${item.quantity}x ${item.name}${modText} — $${((item.price + item.modifiers.reduce((s, m) => s + m.priceAdjustment, 0)) * item.quantity).toFixed(2)}`;
-      })
-      .join("\n");
-
     if (process.env.RESEND_API_KEY) {
+      const itemsList = items
+        .map((item) => {
+          const modText =
+            item.modifiers.length > 0
+              ? ` (${item.modifiers.map((m) => `${m.name}: ${m.option}`).join(", ")})`
+              : "";
+          return `  ${item.quantity}x ${item.name}${modText} — $${((item.price + item.modifiers.reduce((s, m) => s + m.priceAdjustment, 0)) * item.quantity).toFixed(2)}`;
+        })
+        .join("\n");
+
       try {
         await fetch("https://api.resend.com/emails", {
           method: "POST",

@@ -75,6 +75,8 @@
     "processing": "Submitting...",
     "payInPerson": "Payment is collected in person at pickup.",
     "errorSubmitting": "Something went wrong. Please try again.",
+    "orderingClosed": "Ordering is currently closed",
+    "opensAt": "We open at {time}",
     "itemsInCart": "{count, plural, =0 {No items} =1 {1 item} other {# items}}"
   },
   "confirmation": {

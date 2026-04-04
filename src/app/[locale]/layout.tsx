@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
+import { fetchCafeInfo } from "@/lib/data";
+import { AnnouncementBanner } from "@/components/layout/announcement-banner";
 
 type Props = {
   children: React.ReactNode;
@@ -23,8 +25,15 @@ export default async function LocaleLayout({ children, params }: Props) {
 
   setRequestLocale(locale);
 
+  const cafeInfo = await fetchCafeInfo();
+  const announcement = cafeInfo.announcement;
+  const announcementText = announcement
+    ? (locale === "fr" ? announcement.fr : announcement.en)
+    : null;
+
   return (
     <NextIntlClientProvider>
+      {announcementText && <AnnouncementBanner text={announcementText} />}
       <Header />
       <main className="flex-1">{children}</main>
       <Footer />
