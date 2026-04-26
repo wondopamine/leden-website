@@ -132,17 +132,69 @@ Acknowledged but deferred. Not in this milestone's roadmap. Promotion to v1 requ
 
 ## Traceability
 
-Empty until roadmap creation. Roadmapper agent populates this section by mapping each REQ-ID to exactly one phase.
+Populated by roadmapper on 2026-04-26. Each REQ-ID maps to exactly one phase.
 
 | Requirement | Phase | Status |
 |---|---|---|
-| _to be populated by roadmapper_ | — | Pending |
+| DSY-01 | Phase 1: Design System Foundation + Brand Expression | Pending |
+| DSY-02 | Phase 1: Design System Foundation + Brand Expression | Pending |
+| DSY-03 | Phase 1: Design System Foundation + Brand Expression | Pending |
+| DSY-04 | Phase 1: Design System Foundation + Brand Expression | Pending |
+| DSY-05 | Phase 1: Design System Foundation + Brand Expression | Pending |
+| DSY-06 | Phase 1: Design System Foundation + Brand Expression | Pending |
+| DSY-07 | Phase 1: Design System Foundation + Brand Expression | Pending |
+| DAT-01 | Phase 2: Data Layer Consolidation + Image Pipeline + RLS Hardening | Pending |
+| DAT-02 | Phase 2: Data Layer Consolidation + Image Pipeline + RLS Hardening | Pending |
+| DAT-03 | Phase 2: Data Layer Consolidation + Image Pipeline + RLS Hardening | Pending |
+| DAT-04 | Phase 2: Data Layer Consolidation + Image Pipeline + RLS Hardening | Pending |
+| DAT-05 | Phase 2: Data Layer Consolidation + Image Pipeline + RLS Hardening | Pending |
+| SEC-01 | Phase 2: Data Layer Consolidation + Image Pipeline + RLS Hardening | Pending |
+| SEC-02 | Phase 2: Data Layer Consolidation + Image Pipeline + RLS Hardening | Pending |
+| SEC-03 | Phase 2: Data Layer Consolidation + Image Pipeline + RLS Hardening | Pending |
+| SEC-04 | Phase 2: Data Layer Consolidation + Image Pipeline + RLS Hardening | Pending |
+| IMG-01 | Phase 2: Data Layer Consolidation + Image Pipeline + RLS Hardening | Pending |
+| IMG-02 | Phase 2: Data Layer Consolidation + Image Pipeline + RLS Hardening | Pending |
+| IMG-03 | Phase 2: Data Layer Consolidation + Image Pipeline + RLS Hardening | Pending |
+| IMG-04 | Phase 2: Data Layer Consolidation + Image Pipeline + RLS Hardening | Pending |
+| IMG-05 | Phase 2: Data Layer Consolidation + Image Pipeline + RLS Hardening | Pending |
+| CST-01 | Phase 3: Customer Site Rebuild | Pending |
+| CST-02 | Phase 3: Customer Site Rebuild | Pending |
+| CST-03 | Phase 3: Customer Site Rebuild | Pending |
+| CST-04 | Phase 3: Customer Site Rebuild | Pending |
+| CST-05 | Phase 3: Customer Site Rebuild | Pending |
+| CST-06 | Phase 3: Customer Site Rebuild | Pending |
+| CST-07 | Phase 3: Customer Site Rebuild | Pending |
+| MOB-01 | Phase 3: Customer Site Rebuild | Pending |
+| MOB-02 | Phase 3: Customer Site Rebuild | Pending |
+| MOB-03 | Phase 3: Customer Site Rebuild | Pending |
+| ADM-01 | Phase 4: Admin Site Rebuild | Pending |
+| ADM-02 | Phase 4: Admin Site Rebuild | Pending |
+| ADM-03 | Phase 4: Admin Site Rebuild | Pending |
+| ADM-04 | Phase 4: Admin Site Rebuild | Pending |
+| ADM-05 | Phase 4: Admin Site Rebuild | Pending |
+| ADM-06 | Phase 4: Admin Site Rebuild | Pending |
+| MOB-04 | Phase 5: Performance, Accessibility, Done-Gate Verification | Pending |
+| MOB-05 | Phase 5: Performance, Accessibility, Done-Gate Verification | Pending |
+| MOB-06 | Phase 5: Performance, Accessibility, Done-Gate Verification | Pending |
+| PRF-01 | Phase 5: Performance, Accessibility, Done-Gate Verification | Pending |
+| PRF-02 | Phase 5: Performance, Accessibility, Done-Gate Verification | Pending |
+| PRF-03 | Phase 5: Performance, Accessibility, Done-Gate Verification | Pending |
+| PRF-04 | Phase 5: Performance, Accessibility, Done-Gate Verification | Pending |
+| PRF-05 | Phase 5: Performance, Accessibility, Done-Gate Verification | Pending |
+| PRF-06 | Phase 5: Performance, Accessibility, Done-Gate Verification | Pending |
+| GAT-01 | Phase 5: Performance, Accessibility, Done-Gate Verification | Pending |
+| GAT-02 | Phase 5: Performance, Accessibility, Done-Gate Verification | Pending |
+| GAT-03 | Phase 5: Performance, Accessibility, Done-Gate Verification | Pending |
 
 **Coverage:**
-- v1 requirements: 47 total
-- Mapped to phases: 0 (pending roadmap creation)
-- Unmapped: 47 ⚠️ — pending
+- v1 requirements: 49 total (DSY 7 + CST 7 + ADM 6 + DAT 5 + SEC 4 + IMG 5 + MOB 6 + PRF 6 + GAT 3)
+- Mapped to phases: 49 ✓
+- Unmapped: 0
+- Duplicates across phases: 0
+
+> Note: PROJECT.md prose currently states "47 v1 requirements" — the enumerated REQ-IDs above total 49. The roadmap maps all 49; update the PROJECT.md prose count on the next edit if desired.
 
 ---
+
 *Requirements defined: 2026-04-26*
-*Last updated: 2026-04-26 after initial definition*
+*Last updated: 2026-04-26 — traceability section populated by roadmapper*
