@@ -26,7 +26,7 @@ Phases 1 and 2 have a parallel opportunity: design-consultation (Phase 1) runs l
 
 ## Phases
 
-- [~] **Phase 1: Design System Foundation + Brand Expression** — Tokens, component library, and a design-consultation–driven brand spec that all subsequent UI work consumes (plans 02/06 complete)
+- [~] **Phase 1: Design System Foundation + Brand Expression** — Tokens, component library, and a design-consultation–driven brand spec that all subsequent UI work consumes (plans 03/06 complete)
 - [ ] **Phase 2: Data Layer Consolidation + Image Pipeline + RLS Hardening** — Remove Sanity, single-source on Supabase, replace `<img>`/Unsplash with `<Image>`/self-hosted, lock admin RLS to an `admin_users` allowlist
 - [ ] **Phase 3: Customer Site Rebuild** — Homepage, menu, item detail, cart/checkout/confirmation rebuilt on the design system with mobile parity at 320px and EN/FR fidelity
 - [ ] **Phase 4: Admin Site Rebuild** — Shell, menu list/edit, orders dashboard with pagination + filters, all rebuilt on the design system (EN-only)
@@ -56,7 +56,7 @@ Phases 1 and 2 have a parallel opportunity: design-consultation (Phase 1) runs l
 Plans:
 - [x] 01-01-PLAN.md — Author .planning/brand/SPEC.md (5 pillars × 1 Decision line each) — DSY-06 (commit f3c8dfc)
 - [x] 01-02-PLAN.md — Add culori + tsx devDeps; write scripts/derive-tokens.ts; hard-cutover globals.css to brand-anchored token system — DSY-01, DSY-02, DSY-03 (commits 36ea745, 80060bb)
-- [ ] 01-03-PLAN.md — Component refactor: extract Stars + Icon (CVA), move GoogleIcon to /public/google.svg, refactor fade-in.tsx to consume motion tokens — DSY-04
+- [x] 01-03-PLAN.md — Component refactor: extract Stars + Icon (CVA), move GoogleIcon to /public/google.svg, refactor fade-in.tsx to consume motion tokens — DSY-04 (commits 62f6d69, 4e72f4a)
 - [ ] 01-04-PLAN.md — Build /dev/components dev-only gallery route (Server Component with NODE_ENV gate) — DSY-04
 - [ ] 01-05-PLAN.md — Inline ESLint plugin (no-raw-hex + no-arbitrary-color-class) at error level; final source cleanup — DSY-05
 - [ ] 01-06-PLAN.md — Button cutover: explicit variant + size at every call site; zero native button outside ui/ — DSY-07

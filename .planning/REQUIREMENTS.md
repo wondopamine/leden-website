@@ -139,7 +139,7 @@ Populated by roadmapper on 2026-04-26. Each REQ-ID maps to exactly one phase.
 | DSY-01 | Phase 1: Design System Foundation + Brand Expression | Complete (01-02) |
 | DSY-02 | Phase 1: Design System Foundation + Brand Expression | Complete (01-02) |
 | DSY-03 | Phase 1: Design System Foundation + Brand Expression | Complete (01-02) |
-| DSY-04 | Phase 1: Design System Foundation + Brand Expression | Pending |
+| DSY-04 | Phase 1: Design System Foundation + Brand Expression | In Progress (01-03: components built; 01-04: gallery pending) |
 | DSY-05 | Phase 1: Design System Foundation + Brand Expression | Pending |
 | DSY-06 | Phase 1: Design System Foundation + Brand Expression | Pending |
 | DSY-07 | Phase 1: Design System Foundation + Brand Expression | Pending |

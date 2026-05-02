@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Executing Phase 01
-last_updated: "2026-05-02T13:51:07Z"
+last_updated: "2026-05-02T14:30:00Z"
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 6
-  completed_plans: 2
-  percent: 5
+  completed_plans: 3
+  percent: 8
 ---
 
 # Project State: Café Le Den — Website Refactor
@@ -28,7 +28,7 @@ progress:
 ## Current Position
 
 Phase: 01 (design-system-foundation-brand-expression) — EXECUTING
-Plan: 3 of 6 (plans 01 + 02 complete)
+Plan: 4 of 6 (plans 01 + 02 + 03 complete)
 | Field | Value |
 |---|---|
 | Phase | 1 — Design System Foundation + Brand Expression (planned) |
@@ -41,7 +41,7 @@ Plan: 3 of 6 (plans 01 + 02 complete)
 **Progress:**
 
 ```
-[░░░░░░░░░░] 0/5 phases complete (plans 2/6 of phase 1 done)
+[░░░░░░░░░░] 0/5 phases complete (plans 3/6 of phase 1 done)
 ```
 
 | Phase | Status |
@@ -95,9 +95,17 @@ Plan: 3 of 6 (plans 01 + 02 complete)
 - doodle-float/doodle-wiggle use --ease-out as closest available brand token (ease-in-out has no dedicated motion token)
 - review-carousel 40s linear infinite kept literal as documented carousel exemption (duration of motion, not motion personality budget)
 
+### Decisions Logged (Phase 1 Plan 03)
+
+- Stars uses text-brand-orange-500 (not text-amber-500) — brand-tokenized per RESEARCH.md Pattern 3
+- All 4 Stars call sites in page.tsx use size=sm to preserve pre-refactor visual (inline Stars defaulted sm; new CVA component defaults md)
+- GoogleIcon moved to /public/google.svg — 4 Google brand hex fills exit src/ lint surface; ESLint no-raw-hex rule does not scan /public/
+- fade-in.tsx adopts cn() + explicit React import; motion tokens via inline style (transitionDuration + transitionTimingFunction)
+- Icon component uses `as` prop (LucideIcon) pattern — consistent with lucide-react render model
+
 ### Open Todos
 
-- Execute Phase 1 plan 03 (component token migration — button, card, input, select, badge, stars, icon, fade-in). Plans are sequenced — execute in wave order.
+- Execute Phase 1 plan 04 (dev component gallery at /dev/components). Plans are sequenced — execute in wave order.
 - After Phase 1 wraps, start Phase 2 with `/gsd-spec-phase 2` (Data Layer Consolidation + Image Pipeline + RLS Hardening). Watch the package.json conflict risk noted in Risks.
 
 ### Blockers
@@ -112,9 +120,9 @@ None.
 
 ## Session Continuity
 
-**Last session:** Phase 1 plan 02 complete — installed culori@4.0.2 + tsx@4.21.0, created `scripts/derive-tokens.ts` (OKLCH lightness sweep + ΔE76 verification), rewrote `src/app/globals.css` with logo-anchored brand token system (30 color + 21 typography + spacing/radius/shadow/motion tokens). Commits: `36ea745 feat(01-02): add culori + tsx devDeps and derive-tokens.ts script`, `80060bb feat(01-02): hard-cutover globals.css to logo-anchored brand token system`.
+**Last session:** Phase 1 plan 03 complete — created Stars + Icon CVA components, moved GoogleIcon to /public/google.svg, refactored fade-in.tsx to consume motion tokens, extracted inline Stars + GoogleIcon from page.tsx. Commits: `62f6d69 feat(01-03): create Stars and Icon CVA components; verify 5 existing primitives token-clean`, `4e72f4a feat(01-03): refactor fade-in to motion tokens; move GoogleIcon to public/google.svg; extract inline Stars from page.tsx`.
 
-**Next session entry point:** `/gsd-execute-plan 01-03-PLAN` — component token migration (DSY-04, DSY-05).
+**Next session entry point:** `/gsd-execute-plan 01-04-PLAN` — dev component gallery at /dev/components.
 
 **Files of record:**
 
