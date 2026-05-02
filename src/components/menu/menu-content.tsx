@@ -363,7 +363,7 @@ function ItemDetailDialog({
             </div>
 
             {/* Add to order CTA with live price */}
-            <Button className="flex-1 h-11 text-sm font-semibold" onClick={handleAdd}>
+            <Button variant="default" size="lg" className="flex-1 h-11 text-sm font-semibold" onClick={handleAdd}>
               {t("addToOrder")} — {formatPrice(totalPrice)}
             </Button>
           </div>

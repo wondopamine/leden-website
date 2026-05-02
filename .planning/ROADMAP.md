@@ -26,7 +26,7 @@ Phases 1 and 2 have a parallel opportunity: design-consultation (Phase 1) runs l
 
 ## Phases
 
-- [ ] **Phase 1: Design System Foundation + Brand Expression** — Tokens, component library, and a design-consultation–driven brand spec that all subsequent UI work consumes
+- [~] **Phase 1: Design System Foundation + Brand Expression** — Tokens, component library, and a design-consultation–driven brand spec that all subsequent UI work consumes (plans 05/06 complete)
 - [ ] **Phase 2: Data Layer Consolidation + Image Pipeline + RLS Hardening** — Remove Sanity, single-source on Supabase, replace `<img>`/Unsplash with `<Image>`/self-hosted, lock admin RLS to an `admin_users` allowlist
 - [ ] **Phase 3: Customer Site Rebuild** — Homepage, menu, item detail, cart/checkout/confirmation rebuilt on the design system with mobile parity at 320px and EN/FR fidelity
 - [ ] **Phase 4: Admin Site Rebuild** — Shell, menu list/edit, orders dashboard with pagination + filters, all rebuilt on the design system (EN-only)
@@ -51,7 +51,15 @@ Phases 1 and 2 have a parallel opportunity: design-consultation (Phase 1) runs l
   4. A lint rule or convention rejects raw hex values and off-token Tailwind utilities in customer + admin source files (validated by running the linter against a deliberate violation).
   5. Every Button instance currently in the codebase resolves through the new `<Button>` component with size + variant props — zero inline button styling remains.
 
-**Plans**: TBD
+**Plans:** 6/6 plans complete
+
+Plans:
+- [x] 01-01-PLAN.md — Author .planning/brand/SPEC.md (5 pillars × 1 Decision line each) — DSY-06 (commit f3c8dfc)
+- [x] 01-02-PLAN.md — Add culori + tsx devDeps; write scripts/derive-tokens.ts; hard-cutover globals.css to brand-anchored token system — DSY-01, DSY-02, DSY-03 (commits 36ea745, 80060bb)
+- [x] 01-03-PLAN.md — Component refactor: extract Stars + Icon (CVA), move GoogleIcon to /public/google.svg, refactor fade-in.tsx to consume motion tokens — DSY-04 (commits 62f6d69, 4e72f4a)
+- [x] 01-04-PLAN.md — Build /dev/components dev-only gallery route (Server Component with NODE_ENV gate) — DSY-04 (commit 7f8a9e1)
+- [x] 01-05-PLAN.md — Inline ESLint plugin (no-raw-hex + no-arbitrary-color-class) at error level; final source cleanup — DSY-05 (commits be0f741, b8e0956)
+- [x] 01-06-PLAN.md — Button cutover: explicit variant + size at every call site; zero native button outside ui/ — DSY-07
 
 **UI hint**: yes
 
@@ -75,7 +83,15 @@ Phases 1 and 2 have a parallel opportunity: design-consultation (Phase 1) runs l
   5. No external image URL the site depends on points at Unsplash; category fallbacks and the watermelon mascot resolve via `getItemImageUrl()` (or equivalent typed helper) backed by Supabase Storage / `public/`, and `next.config` `images.remotePatterns` lists only the domains actually in use.
   6. `src/app/api/order/route.ts` and `src/app/admin/(dashboard)/menu/actions.ts` contain zero `@typescript-eslint/no-explicit-any` suppressions — Supabase responses are typed end-to-end.
 
-**Plans**: TBD
+**Plans:** 6 plans
+
+Plans:
+- [x] 01-01-PLAN.md — Author .planning/brand/SPEC.md (5 pillars × 1 Decision line each) — DSY-06
+- [x] 01-02-PLAN.md — Add culori + tsx devDeps; write scripts/derive-tokens.ts; hard-cutover globals.css to brand-anchored token system — DSY-01, DSY-02, DSY-03
+- [x] 01-03-PLAN.md — Component refactor: extract Stars + Icon (CVA), move GoogleIcon to /public/google.svg, refactor fade-in.tsx to consume motion tokens — DSY-04
+- [x] 01-04-PLAN.md — Build /dev/components dev-only gallery route (Server Component with NODE_ENV gate) — DSY-04
+- [x] 01-05-PLAN.md — Inline ESLint plugin (no-raw-hex + no-arbitrary-color-class) at error level; final source cleanup — DSY-05
+- [ ] 01-06-PLAN.md — Button cutover: explicit variant + size at every call site; zero native button outside ui/ — DSY-07
 
 **UI hint**: no
 
@@ -99,7 +115,15 @@ Phases 1 and 2 have a parallel opportunity: design-consultation (Phase 1) runs l
   5. The review carousel renders correctly at <360 px (no fixed `w-[360px]` overflow), and hours / footer cards render without overflow on narrow phones — replacing the known mobile bugs called out in CONCERNS.md.
   6. Every customer-facing image is optimized through Next.js `<Image>` and resolves through the Phase 2 pipeline — no Unsplash fallbacks survive on any rebuilt page.
 
-**Plans**: TBD
+**Plans:** 6 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Author .planning/brand/SPEC.md (5 pillars × 1 Decision line each) — DSY-06
+- [ ] 01-02-PLAN.md — Add culori + tsx devDeps; write scripts/derive-tokens.ts; hard-cutover globals.css to brand-anchored token system — DSY-01, DSY-02, DSY-03
+- [ ] 01-03-PLAN.md — Component refactor: extract Stars + Icon (CVA), move GoogleIcon to /public/google.svg, refactor fade-in.tsx to consume motion tokens — DSY-04
+- [ ] 01-04-PLAN.md — Build /dev/components dev-only gallery route (Server Component with NODE_ENV gate) — DSY-04
+- [ ] 01-05-PLAN.md — Inline ESLint plugin (no-raw-hex + no-arbitrary-color-class) at error level; final source cleanup — DSY-05
+- [ ] 01-06-PLAN.md — Button cutover: explicit variant + size at every call site; zero native button outside ui/ — DSY-07
 
 **UI hint**: yes
 
@@ -122,7 +146,15 @@ Phases 1 and 2 have a parallel opportunity: design-consultation (Phase 1) runs l
   4. The orders dashboard handles >100 orders/day usefully — pagination works, and filters by date range and status correctly narrow the result set; existing order status update server actions continue to work without behavior regression.
   5. The admin remains EN-only — no FR routing, no missing translation fallbacks — confirming the existing scope.
 
-**Plans**: TBD
+**Plans:** 6 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Author .planning/brand/SPEC.md (5 pillars × 1 Decision line each) — DSY-06
+- [ ] 01-02-PLAN.md — Add culori + tsx devDeps; write scripts/derive-tokens.ts; hard-cutover globals.css to brand-anchored token system — DSY-01, DSY-02, DSY-03
+- [ ] 01-03-PLAN.md — Component refactor: extract Stars + Icon (CVA), move GoogleIcon to /public/google.svg, refactor fade-in.tsx to consume motion tokens — DSY-04
+- [ ] 01-04-PLAN.md — Build /dev/components dev-only gallery route (Server Component with NODE_ENV gate) — DSY-04
+- [ ] 01-05-PLAN.md — Inline ESLint plugin (no-raw-hex + no-arbitrary-color-class) at error level; final source cleanup — DSY-05
+- [ ] 01-06-PLAN.md — Button cutover: explicit variant + size at every call site; zero native button outside ui/ — DSY-07
 
 **UI hint**: yes
 
@@ -146,7 +178,15 @@ Phases 1 and 2 have a parallel opportunity: design-consultation (Phase 1) runs l
   5. A Figma file (or equivalent design spec) covers homepage, menu, order, confirmation, admin dashboard, admin menu list, admin menu edit; a side-by-side comparison shows ≥ 95% visual fidelity, and every "High" priority item in `.planning/codebase/CONCERNS.md` (Tech Debt + Visual & Design Quality Issues sections) is either resolved or explicitly logged as deferred with rationale.
   6. The user has reviewed the deployed result on a real phone and confirms it meets the "I'd show it to a friend without apology" subjective bar.
 
-**Plans**: TBD
+**Plans:** 6 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Author .planning/brand/SPEC.md (5 pillars × 1 Decision line each) — DSY-06
+- [ ] 01-02-PLAN.md — Add culori + tsx devDeps; write scripts/derive-tokens.ts; hard-cutover globals.css to brand-anchored token system — DSY-01, DSY-02, DSY-03
+- [ ] 01-03-PLAN.md — Component refactor: extract Stars + Icon (CVA), move GoogleIcon to /public/google.svg, refactor fade-in.tsx to consume motion tokens — DSY-04
+- [ ] 01-04-PLAN.md — Build /dev/components dev-only gallery route (Server Component with NODE_ENV gate) — DSY-04
+- [ ] 01-05-PLAN.md — Inline ESLint plugin (no-raw-hex + no-arbitrary-color-class) at error level; final source cleanup — DSY-05
+- [ ] 01-06-PLAN.md — Button cutover: explicit variant + size at every call site; zero native button outside ui/ — DSY-07
 
 **UI hint**: no
 
@@ -170,7 +210,7 @@ Phase 2 (Data + Image    ─┤                                 ├──> Phase
 
 | Phase | Plans Complete | Status | Completed |
 |---|---|---|---|
-| 1. Design System Foundation + Brand Expression | 0/TBD | Not started | — |
+| 1. Design System Foundation + Brand Expression | 6/6 | Complete   | 2026-05-02 |
 | 2. Data Layer Consolidation + Image Pipeline + RLS Hardening | 0/TBD | Not started | — |
 | 3. Customer Site Rebuild | 0/TBD | Not started | — |
 | 4. Admin Site Rebuild | 0/TBD | Not started | — |

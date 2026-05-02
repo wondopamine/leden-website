@@ -1,4 +1,4 @@
-import { setRequestLocale } from "next-intl/server";
+import { setRequestLocale, getTranslations } from "next-intl/server";
 import { use } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
@@ -47,7 +47,7 @@ export default function ConfirmationPage({ params, searchParams }: Props) {
 }
 
 async function ConfirmationContent({ orderNumber, locale }: { orderNumber: string; locale: string }) {
-  const t = useTranslations("confirmation");
+  const t = await getTranslations("confirmation");
   const order = await getOrderDetails(orderNumber);
 
   const pickupDisplay = order?.pickup_time
@@ -134,7 +134,7 @@ async function ConfirmationContent({ orderNumber, locale }: { orderNumber: strin
 
       <div className="mt-8 text-center">
         <Link href="/menu">
-          <Button variant="outline">{t("backToMenu")}</Button>
+          <Button variant="outline" size="default">{t("backToMenu")}</Button>
         </Link>
       </div>
     </>
@@ -148,7 +148,7 @@ function FallbackContent() {
       <h1 className="text-3xl font-bold">{t("title")}</h1>
       <p className="mt-2 text-muted-foreground">{t("thankYou")}</p>
       <Link href="/menu" className="mt-8 inline-block">
-        <Button variant="outline">{t("backToMenu")}</Button>
+        <Button variant="outline" size="default">{t("backToMenu")}</Button>
       </Link>
     </div>
   );

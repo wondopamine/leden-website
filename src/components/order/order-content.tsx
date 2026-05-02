@@ -116,7 +116,7 @@ export function OrderContent({ locale, cafeInfo }: Props) {
       <div className="flex flex-col items-center gap-6 py-20 text-center">
         <p className="text-lg text-muted-foreground">{tc("emptyCart")}</p>
         <Link href="/menu">
-          <Button>{tc("viewMenu")}</Button>
+          <Button variant="default" size="default">{tc("viewMenu")}</Button>
         </Link>
       </div>
     );
@@ -326,6 +326,7 @@ export function OrderContent({ locale, cafeInfo }: Props) {
           {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
           {cafeOpen ? (
             <Button
+              variant="default"
               className="mt-6 w-full"
               size="lg"
               disabled={!customerInfo.name || !customerInfo.phone || loading}
@@ -334,7 +335,7 @@ export function OrderContent({ locale, cafeInfo }: Props) {
               {loading ? t("processing") : t("placeOrder")}
             </Button>
           ) : (
-            <Button className="mt-6 w-full" size="lg" disabled>
+            <Button variant="default" className="mt-6 w-full" size="lg" disabled>
               {t("orderingClosed")}
             </Button>
           )}

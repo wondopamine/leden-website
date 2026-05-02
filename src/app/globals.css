@@ -4,85 +4,262 @@
 
 @custom-variant dark (&:is(.dark *));
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
-  --font-display: var(--font-display), "Georgia", "Times New Roman", serif;
-  --font-heading: var(--font-display);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+/* ──────────────────────────────────────────────────────────────────────────── */
+/* Raw token scale (committed hex output of scripts/derive-tokens.ts).         */
+/* OKLCH lightness sweep verified 2026-05-02 via culori v4.0.2 —               */
+/* ΔE76 ≤ 2 at every anchor's -500 stop (CIELAB Euclidean distance).           */
+/* Re-run: npx tsx scripts/derive-tokens.ts                                    */
+/* ──────────────────────────────────────────────────────────────────────────── */
+:root {
+  /* Brand color scales — anchors at -500, derived 2026-05-02 */
+
+  /* --brand-cream-* (anchor #EFE7D2 at -500) */
+  --brand-cream-50:  #fdf5e0;
+  --brand-cream-100: #efe7d2;
+  --brand-cream-200: #d8d1bc;
+  --brand-cream-300: #bfb7a3;
+  --brand-cream-400: #9f9884;
+  --brand-cream-500: #efe7d2;   /* anchor — logo cream; ΔE76 vs anchor: 0.000 */
+  --brand-cream-600: #6a6351;
+  --brand-cream-700: #4e4736;
+  --brand-cream-800: #2f2818;
+  --brand-cream-900: #171103;
+
+  /* --brand-forest-* (anchor #2F5436 at -500) */
+  --brand-forest-50:  #d7ffdd;
+  --brand-forest-100: #caf5d0;
+  --brand-forest-200: #b4deba;
+  --brand-forest-300: #9bc4a1;
+  --brand-forest-400: #7ca482;
+  --brand-forest-500: #2f5436;   /* anchor — logo forest; ΔE76 vs anchor: 0.000 */
+  --brand-forest-600: #486e4e;
+  --brand-forest-700: #2d5234;
+  --brand-forest-800: #0c3116;
+  --brand-forest-900: #001901;
+
+  /* --brand-orange-* (anchor #D9682E at -500) */
+  --brand-orange-50:  #ffd199;
+  --brand-orange-100: #ffc48c;
+  --brand-orange-200: #ffad75;
+  --brand-orange-300: #ff935b;
+  --brand-orange-400: #e6733b;
+  --brand-orange-500: #d9682e;   /* anchor — logo warm orange; ΔE76 vs anchor: 0.000 */
+  --brand-orange-600: #a83b00;
+  --brand-orange-700: #861800;
+  --brand-orange-800: #5f0000;
+  --brand-orange-900: #3e0000;
+
+  /* Semantic tokens — alias brand scales (replaces OKLCH theme).              */
+  /* The shadcn primitives keep using bg-primary/text-foreground/etc., so      */
+  /* this is the SINGLE place where brand re-skinning happens (lowest-churn    */
+  /* cutover per RESEARCH.md "Semantic-token indirection" Open Q #5).          */
+  --background:           var(--brand-cream-50);
+  --foreground:           var(--brand-forest-900);
+  --card:                 var(--brand-cream-50);
+  --card-foreground:      var(--brand-forest-900);
+  --popover:              var(--brand-cream-50);
+  --popover-foreground:   var(--brand-forest-900);
+  --primary:              var(--brand-forest-500);
+  --primary-foreground:   var(--brand-cream-50);
+  --secondary:            var(--brand-cream-100);
+  --secondary-foreground: var(--brand-forest-700);
+  --muted:                var(--brand-cream-100);
+  --muted-foreground:     var(--brand-forest-700);
+  --accent:               var(--brand-orange-500);
+  --accent-foreground:    var(--brand-cream-50);
+  --destructive:          #b3261e;   /* UI-system red, kept independent of brand per Open Q #3 */
+  --border:               var(--brand-cream-200);
+  --input:                var(--brand-cream-200);
+  --ring:                 var(--brand-forest-500);
+
+  /* Chart tokens — mapped to brand scale */
+  --chart-1: var(--brand-orange-500);
+  --chart-2: var(--brand-cream-400);
+  --chart-3: var(--brand-forest-500);
+  --chart-4: var(--brand-forest-300);
+  --chart-5: var(--brand-cream-600);
+
+  /* Sidebar tokens — mapped to brand scale */
+  --sidebar:                  var(--brand-cream-100);
+  --sidebar-foreground:       var(--brand-forest-900);
+  --sidebar-primary:          var(--brand-forest-500);
+  --sidebar-primary-foreground: var(--brand-cream-50);
+  --sidebar-accent:           var(--brand-orange-500);
+  --sidebar-accent-foreground: var(--brand-cream-50);
+  --sidebar-border:           var(--brand-cream-200);
+  --sidebar-ring:             var(--brand-forest-500);
+
+  /* Typography scale — values from .planning/brand/SPEC.md Typography Decision */
+  /* Decision: Display — "Editorial New" serif, weight 500, 56–64px / 1.05;    */
+  /* H1–H3 — Editorial New 40 / 32 / 24px, weights 500/500/600;                */
+  /* body — Inter sans 16px / 1.5; caption — Inter 13px / 1.4 weight 500;      */
+  /* label — Inter 12px / 1.3 weight 600 uppercase tracking 0.05em.            */
+  /* Tailwind v4 generates utilities text-display, text-h1, ..., text-label.   */
+  --text-display:                4rem;
+  --text-display--line-height:   1.05;
+  --text-display--font-weight:   500;
+  --text-h1:                     2.5rem;
+  --text-h1--line-height:        1.1;
+  --text-h1--font-weight:        500;
+  --text-h2:                     2rem;
+  --text-h2--line-height:        1.15;
+  --text-h2--font-weight:        500;
+  --text-h3:                     1.5rem;
+  --text-h3--line-height:        1.2;
+  --text-h3--font-weight:        600;
+  --text-body:                   1rem;
+  --text-body--line-height:      1.5;
+  --text-body--font-weight:      400;
+  --text-caption:                0.8125rem;
+  --text-caption--line-height:   1.4;
+  --text-caption--font-weight:   500;
+  --text-label:                  0.75rem;
+  --text-label--line-height:     1.3;
+  --text-label--font-weight:     600;
+
+  /* Spacing scale (custom — paired through @theme inline below) */
+  --space-xs: 0.5rem;
+  --space-sm: 1rem;
+  --space-md: 1.5rem;
+  --space-lg: 2rem;
+  --space-xl: 3rem;
+
+  /* Radius scale */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+
+  /* Shadow scale */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+
+  /* Motion — values from .planning/brand/SPEC.md Motion Decision             */
+  /* Decision: fast 150ms, base 300ms, slow 500ms;                            */
+  /* eases — in cubic-bezier(0.4,0,1,1), out cubic-bezier(0,0,0.2,1),         */
+  /* spring cubic-bezier(0.34,1.56,0.64,1); hero fade-up uses slow + out.     */
+  --duration-fast: 150ms;
+  --duration-base: 300ms;
+  --duration-slow: 500ms;
+  --ease-in:     cubic-bezier(0.4, 0, 1, 1);
+  --ease-out:    cubic-bezier(0, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-/* Warm cafe theme — orange/amber primary, cream background, espresso text */
-:root {
-  --background: oklch(0.975 0.008 75);
-  --foreground: oklch(0.22 0.03 50);
-  --card: oklch(0.995 0.003 80);
-  --card-foreground: oklch(0.22 0.03 50);
-  --popover: oklch(0.995 0.003 80);
-  --popover-foreground: oklch(0.22 0.03 50);
-  --primary: oklch(0.62 0.18 45);
-  --primary-foreground: oklch(0.99 0.003 80);
-  --secondary: oklch(0.94 0.015 70);
-  --secondary-foreground: oklch(0.35 0.05 50);
-  --muted: oklch(0.94 0.012 70);
-  --muted-foreground: oklch(0.48 0.03 55);
-  --accent: oklch(0.92 0.025 65);
-  --accent-foreground: oklch(0.30 0.04 50);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.90 0.015 70);
-  --input: oklch(0.90 0.015 70);
-  --ring: oklch(0.62 0.18 45);
-  --chart-1: oklch(0.62 0.18 45);
-  --chart-2: oklch(0.55 0.12 75);
-  --chart-3: oklch(0.50 0.08 150);
-  --chart-4: oklch(0.55 0.06 200);
-  --chart-5: oklch(0.65 0.04 40);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.96 0.01 70);
-  --sidebar-foreground: oklch(0.22 0.03 50);
-  --sidebar-primary: oklch(0.62 0.18 45);
-  --sidebar-primary-foreground: oklch(0.99 0.003 80);
-  --sidebar-accent: oklch(0.92 0.025 65);
-  --sidebar-accent-foreground: oklch(0.30 0.04 50);
-  --sidebar-border: oklch(0.90 0.015 70);
-  --sidebar-ring: oklch(0.62 0.18 45);
+/* ──────────────────────────────────────────────────────────────────────────── */
+/* @theme inline — exposes :root tokens as Tailwind utilities.                 */
+/* (Per RESEARCH.md Pitfall 2: only documented namespaces produce utilities.)  */
+/* ──────────────────────────────────────────────────────────────────────────── */
+@theme inline {
+  /* Brand color utilities → bg-brand-cream-500, text-brand-forest-700, ...   */
+  --color-brand-cream-50:   var(--brand-cream-50);
+  --color-brand-cream-100:  var(--brand-cream-100);
+  --color-brand-cream-200:  var(--brand-cream-200);
+  --color-brand-cream-300:  var(--brand-cream-300);
+  --color-brand-cream-400:  var(--brand-cream-400);
+  --color-brand-cream-500:  var(--brand-cream-500);
+  --color-brand-cream-600:  var(--brand-cream-600);
+  --color-brand-cream-700:  var(--brand-cream-700);
+  --color-brand-cream-800:  var(--brand-cream-800);
+  --color-brand-cream-900:  var(--brand-cream-900);
+
+  --color-brand-forest-50:  var(--brand-forest-50);
+  --color-brand-forest-100: var(--brand-forest-100);
+  --color-brand-forest-200: var(--brand-forest-200);
+  --color-brand-forest-300: var(--brand-forest-300);
+  --color-brand-forest-400: var(--brand-forest-400);
+  --color-brand-forest-500: var(--brand-forest-500);
+  --color-brand-forest-600: var(--brand-forest-600);
+  --color-brand-forest-700: var(--brand-forest-700);
+  --color-brand-forest-800: var(--brand-forest-800);
+  --color-brand-forest-900: var(--brand-forest-900);
+
+  --color-brand-orange-50:  var(--brand-orange-50);
+  --color-brand-orange-100: var(--brand-orange-100);
+  --color-brand-orange-200: var(--brand-orange-200);
+  --color-brand-orange-300: var(--brand-orange-300);
+  --color-brand-orange-400: var(--brand-orange-400);
+  --color-brand-orange-500: var(--brand-orange-500);
+  --color-brand-orange-600: var(--brand-orange-600);
+  --color-brand-orange-700: var(--brand-orange-700);
+  --color-brand-orange-800: var(--brand-orange-800);
+  --color-brand-orange-900: var(--brand-orange-900);
+
+  /* Semantic utilities → bg-background, text-primary, etc.                   */
+  --color-background:           var(--background);
+  --color-foreground:           var(--foreground);
+  --color-card:                 var(--card);
+  --color-card-foreground:      var(--card-foreground);
+  --color-popover:              var(--popover);
+  --color-popover-foreground:   var(--popover-foreground);
+  --color-primary:              var(--primary);
+  --color-primary-foreground:   var(--primary-foreground);
+  --color-secondary:            var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted:                var(--muted);
+  --color-muted-foreground:     var(--muted-foreground);
+  --color-accent:               var(--accent);
+  --color-accent-foreground:    var(--accent-foreground);
+  --color-destructive:          var(--destructive);
+  --color-border:               var(--border);
+  --color-input:                var(--input);
+  --color-ring:                 var(--ring);
+
+  /* Chart and sidebar color utilities                                         */
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Typography utilities — text-display, text-h1, ..., text-label            */
+  --text-display:              var(--text-display);
+  --text-display--line-height: var(--text-display--line-height);
+  --text-display--font-weight: var(--text-display--font-weight);
+  --text-h1:                   var(--text-h1);
+  --text-h1--line-height:      var(--text-h1--line-height);
+  --text-h1--font-weight:      var(--text-h1--font-weight);
+  --text-h2:                   var(--text-h2);
+  --text-h2--line-height:      var(--text-h2--line-height);
+  --text-h2--font-weight:      var(--text-h2--font-weight);
+  --text-h3:                   var(--text-h3);
+  --text-h3--line-height:      var(--text-h3--line-height);
+  --text-h3--font-weight:      var(--text-h3--font-weight);
+  --text-body:                 var(--text-body);
+  --text-body--line-height:    var(--text-body--line-height);
+  --text-body--font-weight:    var(--text-body--font-weight);
+  --text-caption:              var(--text-caption);
+  --text-caption--line-height: var(--text-caption--line-height);
+  --text-caption--font-weight: var(--text-caption--font-weight);
+  --text-label:                var(--text-label);
+  --text-label--line-height:   var(--text-label--line-height);
+  --text-label--font-weight:   var(--text-label--font-weight);
+
+  /* Font families — preserved from existing config                            */
+  --font-sans:    "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
+  --font-mono:    "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
+  --font-display: "Editorial New", "Georgia", "Times New Roman", serif;
+  --font-heading: var(--font-display);
+
+  /* Radius — utilities resolve through scale tokens                           */
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+
+  /* Shadow — utilities resolve through scale tokens                           */
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
 }
 
 @layer base {
@@ -96,6 +273,11 @@
     @apply font-sans;
   }
 }
+
+/* ──────────────────────────────────────────────────────────────────────────── */
+/* Keyframes — declarations stay literal; @keyframes percentage rules are      */
+/* not part of the motion personality budget.                                  */
+/* ──────────────────────────────────────────────────────────────────────────── */
 
 /* Doodle animations */
 @keyframes doodle-float {
@@ -120,35 +302,10 @@
   100% { transform: scale(1) rotate(var(--doodle-rotate, 0deg)); opacity: 1; }
 }
 
-.doodle-float {
-  animation: doodle-float 4s ease-in-out infinite;
-}
-
-.doodle-wiggle {
-  animation: doodle-wiggle 3s ease-in-out infinite;
-}
-
-.doodle-pop {
-  animation: doodle-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-}
-
-.doodle-draw path {
-  stroke-dasharray: 200;
-  animation: doodle-draw 1.5s ease-out forwards;
-}
-
 /* Review carousel infinite scroll */
 @keyframes scroll-reviews {
   0% { transform: translateX(0); }
   100% { transform: translateX(-50%); }
-}
-
-.review-carousel {
-  animation: scroll-reviews 40s linear infinite;
-}
-
-.review-carousel:hover {
-  animation-play-state: paused;
 }
 
 /* Hero logo staged reveal animation */
@@ -169,24 +326,60 @@
   100% { clip-path: inset(0 0 0% 0); }
 }
 
+/* Hero content fade-in */
+@keyframes hero-fade-up {
+  0%   { opacity: 0; transform: translateY(16px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────── */
+/* Animation utility classes — durations and easings now consume motion        */
+/* tokens (DSY-03 acceptance: zero literal durations/easings in non-keyframe   */
+/* lines except the documented carousel exemption below).                      */
+/* ──────────────────────────────────────────────────────────────────────────── */
+
+/* Decorative float/wiggle use --ease-out as closest available token           */
+/* (ease-in-out has no dedicated brand token; these are cosmetic animations).  */
+.doodle-float {
+  animation: doodle-float calc(var(--duration-slow) * 8) var(--ease-out) infinite;
+}
+
+.doodle-wiggle {
+  animation: doodle-wiggle calc(var(--duration-slow) * 6) var(--ease-out) infinite;
+}
+
+.doodle-pop {
+  animation: doodle-pop var(--duration-slow) var(--ease-spring) both;
+}
+
+.doodle-draw path {
+  stroke-dasharray: 200;
+  animation: doodle-draw calc(var(--duration-slow) * 3) var(--ease-out) forwards;
+}
+
+/* Carousel scroll is decorative (40s linear infinite); intentionally not      */
+/* token-ified (out of motion personality budget — duration of motion, not     */
+/* motion personality token).                                                  */
+.review-carousel {
+  animation: scroll-reviews 40s linear infinite;
+}
+
+.review-carousel:hover {
+  animation-play-state: paused;
+}
+
 .logo-animate {
   clip-path: inset(0 0 100% 0);
   opacity: 0;
   animation:
-    logo-reveal-1 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s forwards,
-    logo-reveal-2 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.5s forwards,
-    logo-reveal-3 0.4s ease-out 0.9s forwards;
-}
-
-/* Hero content fade-in after logo */
-@keyframes hero-fade-up {
-  0% { opacity: 0; transform: translateY(16px); }
-  100% { opacity: 1; transform: translateY(0); }
+    logo-reveal-1 calc(var(--duration-slow) * 1.2) var(--ease-spring) calc(var(--duration-fast) * 0.66) forwards,
+    logo-reveal-2 var(--duration-slow) var(--ease-spring) calc(var(--duration-slow) * 1) forwards,
+    logo-reveal-3 calc(var(--duration-slow) * 0.8) var(--ease-out) calc(var(--duration-slow) * 1.8) forwards;
 }
 
 .hero-fade-in {
   opacity: 0;
-  animation: hero-fade-up 0.5s ease-out forwards;
+  animation: hero-fade-up var(--duration-slow) var(--ease-out) forwards;
 }
 
 .hero-fade-in-1 { animation-delay: 1.2s; }
