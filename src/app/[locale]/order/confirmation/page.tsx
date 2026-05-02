@@ -1,4 +1,4 @@
-import { setRequestLocale } from "next-intl/server";
+import { setRequestLocale, getTranslations } from "next-intl/server";
 import { use } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
@@ -47,7 +47,7 @@ export default function ConfirmationPage({ params, searchParams }: Props) {
 }
 
 async function ConfirmationContent({ orderNumber, locale }: { orderNumber: string; locale: string }) {
-  const t = useTranslations("confirmation");
+  const t = await getTranslations("confirmation");
   const order = await getOrderDetails(orderNumber);
 
   const pickupDisplay = order?.pickup_time

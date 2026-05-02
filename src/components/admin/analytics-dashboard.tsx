@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import {
   AreaChart,
   Area,
@@ -31,16 +31,23 @@ export function AnalyticsDashboard() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const loadData = useCallback(async (p: Period) => {
-    setLoading(true);
-    const result = await fetchAnalytics(p);
-    setData(result);
-    setLoading(false);
-  }, []);
-
   useEffect(() => {
-    loadData(period);
-  }, [period, loadData]);
+    let cancelled = false;
+
+    async function run() {
+      setLoading(true);
+      const result = await fetchAnalytics(period);
+      if (!cancelled) {
+        setData(result);
+        setLoading(false);
+      }
+    }
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [period]);
 
   const handlePeriodChange = (p: Period) => {
     setPeriod(p);

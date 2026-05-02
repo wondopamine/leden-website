@@ -4,16 +4,19 @@ import { useEffect, useRef, useState } from "react";
 
 export function useFadeIn(threshold = 0.15) {
   const ref = useRef<HTMLDivElement>(null);
-  const [isVisible, setIsVisible] = useState(false);
+  // Start visible if the user prefers reduced motion (checked at hook-call time,
+  // safe in client component since "use client" ensures browser execution).
+  const [isVisible, setIsVisible] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
 
   useEffect(() => {
+    // Already visible (reduced-motion path) — skip observer setup.
+    if (isVisible) return;
     const el = ref.current;
     if (!el) return;
-
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      setIsVisible(true);
-      return;
-    }
 
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -27,7 +30,7 @@ export function useFadeIn(threshold = 0.15) {
 
     observer.observe(el);
     return () => observer.disconnect();
-  }, [threshold]);
+  }, [isVisible, threshold]);
 
   return { ref, isVisible };
 }
