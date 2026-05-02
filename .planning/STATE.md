@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Executing Phase 01
-last_updated: "2026-05-02T14:10:00Z"
+last_updated: "2026-05-02T15:30:00Z"
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 6
-  completed_plans: 4
-  percent: 10
+  completed_plans: 5
+  percent: 12
 ---
 
 # Project State: Café Le Den — Website Refactor
@@ -28,7 +28,7 @@ progress:
 ## Current Position
 
 Phase: 01 (design-system-foundation-brand-expression) — EXECUTING
-Plan: 5 of 6 (plans 01 + 02 + 03 + 04 complete)
+Plan: 6 of 6 (plans 01 + 02 + 03 + 04 + 05 complete)
 | Field | Value |
 |---|---|
 | Phase | 1 — Design System Foundation + Brand Expression (planned) |
@@ -41,7 +41,7 @@ Plan: 5 of 6 (plans 01 + 02 + 03 + 04 complete)
 **Progress:**
 
 ```
-[░░░░░░░░░░] 0/5 phases complete (plans 4/6 of phase 1 done)
+[░░░░░░░░░░] 0/5 phases complete (plans 5/6 of phase 1 done)
 ```
 
 | Phase | Status |
@@ -109,9 +109,16 @@ Plan: 5 of 6 (plans 01 + 02 + 03 + 04 complete)
 - src/proxy.ts patched: /dev prefix bypasses i18n middleware (same pattern as /admin) — next-intl was redirecting /dev/components to /en/dev/components causing 404 in all environments
 - Gallery page.tsx is a Server Component with zero client markers; notFound() runs server-side before any HTML ships in production
 
+### Decisions Logged (Phase 1 Plan 05)
+
+- stickers.tsx: file-scoped lint override — 16-color decorative SVG palette not mapped to brand tokens; Phase 3 page rebuild may retire stickers entirely
+- analytics-dashboard.tsx: file-scoped lint override — recharts string props (stroke/fill) do not accept CSS var(...) as SVG attribute values; runtime getComputedStyle refactor deferred to Phase 4 admin rebuild
+- D-11 honored: no brand-internal allowlist, no warn level, first run on post-cutover codebase exits 0 (pre-existing hooks violations fixed as part of plan)
+- ESLint 9 inline virtual plugin pattern used (no external package) — two error-level rules: local/no-raw-hex and local/no-arbitrary-color-class
+
 ### Open Todos
 
-- Execute Phase 1 plan 05 (ESLint no-raw-hex rule). Plans are sequenced — execute in wave order.
+- Execute Phase 1 plan 06 (Button cutover — explicit variant + size at every call site). Plans are sequenced — execute in wave order.
 - After Phase 1 wraps, start Phase 2 with `/gsd-spec-phase 2` (Data Layer Consolidation + Image Pipeline + RLS Hardening). Watch the package.json conflict risk noted in Risks.
 
 ### Blockers
@@ -126,9 +133,9 @@ None.
 
 ## Session Continuity
 
-**Last session:** Phase 1 plan 04 complete — created dev-only component gallery at /dev/components (Server Component with NODE_ENV gate); created icon-demos.tsx client wrapper for Icon+lucide compositions; patched proxy.ts to bypass i18n middleware for /dev prefix. Commit: `7f8a9e1 feat(01-04): create dev-only component gallery at /dev/components`.
+**Last session:** Phase 1 plan 05 complete — inline ESLint plugin (no-raw-hex + no-arbitrary-color-class) at error level; migrated 10 hex literals in page.tsx to brand tokens; fixed 3 pre-existing hooks lint errors; npm run lint exits 0; smoke tests confirm both rules trigger on violations. Commits: `be0f741`, `b8e0956`.
 
-**Next session entry point:** `/gsd-execute-plan 01-05-PLAN` — ESLint no-raw-hex rule.
+**Next session entry point:** `/gsd-execute-plan 01-06-PLAN` — Button cutover (DSY-07).
 
 **Files of record:**
 
