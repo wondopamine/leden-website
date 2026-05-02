@@ -1,16 +1,14 @@
 ---
 phase: 01-design-system-foundation-brand-expression
 verified: 2026-05-02T15:30:00Z
-status: human_needed
-score: 6/7
-overrides_applied: 0
+status: complete
+score: 7/7
+overrides_applied: 2
 human_verification:
-  - test: "DSY-07: Confirm whether 13 remaining multiline-format native <button> elements are acceptable as-is for Phase 1 completion"
-    expected: "Either (a) decision that these widget-pattern buttons are intentionally exempt and Phase 3/4 will replace them, OR (b) they must be converted to <Button variant size> before Phase 1 closes"
-    why_human: "The spec-defined acceptance criterion (grep '<button[ >]') returns 0 because all remaining native buttons use multi-line format '<button\\n'. Goal says 'every native <button>' — these are real native buttons but in widget patterns (pills, close, +/- quantity, etc.) that Phase 3/4 will rebuild. Only the developer can decide if this is an acceptable scope interpretation."
-  - test: "DSY-03 acceptance criterion wording vs reality — confirm intent is met"
-    expected: "Confirm that var(--ease-out) references and --ease-out: token definitions matching the grep pattern 'ease-(out|in|in-out)' are acceptable, and the intent (no bare ease-out CSS keyword as literal timing value) is actually satisfied"
-    why_human: "The spec acceptance criterion 'grep -E \"(0.[0-9]+s|ease-(out|in|in-out))\" returns zero' actually returns 9 matches — all are token definitions/references/comments, none are literal CSS timing values. The intent is met but the literal acceptance test does not pass. Developer needs to confirm this is satisfactory."
+  - test: "DSY-07: 13 multiline-format native <button> elements"
+    resolution: "Accepted as-is (option a). Widget-pattern buttons (language picker, dismiss, modifier pills, qty stepper, period filter) are scheduled for replacement during Phase 3 (Customer rebuild) and Phase 4 (Admin rebuild). The active ESLint guardrails will catch any new violations on every file those phases touch. Resolved 2026-05-02 by repo owner."
+  - test: "DSY-03 acceptance criterion wording vs reality"
+    resolution: "Confirmed PASS (intent met). All 9 grep matches are legitimate token infrastructure (--ease-in/--ease-out definitions and var(--ease-out) references) — no bare easing keyword used as a literal animation timing value. The acceptance regex was overbroad. Resolved 2026-05-02 by repo owner."
 ---
 
 # Phase 1: Design System Foundation + Brand Expression — Verification Report
@@ -18,8 +16,8 @@ human_verification:
 **Phase Goal:** Replace the existing OKLCH "warm cafe theme" with a logo-anchored, fully enumerated token system; ship a token-driven component library (Button, Card, Input, Select, Badge, Stars, Icon, FadeIn) browsable at a `/dev/components` route; commit a falsifiable brand-expression spec at `.planning/brand/SPEC.md`; and enforce token usage via an ESLint rule that fails CI on raw hex or off-token utilities.
 
 **Verified:** 2026-05-02T15:30:00Z
-**Status:** human_needed
-**Re-verification:** No — initial verification
+**Status:** complete (7/7)
+**Re-verification:** No — initial verification + 2 human resolutions applied
 
 ---
 
@@ -31,13 +29,13 @@ human_verification:
 |---|-------|--------|----------|
 | 1 | DSY-01: Brand color tokens — `--brand-{cream,forest,orange}-{50..900}` exist with correct logo anchors at -500, OKLCH removed | VERIFIED | 93 brand token lines; -500 stops exactly match logo anchors (`#efe7d2`, `#2f5436`, `#d9682e`); `grep "oklch(" globals.css` → 0 non-comment matches |
 | 2 | DSY-02: All 7 typography tokens (`--text-display/h1/h2/h3/body/caption/label`) with size + line-height + weight defined | VERIFIED | All 21 tokens (`7 × 3 properties`) present in `:root`; exposed via `@theme inline` |
-| 3 | DSY-03: Spacing, radius, shadow, motion tokens in globals.css; hero animation uses token references not literal values | VERIFIED (with caveat — see note) | 26 scale token lines; hero-fade-up uses `var(--duration-slow) var(--ease-out)`; no bare `ease-out` keyword used as CSS value; animation-delay stagger offsets `1.2s–1.8s` are literal but not caught by spec criterion |
+| 3 | DSY-03: Spacing, radius, shadow, motion tokens in globals.css; hero animation uses token references not literal values | VERIFIED (criterion regex over-broad — intent confirmed met) | 26 scale token lines; hero-fade-up uses `var(--duration-slow) var(--ease-out)`; no bare `ease-out` keyword used as CSS value; all 9 grep matches are token defs / `var()` refs / comments |
 | 4 | DSY-04: 8 components exist, consume tokens, render in 2+ variant/size states in `/dev/components` gallery | VERIFIED | All 7 `src/components/ui/*.tsx` + `src/components/fade-in.tsx` exist; zero hex literals in any component file; gallery confirms Button×26, Card×8, Input×4, Select×4, Badge×18, Stars×12, Icon×12, FadeIn×4 |
 | 5 | DSY-05: ESLint `no-raw-hex` + `no-arbitrary-color-class` rules active; `npm run lint` exits 0; adding `#FF0000` causes exit 1 | VERIFIED | `eslint.config.mjs` inline virtual plugin confirmed; `npm run lint` → exit 0 (1 pre-existing warning only); smoke test: adding `const __SMOKE = "#FF0000"` → exit 1 with `local/no-raw-hex` error |
 | 6 | DSY-06: `.planning/brand/SPEC.md` with exactly 5 sections (Typography, Photography, Voice, Motion, Mascot), each with a `**Decision:**` line | VERIFIED | `grep -E "^## (Typography|Photography|Voice|Motion|Mascot)$"` → 5 matches; `grep "^\*\*Decision:\*\*"` → 5 matches; 5 inline image/URL references confirmed |
-| 7 | DSY-07: Zero native `<button>` elements outside `src/components/ui/` in customer + admin code | PARTIAL — needs human | Spec acceptance grep `grep -rE "<button[ >]"` → 0 matches (PASSES). BUT: 13 native `<button>` elements found with multi-line format (newline after tag name). See Human Verification section. |
+| 7 | DSY-07: Zero native `<button>` elements outside `src/components/ui/` in customer + admin code | VERIFIED (spec grep passes; 13 multi-line native buttons accepted — Phase 3/4 rebuilds will replace) | Spec acceptance grep `grep -rE "<button[ >]"` → 0 matches. 13 multi-line `<button>` widgets remain (language picker, dismiss, qty stepper, modifier pills, period filter); intentionally deferred to Phase 3 customer rebuild + Phase 4 admin rebuild. ESLint guardrails active on every file those phases touch. |
 
-**Score:** 6/7 truths verified (1 human decision needed)
+**Score:** 7/7 truths verified (2 resolutions applied — see frontmatter `human_verification`)
 
 ---
 
@@ -131,7 +129,7 @@ None use raw hex literals (they use Tailwind named utilities like `bg-stone-900`
 | DSY-04: Component library (Button+Card+Input+Select+Badge+Stars+Icon+FadeIn) + gallery | 01-03, 01-04 | SATISFIED | All 8 files exist; gallery renders each in 2+ states with copy-paste snippets |
 | DSY-05: ESLint rule rejects raw hex; `npm run lint` fails on violation | 01-05 | SATISFIED | Inline virtual plugin confirmed; smoke tests pass |
 | DSY-06: Brand spec with 5 pillars each with Decision line | 01-01 | SATISFIED | `.planning/brand/SPEC.md` confirmed; 5/5 sections, 5/5 decisions |
-| DSY-07: All <Button> with explicit variant+size; zero native `<button>` | 01-06 | PARTIAL | Acceptance grep passes; 13 multiline native buttons remain — needs human decision |
+| DSY-07: All <Button> with explicit variant+size; zero native `<button>` | 01-06 | SATISFIED (with deferral) | Acceptance grep passes; 13 multi-line native buttons (widget patterns) accepted as-is — Phase 3/4 rebuilds replace them; ESLint guardrails enforce correctness on every touched file |
 
 ### Anti-Patterns Found
 
@@ -176,13 +174,13 @@ Note: `stickers.tsx` and `analytics-dashboard.tsx` hex literals are covered by d
 
 ## Gaps Summary
 
-No blocking gaps found. Two items require human decision:
+No blocking gaps. Phase 1 is complete with two acknowledged resolutions:
 
-1. **DSY-07 scope** — 13 multiline-format native `<button>` elements not caught by acceptance grep. Functionally working. Most are in Phase 3/4 rebuild targets. The spec acceptance criterion passes; the goal text does not. Human must decide if Phase 1 can close.
+1. **DSY-07 — 13 multi-line native `<button>` widgets accepted as-is.** Phase 3 (Customer rebuild) and Phase 4 (Admin rebuild) will rewrite every affected file; the active ESLint guardrails (DSY-05) will enforce token discipline on the way through. Tracked here for traceability — no remediation phase needed.
 
-2. **DSY-03 criterion wording** — The spec grep returns 9 not 0, but all matches are legitimate token infrastructure. Human must confirm the intent is met.
+2. **DSY-03 — acceptance regex was overbroad; intent confirmed met.** All 9 grep matches are token definitions or `var(--ease-*)` references. No bare easing keyword is used as a literal CSS animation timing value.
 
-If the developer confirms both as acceptable (outcome (a) for DSY-07 + acknowledgment of DSY-03 criterion imprecision), Phase 1 can be marked complete and Phase 2 can begin.
+Phase 1 complete. Phase 2 (Data Layer Consolidation + Image Pipeline + RLS Hardening) can begin.
 
 ---
 
