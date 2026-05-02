@@ -1,6 +1,9 @@
 "use client";
 
+import * as React from "react";
+
 import { useFadeIn } from "@/hooks/use-fade-in";
+import { cn } from "@/lib/utils";
 
 export function FadeIn({
   children,
@@ -25,12 +28,18 @@ export function FadeIn({
   return (
     <div
       ref={ref}
-      className={`transition-all duration-700 ease-out ${
+      className={cn(
+        "transition-all",
         isVisible
           ? "opacity-100 translate-x-0 translate-y-0"
-          : `opacity-0 ${translateClass}`
-      } ${className ?? ""}`}
-      style={{ transitionDelay: `${delay}ms` }}
+          : `opacity-0 ${translateClass}`,
+        className
+      )}
+      style={{
+        transitionDuration: "var(--duration-slow)",
+        transitionTimingFunction: "var(--ease-out)",
+        transitionDelay: `${delay}ms`,
+      }}
     >
       {children}
     </div>
