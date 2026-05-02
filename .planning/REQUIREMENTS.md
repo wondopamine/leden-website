@@ -9,9 +9,9 @@ Strict-refactor scope. Same features as today, rebuilt on a coherent design syst
 
 ### Design System (DSY)
 
-- [ ] **DSY-01**: Design tokens for color exist as CSS variables / Tailwind theme extension, derived from the existing logo palette (cream `#EFE7D2`, forest green `#2F5436`, warm orange `#D9682E`), with consistent shade scale (50–900) for each
-- [ ] **DSY-02**: Design tokens for typography exist (font family, size scale, line-height scale, weight scale), with distinct treatments for display, h1, h2, h3, body, caption, label
-- [ ] **DSY-03**: Design tokens for spacing, radius, shadow, and motion (duration, easing) exist as a single source of truth
+- [x] **DSY-01**: Design tokens for color exist as CSS variables / Tailwind theme extension, derived from the existing logo palette (cream `#EFE7D2`, forest green `#2F5436`, warm orange `#D9682E`), with consistent shade scale (50–900) for each
+- [x] **DSY-02**: Design tokens for typography exist (font family, size scale, line-height scale, weight scale), with distinct treatments for display, h1, h2, h3, body, caption, label
+- [x] **DSY-03**: Design tokens for spacing, radius, shadow, and motion (duration, easing) exist as a single source of truth
 - [ ] **DSY-04**: A reusable component library exists (Button with size+variant tokens, Card, Input, Select, Badge, Stars, Icon wrapper, FadeIn) and is documented with usage examples in code
 - [ ] **DSY-05**: A lint rule or convention prevents committing raw hex values, raw color/spacing Tailwind utilities outside the token scale, in customer + admin source files
 - [ ] **DSY-06**: A design-consultation phase has produced and committed a brand expression spec covering typography, photography style, voice, motion personality, and watermelon-mascot usage rules
@@ -136,9 +136,9 @@ Populated by roadmapper on 2026-04-26. Each REQ-ID maps to exactly one phase.
 
 | Requirement | Phase | Status |
 |---|---|---|
-| DSY-01 | Phase 1: Design System Foundation + Brand Expression | Pending |
-| DSY-02 | Phase 1: Design System Foundation + Brand Expression | Pending |
-| DSY-03 | Phase 1: Design System Foundation + Brand Expression | Pending |
+| DSY-01 | Phase 1: Design System Foundation + Brand Expression | Complete (01-02) |
+| DSY-02 | Phase 1: Design System Foundation + Brand Expression | Complete (01-02) |
+| DSY-03 | Phase 1: Design System Foundation + Brand Expression | Complete (01-02) |
 | DSY-04 | Phase 1: Design System Foundation + Brand Expression | Pending |
 | DSY-05 | Phase 1: Design System Foundation + Brand Expression | Pending |
 | DSY-06 | Phase 1: Design System Foundation + Brand Expression | Pending |

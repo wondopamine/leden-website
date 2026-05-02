@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Executing Phase 01
-last_updated: "2026-05-02T13:42:40Z"
+last_updated: "2026-05-02T13:51:07Z"
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 6
-  completed_plans: 1
-  percent: 2
+  completed_plans: 2
+  percent: 5
 ---
 
 # Project State: Café Le Den — Website Refactor
@@ -28,7 +28,7 @@ progress:
 ## Current Position
 
 Phase: 01 (design-system-foundation-brand-expression) — EXECUTING
-Plan: 2 of 6 (plan 01 complete)
+Plan: 3 of 6 (plans 01 + 02 complete)
 | Field | Value |
 |---|---|
 | Phase | 1 — Design System Foundation + Brand Expression (planned) |
@@ -41,7 +41,7 @@ Plan: 2 of 6 (plan 01 complete)
 **Progress:**
 
 ```
-[░░░░░░░░░░] 0/5 phases complete (plan 1/6 of phase 1 done)
+[░░░░░░░░░░] 0/5 phases complete (plans 2/6 of phase 1 done)
 ```
 
 | Phase | Status |
@@ -88,9 +88,16 @@ Plan: 2 of 6 (plan 01 complete)
 - Motion: 150ms/300ms/500ms; cubic-bezier in(0.4,0,1,1) / out(0,0,0.2,1) / spring(0.34,1.56,0.64,1); prefers-reduced-motion respected — locked in .planning/brand/SPEC.md
 - Mascot: Watermelon accent only, max 64px, hero corner / footer / confirmation; never buttons, logo replacement, or > --duration-slow — locked in .planning/brand/SPEC.md
 
+### Decisions Logged (Phase 1 Plan 02)
+
+- Brand color scale generated via OKLCH lightness sweep (culori@4.0.2): cream #EFE7D2 / forest #2F5436 / orange #D9682E anchored at -500 stop; ΔE76 = 0.000 for all anchors
+- scripts/ excluded from tsconfig.json — build-time tooling not part of Next.js app compilation
+- doodle-float/doodle-wiggle use --ease-out as closest available brand token (ease-in-out has no dedicated motion token)
+- review-carousel 40s linear infinite kept literal as documented carousel exemption (duration of motion, not motion personality budget)
+
 ### Open Todos
 
-- Execute Phase 1 plan 02 via `/gsd-execute-plan 01-02-PLAN`. Plans are sequenced — execute in wave order.
+- Execute Phase 1 plan 03 (component token migration — button, card, input, select, badge, stars, icon, fade-in). Plans are sequenced — execute in wave order.
 - After Phase 1 wraps, start Phase 2 with `/gsd-spec-phase 2` (Data Layer Consolidation + Image Pipeline + RLS Hardening). Watch the package.json conflict risk noted in Risks.
 
 ### Blockers
@@ -105,9 +112,9 @@ None.
 
 ## Session Continuity
 
-**Last session:** Phase 1 plan 01 complete — authored `.planning/brand/SPEC.md` with 5 brand pillars (Typography, Photography, Voice, Motion, Mascot), each with a concrete Decision line. Commit: `f3c8dfc feat(01-01): author brand expression spec with 5 pillars and Decision lines`.
+**Last session:** Phase 1 plan 02 complete — installed culori@4.0.2 + tsx@4.21.0, created `scripts/derive-tokens.ts` (OKLCH lightness sweep + ΔE76 verification), rewrote `src/app/globals.css` with logo-anchored brand token system (30 color + 21 typography + spacing/radius/shadow/motion tokens). Commits: `36ea745 feat(01-02): add culori + tsx devDeps and derive-tokens.ts script`, `80060bb feat(01-02): hard-cutover globals.css to logo-anchored brand token system`.
 
-**Next session entry point:** `/gsd-execute-plan 01-02-PLAN` — token derivation script + globals.css hard cutover (DSY-01, DSY-02, DSY-03).
+**Next session entry point:** `/gsd-execute-plan 01-03-PLAN` — component token migration (DSY-04, DSY-05).
 
 **Files of record:**
 
