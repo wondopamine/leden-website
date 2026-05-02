@@ -418,7 +418,7 @@ export function MenuItemForm({
       </Card>
 
       <div className="flex gap-3">
-        <Button type="submit" disabled={isPending}>
+        <Button type="submit" variant="default" size="default" disabled={isPending}>
           {isPending ? "Saving..." : submitLabel}
         </Button>
       </div>

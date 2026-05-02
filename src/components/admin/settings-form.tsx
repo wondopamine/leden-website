@@ -205,7 +205,7 @@ export function SettingsForm({ initialData }: Props) {
         </CardContent>
       </Card>
 
-      <Button onClick={handleSave} disabled={isPending}>
+      <Button variant="default" size="default" onClick={handleSave} disabled={isPending}>
         {isPending ? "Saving..." : "Save Settings"}
       </Button>
     </div>

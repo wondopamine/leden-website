@@ -175,6 +175,7 @@ export function OrderCard({ order }: { order: Order }) {
           </span>
           {config.next && (
             <Button
+              variant="default"
               size="sm"
               onClick={() => handleStatusChange(config.next!)}
               disabled={isPending}
