@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Executing Phase 01
-last_updated: "2026-05-02T14:30:00Z"
+last_updated: "2026-05-02T14:10:00Z"
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 6
-  completed_plans: 3
-  percent: 8
+  completed_plans: 4
+  percent: 10
 ---
 
 # Project State: Café Le Den — Website Refactor
@@ -28,7 +28,7 @@ progress:
 ## Current Position
 
 Phase: 01 (design-system-foundation-brand-expression) — EXECUTING
-Plan: 4 of 6 (plans 01 + 02 + 03 complete)
+Plan: 5 of 6 (plans 01 + 02 + 03 + 04 complete)
 | Field | Value |
 |---|---|
 | Phase | 1 — Design System Foundation + Brand Expression (planned) |
@@ -41,7 +41,7 @@ Plan: 4 of 6 (plans 01 + 02 + 03 complete)
 **Progress:**
 
 ```
-[░░░░░░░░░░] 0/5 phases complete (plans 3/6 of phase 1 done)
+[░░░░░░░░░░] 0/5 phases complete (plans 4/6 of phase 1 done)
 ```
 
 | Phase | Status |
@@ -103,9 +103,15 @@ Plan: 4 of 6 (plans 01 + 02 + 03 complete)
 - fade-in.tsx adopts cn() + explicit React import; motion tokens via inline style (transitionDuration + transitionTimingFunction)
 - Icon component uses `as` prop (LucideIcon) pattern — consistent with lucide-react render model
 
+### Decisions Logged (Phase 1 Plan 04)
+
+- Client boundary wrapper for RSC-incompatible props: icon-demos.tsx wraps Icon+LucideIcon compositions to prevent RSC serialization errors (LucideIcon functions cannot cross RSC boundary as `as` prop)
+- src/proxy.ts patched: /dev prefix bypasses i18n middleware (same pattern as /admin) — next-intl was redirecting /dev/components to /en/dev/components causing 404 in all environments
+- Gallery page.tsx is a Server Component with zero client markers; notFound() runs server-side before any HTML ships in production
+
 ### Open Todos
 
-- Execute Phase 1 plan 04 (dev component gallery at /dev/components). Plans are sequenced — execute in wave order.
+- Execute Phase 1 plan 05 (ESLint no-raw-hex rule). Plans are sequenced — execute in wave order.
 - After Phase 1 wraps, start Phase 2 with `/gsd-spec-phase 2` (Data Layer Consolidation + Image Pipeline + RLS Hardening). Watch the package.json conflict risk noted in Risks.
 
 ### Blockers
@@ -120,9 +126,9 @@ None.
 
 ## Session Continuity
 
-**Last session:** Phase 1 plan 03 complete — created Stars + Icon CVA components, moved GoogleIcon to /public/google.svg, refactored fade-in.tsx to consume motion tokens, extracted inline Stars + GoogleIcon from page.tsx. Commits: `62f6d69 feat(01-03): create Stars and Icon CVA components; verify 5 existing primitives token-clean`, `4e72f4a feat(01-03): refactor fade-in to motion tokens; move GoogleIcon to public/google.svg; extract inline Stars from page.tsx`.
+**Last session:** Phase 1 plan 04 complete — created dev-only component gallery at /dev/components (Server Component with NODE_ENV gate); created icon-demos.tsx client wrapper for Icon+lucide compositions; patched proxy.ts to bypass i18n middleware for /dev prefix. Commit: `7f8a9e1 feat(01-04): create dev-only component gallery at /dev/components`.
 
-**Next session entry point:** `/gsd-execute-plan 01-04-PLAN` — dev component gallery at /dev/components.
+**Next session entry point:** `/gsd-execute-plan 01-05-PLAN` — ESLint no-raw-hex rule.
 
 **Files of record:**
 
