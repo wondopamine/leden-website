@@ -15,7 +15,7 @@ Strict-refactor scope. Same features as today, rebuilt on a coherent design syst
 - [ ] **DSY-04**: A reusable component library exists (Button with size+variant tokens, Card, Input, Select, Badge, Stars, Icon wrapper, FadeIn) and is documented with usage examples in code
 - [ ] **DSY-05**: A lint rule or convention prevents committing raw hex values, raw color/spacing Tailwind utilities outside the token scale, in customer + admin source files
 - [ ] **DSY-06**: A design-consultation phase has produced and committed a brand expression spec covering typography, photography style, voice, motion personality, and watermelon-mascot usage rules
-- [ ] **DSY-07**: All buttons across the site use the Button component with size + variant tokens (no inline button styling)
+- [x] **DSY-07**: All buttons across the site use the Button component with size + variant tokens (no inline button styling)
 
 ### Customer Site (CST)
 
@@ -142,7 +142,7 @@ Populated by roadmapper on 2026-04-26. Each REQ-ID maps to exactly one phase.
 | DSY-04 | Phase 1: Design System Foundation + Brand Expression | In Progress (01-03: components built; 01-04: gallery pending) |
 | DSY-05 | Phase 1: Design System Foundation + Brand Expression | Pending |
 | DSY-06 | Phase 1: Design System Foundation + Brand Expression | Pending |
-| DSY-07 | Phase 1: Design System Foundation + Brand Expression | Pending |
+| DSY-07 | Phase 1: Design System Foundation + Brand Expression | Complete |
 | DAT-01 | Phase 2: Data Layer Consolidation + Image Pipeline + RLS Hardening | Pending |
 | DAT-02 | Phase 2: Data Layer Consolidation + Image Pipeline + RLS Hardening | Pending |
 | DAT-03 | Phase 2: Data Layer Consolidation + Image Pipeline + RLS Hardening | Pending |

@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Executing Phase 01
-last_updated: "2026-05-02T15:30:00Z"
+status: Phase complete — ready for verification
+last_updated: "2026-05-02T14:26:39.532Z"
 progress:
   total_phases: 5
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 6
-  completed_plans: 5
-  percent: 12
+  completed_plans: 6
+  percent: 100
 ---
 
 # Project State: Café Le Den — Website Refactor
@@ -40,8 +40,9 @@ Plan: 6 of 6 (plans 01 + 02 + 03 + 04 + 05 complete)
 
 **Progress:**
 
-```
+[██████████] 100%
 [░░░░░░░░░░] 0/5 phases complete (plans 5/6 of phase 1 done)
+
 ```
 
 | Phase | Status |
@@ -116,10 +117,14 @@ Plan: 6 of 6 (plans 01 + 02 + 03 + 04 + 05 complete)
 - D-11 honored: no brand-internal allowlist, no warn level, first run on post-cutover codebase exits 0 (pre-existing hooks violations fixed as part of plan)
 - ESLint 9 inline virtual plugin pattern used (no external package) — two error-level rules: local/no-raw-hex and local/no-arbitrary-color-class
 
+### Decisions Logged (Phase 1 Plan 06)
+
+- D-08 applied at all call sites: every `<Button>` JSX call site in `src/app/` and `src/components/` sets explicit `variant=` and `size=` props; `defaultVariants` preserved in `button.tsx` for gallery documentation only (no default-drift bugs)
+- DSY-07 closed; Phase 1 complete — all 7 DSY requirements fulfilled
+
 ### Open Todos
 
-- Execute Phase 1 plan 06 (Button cutover — explicit variant + size at every call site). Plans are sequenced — execute in wave order.
-- After Phase 1 wraps, start Phase 2 with `/gsd-spec-phase 2` (Data Layer Consolidation + Image Pipeline + RLS Hardening). Watch the package.json conflict risk noted in Risks.
+- Phase 1 complete. Start Phase 2 with `/gsd-spec-phase 2` (Data Layer Consolidation + Image Pipeline + RLS Hardening). Watch the package.json conflict risk noted in Risks.
 
 ### Blockers
 
@@ -133,9 +138,9 @@ None.
 
 ## Session Continuity
 
-**Last session:** Phase 1 plan 05 complete — inline ESLint plugin (no-raw-hex + no-arbitrary-color-class) at error level; migrated 10 hex literals in page.tsx to brand tokens; fixed 3 pre-existing hooks lint errors; npm run lint exits 0; smoke tests confirm both rules trigger on violations. Commits: `be0f741`, `b8e0956`.
+**Last session:** Phase 1 plan 06 complete — Button prop-explicitness pass (DSY-07); 9 files modified; 14 call sites updated with explicit variant= + size= props; full-tree audit exits 0; lint+tsc+build all green; Phase 1 all 7 DSY requirements complete. Commits: `1a5d9f1`, `d0003f2`.
 
-**Next session entry point:** `/gsd-execute-plan 01-06-PLAN` — Button cutover (DSY-07).
+**Next session entry point:** Phase 1 complete. Run `/gsd-spec-phase 2` to begin Data Layer Consolidation + Image Pipeline + RLS Hardening.
 
 **Files of record:**
 

@@ -51,7 +51,7 @@ Phases 1 and 2 have a parallel opportunity: design-consultation (Phase 1) runs l
   4. A lint rule or convention rejects raw hex values and off-token Tailwind utilities in customer + admin source files (validated by running the linter against a deliberate violation).
   5. Every Button instance currently in the codebase resolves through the new `<Button>` component with size + variant props — zero inline button styling remains.
 
-**Plans:** 6 plans
+**Plans:** 6/6 plans complete
 
 Plans:
 - [x] 01-01-PLAN.md — Author .planning/brand/SPEC.md (5 pillars × 1 Decision line each) — DSY-06 (commit f3c8dfc)
@@ -59,7 +59,7 @@ Plans:
 - [x] 01-03-PLAN.md — Component refactor: extract Stars + Icon (CVA), move GoogleIcon to /public/google.svg, refactor fade-in.tsx to consume motion tokens — DSY-04 (commits 62f6d69, 4e72f4a)
 - [x] 01-04-PLAN.md — Build /dev/components dev-only gallery route (Server Component with NODE_ENV gate) — DSY-04 (commit 7f8a9e1)
 - [x] 01-05-PLAN.md — Inline ESLint plugin (no-raw-hex + no-arbitrary-color-class) at error level; final source cleanup — DSY-05 (commits be0f741, b8e0956)
-- [ ] 01-06-PLAN.md — Button cutover: explicit variant + size at every call site; zero native button outside ui/ — DSY-07
+- [x] 01-06-PLAN.md — Button cutover: explicit variant + size at every call site; zero native button outside ui/ — DSY-07
 
 **UI hint**: yes
 
@@ -86,11 +86,11 @@ Plans:
 **Plans:** 6 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Author .planning/brand/SPEC.md (5 pillars × 1 Decision line each) — DSY-06
-- [ ] 01-02-PLAN.md — Add culori + tsx devDeps; write scripts/derive-tokens.ts; hard-cutover globals.css to brand-anchored token system — DSY-01, DSY-02, DSY-03
-- [ ] 01-03-PLAN.md — Component refactor: extract Stars + Icon (CVA), move GoogleIcon to /public/google.svg, refactor fade-in.tsx to consume motion tokens — DSY-04
-- [ ] 01-04-PLAN.md — Build /dev/components dev-only gallery route (Server Component with NODE_ENV gate) — DSY-04
-- [ ] 01-05-PLAN.md — Inline ESLint plugin (no-raw-hex + no-arbitrary-color-class) at error level; final source cleanup — DSY-05
+- [x] 01-01-PLAN.md — Author .planning/brand/SPEC.md (5 pillars × 1 Decision line each) — DSY-06
+- [x] 01-02-PLAN.md — Add culori + tsx devDeps; write scripts/derive-tokens.ts; hard-cutover globals.css to brand-anchored token system — DSY-01, DSY-02, DSY-03
+- [x] 01-03-PLAN.md — Component refactor: extract Stars + Icon (CVA), move GoogleIcon to /public/google.svg, refactor fade-in.tsx to consume motion tokens — DSY-04
+- [x] 01-04-PLAN.md — Build /dev/components dev-only gallery route (Server Component with NODE_ENV gate) — DSY-04
+- [x] 01-05-PLAN.md — Inline ESLint plugin (no-raw-hex + no-arbitrary-color-class) at error level; final source cleanup — DSY-05
 - [ ] 01-06-PLAN.md — Button cutover: explicit variant + size at every call site; zero native button outside ui/ — DSY-07
 
 **UI hint**: no
@@ -210,7 +210,7 @@ Phase 2 (Data + Image    ─┤                                 ├──> Phase
 
 | Phase | Plans Complete | Status | Completed |
 |---|---|---|---|
-| 1. Design System Foundation + Brand Expression | 1/6 | In progress | — |
+| 1. Design System Foundation + Brand Expression | 6/6 | Complete   | 2026-05-02 |
 | 2. Data Layer Consolidation + Image Pipeline + RLS Hardening | 0/TBD | Not started | — |
 | 3. Customer Site Rebuild | 0/TBD | Not started | — |
 | 4. Admin Site Rebuild | 0/TBD | Not started | — |
