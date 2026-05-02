@@ -95,7 +95,7 @@ function HeroShell({
 }) {
   return (
     <section className="relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-b from-[#f2ead5] via-[#f2ead5]/60 to-background" />
+      <div className="absolute inset-0 bg-gradient-to-b from-muted via-muted/60 to-background" />
 
       <div className="relative mx-auto flex min-h-[85vh] max-w-5xl flex-col items-center justify-center px-4 text-center">
         {/* Animated logo: staged clip-path reveal */}
@@ -107,7 +107,7 @@ function HeroShell({
         />
 
         <p
-          className="hero-fade-in hero-fade-in-1 mt-6 text-xl text-[#2D5A3D]/70 sm:text-2xl"
+          className="hero-fade-in hero-fade-in-1 mt-6 text-xl text-primary/70 sm:text-2xl"
           style={{ fontFamily: "var(--font-display)" }}
         >
           {t("hero.subtitle")}
@@ -217,7 +217,7 @@ function FeaturedSection({
                     />
                   </div>
                   <div className="p-6">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-[#2D5A3D]">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-primary">
                       {getLocalizedString(item.category.name, locale)}
                     </p>
                     <h3 className="mt-1.5 text-lg font-semibold leading-tight">
@@ -259,7 +259,7 @@ function ReviewsSection({
   const doubledReviews = [...place.reviews, ...place.reviews];
 
   return (
-    <section className="relative overflow-hidden bg-[#2D5A3D] py-24 sm:py-32">
+    <section className="relative overflow-hidden bg-primary py-24 sm:py-32">
       <FadeIn>
         <div className="mx-auto max-w-6xl px-4">
           <div className="flex items-center justify-between">
@@ -292,8 +292,8 @@ function ReviewsSection({
       </FadeIn>
 
       <div className="relative mt-12">
-        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-20 bg-gradient-to-r from-[#2D5A3D] to-transparent" />
-        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-20 bg-gradient-to-l from-[#2D5A3D] to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-20 bg-gradient-to-r from-primary to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-20 bg-gradient-to-l from-primary to-transparent" />
 
         <div className="review-carousel flex w-max gap-6 px-4">
           {doubledReviews.map((review, i) => (
@@ -363,7 +363,7 @@ function AboutSection({
   return (
     <section
       id="about"
-      className="relative scroll-mt-20 bg-[#f2ead5] px-4 py-28 sm:py-36"
+      className="relative scroll-mt-20 bg-muted px-4 py-28 sm:py-36"
     >
       <FadeIn>
         <div className="mx-auto max-w-3xl">
@@ -456,7 +456,7 @@ function HoursSection({
       <div className="mt-12 grid gap-8 md:grid-cols-2">
         <FadeIn delay={0}>
           <Card className="overflow-hidden rounded-2xl border-0 shadow-md">
-            <div className="border-l-4 border-l-[#2D5A3D]">
+            <div className="border-l-4 border-l-primary">
               <CardContent className="p-8">
                 <h3 className="mb-6 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
                   {t("hours.openDaily")}
@@ -472,13 +472,13 @@ function HoursSection({
                         key={h.day}
                         className={`flex items-center justify-between rounded-lg px-3 py-2.5 text-sm ${
                           isToday
-                            ? "bg-[#2D5A3D]/10 font-semibold text-foreground"
+                            ? "bg-primary/10 font-semibold text-foreground"
                             : "text-muted-foreground"
                         }`}
                       >
                         <span className="flex items-center gap-2">
                           {isToday && (
-                            <span className="h-2 w-2 rounded-full bg-[#2D5A3D]" />
+                            <span className="h-2 w-2 rounded-full bg-primary" />
                           )}
                           {locale === "fr"
                             ? dayNames[h.day]?.fr
