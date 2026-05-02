@@ -26,7 +26,7 @@ Phases 1 and 2 have a parallel opportunity: design-consultation (Phase 1) runs l
 
 ## Phases
 
-- [ ] **Phase 1: Design System Foundation + Brand Expression** — Tokens, component library, and a design-consultation–driven brand spec that all subsequent UI work consumes
+- [~] **Phase 1: Design System Foundation + Brand Expression** — Tokens, component library, and a design-consultation–driven brand spec that all subsequent UI work consumes (plan 01/06 complete)
 - [ ] **Phase 2: Data Layer Consolidation + Image Pipeline + RLS Hardening** — Remove Sanity, single-source on Supabase, replace `<img>`/Unsplash with `<Image>`/self-hosted, lock admin RLS to an `admin_users` allowlist
 - [ ] **Phase 3: Customer Site Rebuild** — Homepage, menu, item detail, cart/checkout/confirmation rebuilt on the design system with mobile parity at 320px and EN/FR fidelity
 - [ ] **Phase 4: Admin Site Rebuild** — Shell, menu list/edit, orders dashboard with pagination + filters, all rebuilt on the design system (EN-only)
@@ -54,7 +54,7 @@ Phases 1 and 2 have a parallel opportunity: design-consultation (Phase 1) runs l
 **Plans:** 6 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Author .planning/brand/SPEC.md (5 pillars × 1 Decision line each) — DSY-06
+- [x] 01-01-PLAN.md — Author .planning/brand/SPEC.md (5 pillars × 1 Decision line each) — DSY-06 (commit f3c8dfc)
 - [ ] 01-02-PLAN.md — Add culori + tsx devDeps; write scripts/derive-tokens.ts; hard-cutover globals.css to brand-anchored token system — DSY-01, DSY-02, DSY-03
 - [ ] 01-03-PLAN.md — Component refactor: extract Stars + Icon (CVA), move GoogleIcon to /public/google.svg, refactor fade-in.tsx to consume motion tokens — DSY-04
 - [ ] 01-04-PLAN.md — Build /dev/components dev-only gallery route (Server Component with NODE_ENV gate) — DSY-04
@@ -210,7 +210,7 @@ Phase 2 (Data + Image    ─┤                                 ├──> Phase
 
 | Phase | Plans Complete | Status | Completed |
 |---|---|---|---|
-| 1. Design System Foundation + Brand Expression | 0/TBD | Not started | — |
+| 1. Design System Foundation + Brand Expression | 1/6 | In progress | — |
 | 2. Data Layer Consolidation + Image Pipeline + RLS Hardening | 0/TBD | Not started | — |
 | 3. Customer Site Rebuild | 0/TBD | Not started | — |
 | 4. Admin Site Rebuild | 0/TBD | Not started | — |

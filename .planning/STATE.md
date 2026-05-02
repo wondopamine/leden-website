@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: unknown
-last_updated: "2026-05-02T04:18:04.987Z"
+status: Executing Phase 01
+last_updated: "2026-05-02T13:42:40Z"
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 6
-  completed_plans: 0
-  percent: 0
+  completed_plans: 1
+  percent: 2
 ---
 
 # Project State: Café Le Den — Website Refactor
@@ -23,10 +23,12 @@ progress:
 
 **Milestone:** Comprehensive refactor — same features, rebuilt on a coherent design system + consolidated data layer + major visual lift.
 
-**Current focus:** Phase 1 fully planned — 6 sequenced PR-style plans (brand → tokens → components → gallery → ESLint → button cutover). Plan-checker passed first try. Ready to execute.
+**Current focus:** Phase 01 — design-system-foundation-brand-expression
 
 ## Current Position
 
+Phase: 01 (design-system-foundation-brand-expression) — EXECUTING
+Plan: 2 of 6 (plan 01 complete)
 | Field | Value |
 |---|---|
 | Phase | 1 — Design System Foundation + Brand Expression (planned) |
@@ -39,7 +41,7 @@ progress:
 **Progress:**
 
 ```
-[░░░░░░░░░░] 0/5 phases complete
+[░░░░░░░░░░] 0/5 phases complete (plan 1/6 of phase 1 done)
 ```
 
 | Phase | Status |
@@ -78,9 +80,17 @@ progress:
 - EN/FR i18n stays on customer site; admin remains EN-only.
 - Done = subjective polish + Figma fidelity ≥ 95% + Lighthouse ≥ 90 + critical CONCERNS.md items resolved.
 
+### Decisions Logged (Phase 1 Plan 01)
+
+- Typography: Editorial New serif display (500, 56–64px) + Inter body (400, 16px/1.5) + caption (500, 13px/1.4) + label (600, 12px/1.3 uppercase) — locked in .planning/brand/SPEC.md
+- Photography: Warm-tone product on cream/forest backdrops, 4:5 or 16:9 aspect, no human-face hero shots in v1 — locked in .planning/brand/SPEC.md
+- Voice: Friendly-direct first-person plural, 8–14 word sentences, food-forward nouns, no exclamation marks, FR ≤ 1.15× EN — locked in .planning/brand/SPEC.md
+- Motion: 150ms/300ms/500ms; cubic-bezier in(0.4,0,1,1) / out(0,0,0.2,1) / spring(0.34,1.56,0.64,1); prefers-reduced-motion respected — locked in .planning/brand/SPEC.md
+- Mascot: Watermelon accent only, max 64px, hero corner / footer / confirmation; never buttons, logo replacement, or > --duration-slow — locked in .planning/brand/SPEC.md
+
 ### Open Todos
 
-- Execute Phase 1 plans via `/gsd-execute-phase 1` (or per-plan via `/gsd-execute-plan 01-01-PLAN`, etc.). Plans are sequenced — execute in wave order.
+- Execute Phase 1 plan 02 via `/gsd-execute-plan 01-02-PLAN`. Plans are sequenced — execute in wave order.
 - After Phase 1 wraps, start Phase 2 with `/gsd-spec-phase 2` (Data Layer Consolidation + Image Pipeline + RLS Hardening). Watch the package.json conflict risk noted in Risks.
 
 ### Blockers
@@ -95,9 +105,9 @@ None.
 
 ## Session Continuity
 
-**Last session:** Phase 1 plan-phase complete — research → pattern-map → planner (Opus) → plan-checker (Sonnet, passed first try). 6 plans committed as `5aa2c25 docs(phase-1): create phase plan (6 sequenced PRs)`. Profile flipped to `balanced` (Opus for spec/discuss/plan, Sonnet for execute).
+**Last session:** Phase 1 plan 01 complete — authored `.planning/brand/SPEC.md` with 5 brand pillars (Typography, Photography, Voice, Motion, Mascot), each with a concrete Decision line. Commit: `f3c8dfc feat(01-01): author brand expression spec with 5 pillars and Decision lines`.
 
-**Next session entry point:** `/gsd-execute-phase 1` — runs all 6 plans in wave order. Each plan ships as its own PR per D-10.
+**Next session entry point:** `/gsd-execute-plan 01-02-PLAN` — token derivation script + globals.css hard cutover (DSY-01, DSY-02, DSY-03).
 
 **Files of record:**
 
