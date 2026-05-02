@@ -134,7 +134,7 @@ async function ConfirmationContent({ orderNumber, locale }: { orderNumber: strin
 
       <div className="mt-8 text-center">
         <Link href="/menu">
-          <Button variant="outline">{t("backToMenu")}</Button>
+          <Button variant="outline" size="default">{t("backToMenu")}</Button>
         </Link>
       </div>
     </>
@@ -148,7 +148,7 @@ function FallbackContent() {
       <h1 className="text-3xl font-bold">{t("title")}</h1>
       <p className="mt-2 text-muted-foreground">{t("thankYou")}</p>
       <Link href="/menu" className="mt-8 inline-block">
-        <Button variant="outline">{t("backToMenu")}</Button>
+        <Button variant="outline" size="default">{t("backToMenu")}</Button>
       </Link>
     </div>
   );

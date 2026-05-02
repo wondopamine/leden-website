@@ -120,6 +120,7 @@ function HeroShell({
         <div className="hero-fade-in hero-fade-in-3 mt-12">
           <Link href="/menu">
             <Button
+              variant="default"
               size="lg"
               className="h-14 rounded-full px-10 text-lg font-semibold shadow-lg shadow-primary/20 transition-shadow hover:shadow-xl hover:shadow-primary/30"
             >
@@ -193,7 +194,7 @@ function FeaturedSection({
             </p>
           </div>
           <Link href="/menu" className="hidden sm:block">
-            <Button variant="outline" className="rounded-full px-6">
+            <Button variant="outline" size="default" className="rounded-full px-6">
               {tc("viewFullMenu")} &rarr;
             </Button>
           </Link>
@@ -239,7 +240,7 @@ function FeaturedSection({
 
       <div className="mt-10 text-center sm:hidden">
         <Link href="/menu">
-          <Button variant="outline" className="rounded-full">
+          <Button variant="outline" size="default" className="rounded-full">
             {tc("viewFullMenu")} &rarr;
           </Button>
         </Link>
