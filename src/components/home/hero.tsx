@@ -46,6 +46,7 @@ export function Hero({ locale, hours }: { locale: string; hours: DayHours[] }) {
             width={520}
             height={360}
             priority
+            sizes="(min-width: 1024px) 400px, (min-width: 640px) 340px, 248px"
             className="h-auto w-[248px] sm:w-[340px] lg:w-[400px]"
           />
         </h1>

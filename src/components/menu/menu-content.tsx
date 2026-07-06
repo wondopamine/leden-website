@@ -157,7 +157,6 @@ function MenuItemCard({
     <button
       onClick={disabled ? undefined : onSelect}
       disabled={disabled}
-      aria-label={`${getLocalizedString(item.name, locale)}, ${formatPrice(item.price)}${disabled ? `, ${t("soldOut")}` : ""}`}
       className={`group flex w-full items-center gap-4 rounded-2xl border bg-card p-3 text-left transition-[transform,box-shadow,border-color] sm:p-4 ${
         disabled
           ? "cursor-not-allowed border-cream-6 opacity-70"

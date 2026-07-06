@@ -108,7 +108,7 @@ export function Header() {
 
           {/* Cart icon */}
           <Link href="/order">
-            <Button size="icon" variant="ghost" className="relative h-11 w-11">
+            <Button size="icon" variant="ghost" aria-label={t("cart")} className="relative h-11 w-11">
               <ShoppingBag className="h-5 w-5" />
               {itemCount > 0 && (
                 <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-forest-9 text-[10px] font-bold text-cream-1">
@@ -123,7 +123,7 @@ export function Header() {
         <div className="flex items-center gap-2 md:hidden">
           {/* Cart icon */}
           <Link href="/order">
-            <Button size="icon" variant="ghost" className="relative h-11 w-11">
+            <Button size="icon" variant="ghost" aria-label={t("cart")} className="relative h-11 w-11">
               <ShoppingBag className="h-5 w-5" />
               {itemCount > 0 && (
                 <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-forest-9 text-[10px] font-bold text-cream-1">
