@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { FadeIn } from "@/components/fade-in";
 import { getItemImageUrl } from "@/lib/menu-images";
 import { getLocalizedString, formatPrice } from "@/lib/utils/format";
-import type { MenuItem } from "@/lib/sanity/types";
+import type { MenuItem } from "@/lib/types";
 
 export function Featured({ locale, items }: { locale: string; items: MenuItem[] }) {
   const t = useTranslations("landing.featured");

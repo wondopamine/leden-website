@@ -10,8 +10,8 @@ const categoryImages: Record<string, string> = {
 export function getItemImageUrl(item: {
   _id: string;
   category: { slug: string };
-  image?: { asset: { _ref: string } };
+  imageUrl?: string;
 }): string {
-  if (item.image?.asset?._ref?.startsWith("http")) return item.image.asset._ref;
+  if (item.imageUrl?.startsWith("http")) return item.imageUrl;
   return categoryImages[item.category.slug] || categoryImages.coffee;
 }
