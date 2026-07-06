@@ -8,7 +8,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useParams } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { ShoppingBag, ChevronDown, Globe } from "lucide-react";
-import Image from "next/image";
+import { WordmarkHorizontal } from "@/components/brand/wordmark-horizontal";
 
 export function Header() {
   const t = useTranslations("common");
@@ -59,8 +59,8 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
-        <Link href="/" className="shrink-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">
-          <Image src="/logo-header.png" alt="Café Le Den" width={160} height={40} priority className="h-10 w-auto" />
+        <Link href="/" aria-label="Café Le Den" className="shrink-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+          <WordmarkHorizontal className="inline-flex [&>svg]:h-10 [&>svg]:w-auto" />
         </Link>
 
         {/* Desktop nav */}
