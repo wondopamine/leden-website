@@ -1,6 +1,6 @@
+import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { FadeIn } from "@/components/fade-in";
-import { Watermelon, WatermelonSeed } from "@/components/brand/watermelon";
 import { Stars } from "@/components/ui/stars";
 import type { PlaceData } from "@/lib/google-places";
 
@@ -28,18 +28,16 @@ export function Story({ place }: { place: PlaceData }) {
           </p>
         </FadeIn>
 
-        {/* signature brand panel — a real ambient café photo can replace this later */}
+        {/* ambient café photo — real, warm, no faces (brand photography rule) */}
         <FadeIn delay={120} direction="none">
-          <div className="relative flex aspect-[4/5] flex-col items-center justify-center gap-5 overflow-hidden rounded-2xl border border-forest-6/40 bg-forest-2 p-8 text-center">
-            <Watermelon size={64} className="drop-shadow-sm" />
-            <p className="max-w-[10ch] font-display text-h2 leading-tight text-forest-11">
-              {t("panel")}
-            </p>
-            <div className="flex items-center gap-2 text-forest-9">
-              <WatermelonSeed size={8} />
-              <WatermelonSeed size={8} />
-              <WatermelonSeed size={8} />
-            </div>
+          <div className="relative aspect-[4/5] overflow-hidden rounded-2xl border border-forest-6/40 bg-forest-2">
+            <Image
+              src="/story-coffee.jpg"
+              alt="Coffee served in a hand-painted cup"
+              fill
+              sizes="(min-width: 768px) 40vw, 90vw"
+              className="object-cover"
+            />
           </div>
         </FadeIn>
       </div>
