@@ -2,6 +2,7 @@ import { setRequestLocale } from "next-intl/server";
 import { use } from "react";
 import { fetchCategories, fetchMenuItems } from "@/lib/data";
 import { MenuContent } from "@/components/menu/menu-content";
+import { StickyOrderBar } from "@/components/home/sticky-order-bar";
 
 export const dynamic = "force-dynamic";
 
@@ -14,9 +15,12 @@ export default function MenuPage({ params }: Props) {
   setRequestLocale(locale);
 
   return (
-    <section className="mx-auto max-w-5xl px-4 py-12">
-      <MenuData locale={locale} />
-    </section>
+    <>
+      <section className="mx-auto max-w-5xl px-5 pb-28 pt-10 md:pb-16">
+        <MenuData locale={locale} />
+      </section>
+      <StickyOrderBar hideWhenEmpty />
+    </>
   );
 }
 

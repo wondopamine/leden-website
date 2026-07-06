@@ -6,7 +6,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const starsVariants = cva(
-  "inline-flex gap-0.5 text-brand-orange-500",
+  "inline-flex gap-0.5 text-orange-9",
   {
     variants: {
       size: {
@@ -23,12 +23,17 @@ type StarsProps = React.ComponentProps<"span"> &
   VariantProps<typeof starsVariants> & {
     count: number;
     max?: number;
+    /** When the stars are the sole carrier of the rating, pass a label so it is announced. */
+    label?: string;
   };
 
-export function Stars({ className, size, count, max = 5, ...props }: StarsProps) {
+export function Stars({ className, size, count, max = 5, label, ...props }: StarsProps) {
   return (
     <span
       data-slot="stars"
+      role={label ? "img" : undefined}
+      aria-label={label}
+      aria-hidden={label ? undefined : true}
       className={cn(starsVariants({ size }), className)}
       {...props}
     >

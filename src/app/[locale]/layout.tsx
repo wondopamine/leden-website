@@ -1,5 +1,5 @@
 import { NextIntlClientProvider, hasLocale } from "next-intl";
-import { setRequestLocale } from "next-intl/server";
+import { setRequestLocale, getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import { Header } from "@/components/layout/header";
@@ -26,6 +26,7 @@ export default async function LocaleLayout({ children, params }: Props) {
   setRequestLocale(locale);
 
   const cafeInfo = await fetchCafeInfo();
+  const t = await getTranslations("common");
   const announcement = cafeInfo.announcement;
   const announcementText = announcement
     ? (locale === "fr" ? announcement.fr : announcement.en)
@@ -33,10 +34,18 @@ export default async function LocaleLayout({ children, params }: Props) {
 
   return (
     <NextIntlClientProvider>
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-forest-9 focus:px-4 focus:py-2 focus:text-caption focus:font-medium focus:text-cream-1 focus:shadow-lg"
+      >
+        {t("skipToContent")}
+      </a>
       {announcementText && <AnnouncementBanner text={announcementText} />}
       <Header />
-      <main className="flex-1">{children}</main>
-      <Footer />
+      <main id="main" tabIndex={-1} className="flex-1 focus:outline-none">
+        {children}
+      </main>
+      <Footer locale={locale} info={cafeInfo} />
     </NextIntlClientProvider>
   );
 }

@@ -13,11 +13,7 @@ export default function OrderPage({ params }: Props) {
   const { locale } = use(params);
   setRequestLocale(locale);
 
-  return (
-    <section className="mx-auto max-w-3xl px-4 py-12">
-      <OrderData locale={locale} />
-    </section>
-  );
+  return <OrderData locale={locale} />;
 }
 
 async function OrderData({ locale }: { locale: string }) {

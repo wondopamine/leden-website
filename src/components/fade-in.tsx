@@ -10,11 +10,13 @@ export function FadeIn({
   className,
   delay = 0,
   direction = "up",
+  as: Tag = "div",
 }: {
   children: React.ReactNode;
   className?: string;
   delay?: number;
   direction?: "up" | "left" | "right" | "none";
+  as?: "div" | "li" | "section" | "article";
 }) {
   const { ref, isVisible } = useFadeIn(0.15);
 
@@ -25,14 +27,14 @@ export function FadeIn({
     none: "",
   }[direction];
 
+  const Comp = Tag as React.ElementType;
+
   return (
-    <div
+    <Comp
       ref={ref}
       className={cn(
-        "transition-all",
-        isVisible
-          ? "opacity-100 translate-x-0 translate-y-0"
-          : `opacity-0 ${translateClass}`,
+        "transition-all motion-reduce:transition-none",
+        isVisible ? "opacity-100 translate-x-0 translate-y-0" : `opacity-0 ${translateClass}`,
         className
       )}
       style={{
@@ -42,6 +44,6 @@ export function FadeIn({
       }}
     >
       {children}
-    </div>
+    </Comp>
   );
 }

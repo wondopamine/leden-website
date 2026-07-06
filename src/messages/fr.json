@@ -20,14 +20,36 @@
     "continueShopping": "Continuer vos achats",
     "emptyCart": "Votre panier est vide",
     "phone": "Téléphone",
-    "name": "Nom"
+    "name": "Nom",
+    "skipToContent": "Aller au contenu",
+    "pause": "Pause",
+    "play": "Lecture",
+    "reviewsCount": "{count}+ avis",
+    "directions": "Itinéraire",
+    "callUs": "Appeler",
+    "status": {
+      "open": "Ouvert",
+      "openUntil": "Ouvert · jusqu'à {time}",
+      "closed": "Fermé",
+      "opensToday": "Ouvre aujourd'hui à {time}",
+      "opensDay": "Ouvre {day} à {time}"
+    },
+    "daysShort": {
+      "Monday": "Lun",
+      "Tuesday": "Mar",
+      "Wednesday": "Mer",
+      "Thursday": "Jeu",
+      "Friday": "Ven",
+      "Saturday": "Sam",
+      "Sunday": "Dim"
+    }
   },
   "landing": {
     "hero": {
       "tag": "Village Valois, Pointe-Claire",
-      "title": "Cafe Le Den",
+      "title": "Café Le Den",
       "subtitle": "Fait maison avec amour depuis 1994",
-      "description": "Pain frais cuit chaque jour, lattés de spécialité uniques et repas maison préparés avec soin — au cœur du Village Valois.",
+      "description": "Pain frais cuit chaque jour, lattés de spécialité uniques et repas maison préparés avec soin.",
       "since": "Depuis 1994"
     },
     "reviews": {
@@ -37,7 +59,8 @@
     },
     "about": {
       "title": "Notre histoire",
-      "description": "Depuis plus de 30 ans, Cafe Le Den est le salon du quartier dans le Village Valois. Dirigé par Gina et Josh, nous cuisons notre pain frais chaque matin, mijotons nos soupes de A à Z et préparons nos boissons de spécialité avec soin. Du latté pistache à notre célèbre soupe aigre-piquante — chaque article est fait avec amour et les meilleurs ingrédients.",
+      "description": "Depuis plus de 30 ans, Café Le Den est le salon du quartier dans le Village Valois. Dirigé par Gina et Josh, nous cuisons notre pain frais chaque matin, mijotons nos soupes de A à Z et préparons nos boissons de spécialité avec soin. Du latté pistache à notre célèbre soupe aigre-piquante, chaque article est fait main avec les meilleurs ingrédients.",
+      "panel": "Cuit du jour, servi bien chaud",
       "years": "Années",
       "ranking": "à Pointe-Claire"
     },

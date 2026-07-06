@@ -2,107 +2,115 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* Light-only brand: keep `dark:` class-scoped (never OS-driven) so components
+   don't flip under prefers-color-scheme. There is intentionally no .dark theme. */
 @custom-variant dark (&:is(.dark *));
 
 /* ──────────────────────────────────────────────────────────────────────────── */
-/* Raw token scale (committed hex output of scripts/derive-tokens.ts).         */
-/* OKLCH lightness sweep verified 2026-05-02 via culori v4.0.2 —               */
-/* ΔE76 ≤ 2 at every anchor's -500 stop (CIELAB Euclidean distance).           */
-/* Re-run: npx tsx scripts/derive-tokens.ts                                    */
+/* Radix-methodology custom color scales (steps 1–12), seeded from the locked    */
+/* logo hexes. Generated + contrast-verified by scripts/derive-radix-tokens.ts   */
+/* (monotonic OKLCH lightness 1→12; WCAG AA at every semantic pairing).           */
+/* Re-run: npx tsx scripts/derive-radix-tokens.ts --check                         */
+/* Step semantics: 1–2 bg · 3–5 component bg · 6 subtle border · 7–8 border/ring  */
+/*                 9–10 solid fill + hover · 11–12 low/high-contrast text.         */
 /* ──────────────────────────────────────────────────────────────────────────── */
 :root {
-  /* Brand color scales — anchors at -500, derived 2026-05-02 */
+  /* --cream-* — warm neutral, anchor #EFE7D2 pinned at step 2 */
+  --cream-1:  #f9f8f3;
+  --cream-2:  #efe7d2;   /* logo anchor — page surface */
+  --cream-3:  #e3e0d6;
+  --cream-4:  #dad6cb;
+  --cream-5:  #d0ccbf;
+  --cream-6:  #c3bdb0;
+  --cream-7:  #b1ab9c;
+  --cream-8:  #989283;
+  --cream-9:  #7e7869;
+  --cream-10: #6a6455;
+  --cream-11: #514b3c;
+  --cream-12: #272218;
 
-  /* --brand-cream-* (anchor #EFE7D2 at -500) */
-  --brand-cream-50:  #fdf5e0;
-  --brand-cream-100: #efe7d2;
-  --brand-cream-200: #d8d1bc;
-  --brand-cream-300: #bfb7a3;
-  --brand-cream-400: #9f9884;
-  --brand-cream-500: #efe7d2;   /* anchor — logo cream; ΔE76 vs anchor: 0.000 */
-  --brand-cream-600: #6a6351;
-  --brand-cream-700: #4e4736;
-  --brand-cream-800: #2f2818;
-  --brand-cream-900: #171103;
+  /* --forest-* — anchor #2F5436 pinned at step 9 */
+  --forest-1:  #f0f6f1;
+  --forest-2:  #e2efe4;
+  --forest-3:  #d1e4d3;
+  --forest-4:  #bed7c1;
+  --forest-5:  #a8c7ac;
+  --forest-6:  #92b697;
+  --forest-7:  #799f7e;
+  --forest-8:  #57805e;
+  --forest-9:  #2f5436;   /* logo anchor — primary */
+  --forest-10: #1f4728;
+  --forest-11: #193b20;
+  --forest-12: #0e2312;
 
-  /* --brand-forest-* (anchor #2F5436 at -500) */
-  --brand-forest-50:  #d7ffdd;
-  --brand-forest-100: #caf5d0;
-  --brand-forest-200: #b4deba;
-  --brand-forest-300: #9bc4a1;
-  --brand-forest-400: #7ca482;
-  --brand-forest-500: #2f5436;   /* anchor — logo forest; ΔE76 vs anchor: 0.000 */
-  --brand-forest-600: #486e4e;
-  --brand-forest-700: #2d5234;
-  --brand-forest-800: #0c3116;
-  --brand-forest-900: #001901;
+  /* --orange-* — anchor #D9682E pinned at step 9 */
+  --orange-1:  #fff4ed;
+  --orange-2:  #ffe8da;
+  --orange-3:  #ffd7c2;
+  --orange-4:  #ffc3a5;
+  --orange-5:  #ffaf8a;
+  --orange-6:  #fb9b6f;
+  --orange-7:  #f1834f;
+  --orange-8:  #e77339;
+  --orange-9:  #d9682e;   /* logo anchor — accent */
+  --orange-10: #c0581f;
+  --orange-11: #a64a18;
+  --orange-12: #572710;
 
-  /* --brand-orange-* (anchor #D9682E at -500) */
-  --brand-orange-50:  #ffd199;
-  --brand-orange-100: #ffc48c;
-  --brand-orange-200: #ffad75;
-  --brand-orange-300: #ff935b;
-  --brand-orange-400: #e6733b;
-  --brand-orange-500: #d9682e;   /* anchor — logo warm orange; ΔE76 vs anchor: 0.000 */
-  --brand-orange-600: #a83b00;
-  --brand-orange-700: #861800;
-  --brand-orange-800: #5f0000;
-  --brand-orange-900: #3e0000;
+  /* UI-system red — kept independent of the brand hues (destructive only) */
+  --red-9:  #b3261e;
+  --red-10: #9b1c16;
+  --red-11: #8a1913;
 
-  /* Semantic tokens — alias brand scales (replaces OKLCH theme).              */
-  /* The shadcn primitives keep using bg-primary/text-foreground/etc., so      */
-  /* this is the SINGLE place where brand re-skinning happens (lowest-churn    */
-  /* cutover per RESEARCH.md "Semantic-token indirection" Open Q #5).          */
-  --background:           var(--brand-cream-50);
-  --foreground:           var(--brand-forest-900);
-  --card:                 var(--brand-cream-50);
-  --card-foreground:      var(--brand-forest-900);
-  --popover:              var(--brand-cream-50);
-  --popover-foreground:   var(--brand-forest-900);
-  --primary:              var(--brand-forest-500);
-  --primary-foreground:   var(--brand-cream-50);
-  --secondary:            var(--brand-cream-100);
-  --secondary-foreground: var(--brand-forest-700);
-  --muted:                var(--brand-cream-100);
-  --muted-foreground:     var(--brand-forest-700);
-  --accent:               var(--brand-orange-500);
-  --accent-foreground:    var(--brand-cream-50);
-  --destructive:          #b3261e;   /* UI-system red, kept independent of brand per Open Q #3 */
-  --border:               var(--brand-cream-200);
-  --input:                var(--brand-cream-200);
-  --ring:                 var(--brand-forest-500);
+  /* Semantic tokens (role → step). shadcn/Base UI primitives read these; this   */
+  /* is the single place brand re-skinning happens. Every text pairing ≥ AA.     */
+  --background:           var(--cream-2);
+  --foreground:           var(--forest-12);
+  --card:                 var(--cream-1);
+  --card-foreground:      var(--forest-12);
+  --popover:              var(--cream-1);
+  --popover-foreground:   var(--forest-12);
+  --primary:              var(--forest-9);
+  --primary-foreground:   var(--cream-1);
+  --secondary:            var(--cream-3);
+  --secondary-foreground: var(--forest-11);
+  --muted:                var(--cream-3);
+  --muted-foreground:     var(--forest-11);
+  --accent:               var(--orange-9);
+  --accent-foreground:    var(--forest-12);   /* dark on orange — AA 4.71:1 */
+  --destructive:          var(--red-9);
+  --destructive-foreground: var(--cream-1);
+  --border:               var(--cream-6);
+  --input:                var(--cream-8);      /* stronger edge for form fields */
+  --ring:                 var(--orange-10);    /* on-brand focus, distinct from primary */
 
-  /* Chart tokens — mapped to brand scale */
-  --chart-1: var(--brand-orange-500);
-  --chart-2: var(--brand-cream-400);
-  --chart-3: var(--brand-forest-500);
-  --chart-4: var(--brand-forest-300);
-  --chart-5: var(--brand-cream-600);
+  /* Chart tokens — brand-mapped */
+  --chart-1: var(--orange-9);
+  --chart-2: var(--forest-9);
+  --chart-3: var(--forest-7);
+  --chart-4: var(--orange-7);
+  --chart-5: var(--cream-8);
 
-  /* Sidebar tokens — mapped to brand scale */
-  --sidebar:                  var(--brand-cream-100);
-  --sidebar-foreground:       var(--brand-forest-900);
-  --sidebar-primary:          var(--brand-forest-500);
-  --sidebar-primary-foreground: var(--brand-cream-50);
-  --sidebar-accent:           var(--brand-orange-500);
-  --sidebar-accent-foreground: var(--brand-cream-50);
-  --sidebar-border:           var(--brand-cream-200);
-  --sidebar-ring:             var(--brand-forest-500);
+  /* Sidebar tokens (admin shell) */
+  --sidebar:                    var(--cream-1);
+  --sidebar-foreground:         var(--forest-12);
+  --sidebar-primary:            var(--forest-9);
+  --sidebar-primary-foreground: var(--cream-1);
+  --sidebar-accent:             var(--cream-3);
+  --sidebar-accent-foreground:  var(--forest-11);
+  --sidebar-border:             var(--cream-6);
+  --sidebar-ring:               var(--orange-10);
 
-  /* Typography scale — values from .planning/brand/SPEC.md Typography Decision */
-  /* Decision: Display — "Editorial New" serif, weight 500, 56–64px / 1.05;    */
-  /* H1–H3 — Editorial New 40 / 32 / 24px, weights 500/500/600;                */
-  /* body — Inter sans 16px / 1.5; caption — Inter 13px / 1.4 weight 500;      */
-  /* label — Inter 12px / 1.3 weight 600 uppercase tracking 0.05em.            */
-  /* Tailwind v4 generates utilities text-display, text-h1, ..., text-label.   */
-  --text-display:                4rem;
-  --text-display--line-height:   1.05;
+  /* Typography scale — .planning/brand/SPEC.md Typography Decision.              */
+  /* Display/H1–H3 → display serif; body/caption/label → sans.                   */
+  --text-display:                clamp(2.75rem, 8vw, 4rem);
+  --text-display--line-height:   1.02;
   --text-display--font-weight:   500;
-  --text-h1:                     2.5rem;
-  --text-h1--line-height:        1.1;
+  --text-h1:                     clamp(2rem, 5vw, 2.5rem);
+  --text-h1--line-height:        1.08;
   --text-h1--font-weight:        500;
-  --text-h2:                     2rem;
-  --text-h2--line-height:        1.15;
+  --text-h2:                     clamp(1.625rem, 3.5vw, 2rem);
+  --text-h2--line-height:        1.12;
   --text-h2--font-weight:        500;
   --text-h3:                     1.5rem;
   --text-h3--line-height:        1.2;
@@ -117,76 +125,83 @@
   --text-label--line-height:     1.3;
   --text-label--font-weight:     600;
 
-  /* Spacing scale (custom — paired through @theme inline below) */
+  /* Spacing scale */
   --space-xs: 0.5rem;
   --space-sm: 1rem;
   --space-md: 1.5rem;
   --space-lg: 2rem;
   --space-xl: 3rem;
 
+  /* Section rhythm — deliberately varied, not uniform */
+  --section-y:    clamp(3.5rem, 8vw, 6rem);
+  --section-y-lg: clamp(4.5rem, 11vw, 8.5rem);
+
   /* Radius scale */
   --radius-sm: 0.375rem;
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
   --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
 
-  /* Shadow scale */
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  /* Shadow scale — soft, warm-tinted (never pure black) */
+  --shadow-sm: 0 1px 2px 0 color-mix(in oklab, var(--forest-12) 8%, transparent);
+  --shadow-md: 0 4px 12px -2px color-mix(in oklab, var(--forest-12) 12%, transparent), 0 2px 4px -2px color-mix(in oklab, var(--forest-12) 8%, transparent);
+  --shadow-lg: 0 12px 28px -6px color-mix(in oklab, var(--forest-12) 16%, transparent), 0 4px 8px -4px color-mix(in oklab, var(--forest-12) 10%, transparent);
 
-  /* Motion — values from .planning/brand/SPEC.md Motion Decision             */
-  /* Decision: fast 150ms, base 300ms, slow 500ms;                            */
-  /* eases — in cubic-bezier(0.4,0,1,1), out cubic-bezier(0,0,0.2,1),         */
-  /* spring cubic-bezier(0.34,1.56,0.64,1); hero fade-up uses slow + out.     */
+  /* Motion — .planning/brand/SPEC.md Motion Decision */
   --duration-fast: 150ms;
   --duration-base: 300ms;
   --duration-slow: 500ms;
   --ease-in:     cubic-bezier(0.4, 0, 1, 1);
-  --ease-out:    cubic-bezier(0, 0, 0.2, 1);
+  --ease-out:    cubic-bezier(0.22, 1, 0.36, 1);  /* ease-out-quint — exponential, no bounce */
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 /* ──────────────────────────────────────────────────────────────────────────── */
-/* @theme inline — exposes :root tokens as Tailwind utilities.                 */
-/* (Per RESEARCH.md Pitfall 2: only documented namespaces produce utilities.)  */
+/* @theme inline — expose :root tokens as Tailwind v4 utilities.                 */
 /* ──────────────────────────────────────────────────────────────────────────── */
 @theme inline {
-  /* Brand color utilities → bg-brand-cream-500, text-brand-forest-700, ...   */
-  --color-brand-cream-50:   var(--brand-cream-50);
-  --color-brand-cream-100:  var(--brand-cream-100);
-  --color-brand-cream-200:  var(--brand-cream-200);
-  --color-brand-cream-300:  var(--brand-cream-300);
-  --color-brand-cream-400:  var(--brand-cream-400);
-  --color-brand-cream-500:  var(--brand-cream-500);
-  --color-brand-cream-600:  var(--brand-cream-600);
-  --color-brand-cream-700:  var(--brand-cream-700);
-  --color-brand-cream-800:  var(--brand-cream-800);
-  --color-brand-cream-900:  var(--brand-cream-900);
+  /* Brand scale utilities → bg-cream-2, text-forest-11, border-cream-6, ...      */
+  --color-cream-1:  var(--cream-1);
+  --color-cream-2:  var(--cream-2);
+  --color-cream-3:  var(--cream-3);
+  --color-cream-4:  var(--cream-4);
+  --color-cream-5:  var(--cream-5);
+  --color-cream-6:  var(--cream-6);
+  --color-cream-7:  var(--cream-7);
+  --color-cream-8:  var(--cream-8);
+  --color-cream-9:  var(--cream-9);
+  --color-cream-10: var(--cream-10);
+  --color-cream-11: var(--cream-11);
+  --color-cream-12: var(--cream-12);
 
-  --color-brand-forest-50:  var(--brand-forest-50);
-  --color-brand-forest-100: var(--brand-forest-100);
-  --color-brand-forest-200: var(--brand-forest-200);
-  --color-brand-forest-300: var(--brand-forest-300);
-  --color-brand-forest-400: var(--brand-forest-400);
-  --color-brand-forest-500: var(--brand-forest-500);
-  --color-brand-forest-600: var(--brand-forest-600);
-  --color-brand-forest-700: var(--brand-forest-700);
-  --color-brand-forest-800: var(--brand-forest-800);
-  --color-brand-forest-900: var(--brand-forest-900);
+  --color-forest-1:  var(--forest-1);
+  --color-forest-2:  var(--forest-2);
+  --color-forest-3:  var(--forest-3);
+  --color-forest-4:  var(--forest-4);
+  --color-forest-5:  var(--forest-5);
+  --color-forest-6:  var(--forest-6);
+  --color-forest-7:  var(--forest-7);
+  --color-forest-8:  var(--forest-8);
+  --color-forest-9:  var(--forest-9);
+  --color-forest-10: var(--forest-10);
+  --color-forest-11: var(--forest-11);
+  --color-forest-12: var(--forest-12);
 
-  --color-brand-orange-50:  var(--brand-orange-50);
-  --color-brand-orange-100: var(--brand-orange-100);
-  --color-brand-orange-200: var(--brand-orange-200);
-  --color-brand-orange-300: var(--brand-orange-300);
-  --color-brand-orange-400: var(--brand-orange-400);
-  --color-brand-orange-500: var(--brand-orange-500);
-  --color-brand-orange-600: var(--brand-orange-600);
-  --color-brand-orange-700: var(--brand-orange-700);
-  --color-brand-orange-800: var(--brand-orange-800);
-  --color-brand-orange-900: var(--brand-orange-900);
+  --color-orange-1:  var(--orange-1);
+  --color-orange-2:  var(--orange-2);
+  --color-orange-3:  var(--orange-3);
+  --color-orange-4:  var(--orange-4);
+  --color-orange-5:  var(--orange-5);
+  --color-orange-6:  var(--orange-6);
+  --color-orange-7:  var(--orange-7);
+  --color-orange-8:  var(--orange-8);
+  --color-orange-9:  var(--orange-9);
+  --color-orange-10: var(--orange-10);
+  --color-orange-11: var(--orange-11);
+  --color-orange-12: var(--orange-12);
 
-  /* Semantic utilities → bg-background, text-primary, etc.                   */
+  /* Semantic utilities → bg-background, text-primary, border-border, ...         */
   --color-background:           var(--background);
   --color-foreground:           var(--foreground);
   --color-card:                 var(--card);
@@ -202,11 +217,11 @@
   --color-accent:               var(--accent);
   --color-accent-foreground:    var(--accent-foreground);
   --color-destructive:          var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-border:               var(--border);
   --color-input:                var(--input);
   --color-ring:                 var(--ring);
 
-  /* Chart and sidebar color utilities                                         */
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -221,7 +236,7 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  /* Typography utilities — text-display, text-h1, ..., text-label            */
+  /* Typography utilities — text-display, text-h1, ..., text-label               */
   --text-display:              var(--text-display);
   --text-display--line-height: var(--text-display--line-height);
   --text-display--font-weight: var(--text-display--font-weight);
@@ -244,19 +259,24 @@
   --text-label--line-height:   var(--text-label--line-height);
   --text-label--font-weight:   var(--text-label--font-weight);
 
-  /* Font families — preserved from existing config                            */
-  --font-sans:    "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
-  --font-mono:    "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
-  --font-display: "Editorial New", "Georgia", "Times New Roman", serif;
+  /* Font families — Fraunces (display serif) + Inter (body), loaded via next/font */
+  --font-sans:    var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono:    var(--font-geist-mono), ui-monospace, monospace;
+  --font-display: var(--font-fraunces), Georgia, "Times New Roman", serif;
   --font-heading: var(--font-display);
 
-  /* Radius — utilities resolve through scale tokens                           */
-  --radius-sm: var(--radius-sm);
-  --radius-md: var(--radius-md);
-  --radius-lg: var(--radius-lg);
-  --radius-xl: var(--radius-xl);
+  /* Spacing / rhythm */
+  --spacing-section:    var(--section-y);
+  --spacing-section-lg: var(--section-y-lg);
 
-  /* Shadow — utilities resolve through scale tokens                           */
+  /* Radius */
+  --radius-sm:  var(--radius-sm);
+  --radius-md:  var(--radius-md);
+  --radius-lg:  var(--radius-lg);
+  --radius-xl:  var(--radius-xl);
+  --radius-2xl: var(--radius-2xl);
+
+  /* Shadow */
   --shadow-sm: var(--shadow-sm);
   --shadow-md: var(--shadow-md);
   --shadow-lg: var(--shadow-lg);
@@ -267,131 +287,80 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans antialiased;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
   }
   html {
     @apply font-sans;
   }
+  /* Display serif for headings by default; pages can still opt into font-sans.  */
+  h1, h2, h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
 }
 
 /* ──────────────────────────────────────────────────────────────────────────── */
-/* Keyframes — declarations stay literal; @keyframes percentage rules are      */
-/* not part of the motion personality budget.                                  */
+/* Keyframes                                                                     */
 /* ──────────────────────────────────────────────────────────────────────────── */
-
-/* Doodle animations */
 @keyframes doodle-float {
   0%, 100% { transform: translateY(0) rotate(var(--doodle-rotate, 0deg)); }
   50% { transform: translateY(-8px) rotate(calc(var(--doodle-rotate, 0deg) + 3deg)); }
 }
-
 @keyframes doodle-wiggle {
   0%, 100% { transform: rotate(var(--doodle-rotate, 0deg)); }
   25% { transform: rotate(calc(var(--doodle-rotate, 0deg) + 4deg)); }
   75% { transform: rotate(calc(var(--doodle-rotate, 0deg) - 4deg)); }
 }
-
 @keyframes doodle-draw {
   from { stroke-dashoffset: 200; }
   to { stroke-dashoffset: 0; }
 }
-
 @keyframes doodle-pop {
   0% { transform: scale(0) rotate(var(--doodle-rotate, 0deg)); opacity: 0; }
   60% { transform: scale(1.15) rotate(var(--doodle-rotate, 0deg)); opacity: 1; }
   100% { transform: scale(1) rotate(var(--doodle-rotate, 0deg)); opacity: 1; }
 }
-
-/* Review carousel infinite scroll */
 @keyframes scroll-reviews {
   0% { transform: translateX(0); }
   100% { transform: translateX(-50%); }
 }
-
-/* Hero logo staged reveal animation */
-@keyframes logo-reveal-1 {
-  0% { clip-path: inset(0 0 100% 0); opacity: 0; transform: scale(0.8); }
-  60% { clip-path: inset(0 0 60% 0); opacity: 1; transform: scale(1.03); }
-  100% { clip-path: inset(0 0 60% 0); opacity: 1; transform: scale(1); }
-}
-
-@keyframes logo-reveal-2 {
-  0% { clip-path: inset(0 0 60% 0); }
-  60% { clip-path: inset(0 0 25% 0); }
-  100% { clip-path: inset(0 0 25% 0); }
-}
-
-@keyframes logo-reveal-3 {
-  0% { clip-path: inset(0 0 25% 0); }
-  100% { clip-path: inset(0 0 0% 0); }
-}
-
-/* Hero content fade-in */
 @keyframes hero-fade-up {
   0%   { opacity: 0; transform: translateY(16px); }
   100% { opacity: 1; transform: translateY(0); }
 }
 
 /* ──────────────────────────────────────────────────────────────────────────── */
-/* Animation utility classes — durations and easings now consume motion        */
-/* tokens (DSY-03 acceptance: zero literal durations/easings in non-keyframe   */
-/* lines except the documented carousel exemption below).                      */
+/* Animation utility classes (durations/easings consume motion tokens).          */
 /* ──────────────────────────────────────────────────────────────────────────── */
+.doodle-float  { animation: doodle-float  calc(var(--duration-slow) * 8) var(--ease-out) infinite; }
+.doodle-wiggle { animation: doodle-wiggle calc(var(--duration-slow) * 6) var(--ease-out) infinite; }
+.doodle-pop    { animation: doodle-pop    var(--duration-slow) var(--ease-spring) both; }
+.doodle-draw path { stroke-dasharray: 200; animation: doodle-draw calc(var(--duration-slow) * 3) var(--ease-out) forwards; }
 
-/* Decorative float/wiggle use --ease-out as closest available token           */
-/* (ease-in-out has no dedicated brand token; these are cosmetic animations).  */
-.doodle-float {
-  animation: doodle-float calc(var(--duration-slow) * 8) var(--ease-out) infinite;
-}
+/* Review carousel (decorative marquee; duration is out of the motion budget). */
+.review-carousel { animation: scroll-reviews 48s linear infinite; }
+.review-carousel:hover { animation-play-state: paused; }
 
-.doodle-wiggle {
-  animation: doodle-wiggle calc(var(--duration-slow) * 6) var(--ease-out) infinite;
-}
+.hero-fade-up { opacity: 0; animation: hero-fade-up var(--duration-slow) var(--ease-out) forwards; }
+.hero-delay-1 { animation-delay: 80ms; }
+.hero-delay-2 { animation-delay: 160ms; }
+.hero-delay-3 { animation-delay: 240ms; }
+.hero-delay-4 { animation-delay: 320ms; }
 
-.doodle-pop {
-  animation: doodle-pop var(--duration-slow) var(--ease-spring) both;
-}
-
-.doodle-draw path {
-  stroke-dasharray: 200;
-  animation: doodle-draw calc(var(--duration-slow) * 3) var(--ease-out) forwards;
-}
-
-/* Carousel scroll is decorative (40s linear infinite); intentionally not      */
-/* token-ified (out of motion personality budget — duration of motion, not     */
-/* motion personality token).                                                  */
-.review-carousel {
-  animation: scroll-reviews 40s linear infinite;
-}
-
-.review-carousel:hover {
-  animation-play-state: paused;
-}
-
-.logo-animate {
-  clip-path: inset(0 0 100% 0);
-  opacity: 0;
-  animation:
-    logo-reveal-1 calc(var(--duration-slow) * 1.2) var(--ease-spring) calc(var(--duration-fast) * 0.66) forwards,
-    logo-reveal-2 var(--duration-slow) var(--ease-spring) calc(var(--duration-slow) * 1) forwards,
-    logo-reveal-3 calc(var(--duration-slow) * 0.8) var(--ease-out) calc(var(--duration-slow) * 1.8) forwards;
-}
-
-.hero-fade-in {
-  opacity: 0;
-  animation: hero-fade-up var(--duration-slow) var(--ease-out) forwards;
-}
-
-.hero-fade-in-1 { animation-delay: 1.2s; }
-.hero-fade-in-2 { animation-delay: 1.4s; }
-.hero-fade-in-3 { animation-delay: 1.6s; }
-.hero-fade-in-4 { animation-delay: 1.8s; }
-
+/* ──────────────────────────────────────────────────────────────────────────── */
+/* Reduced motion — every animation has an off-switch (renders final state).     */
+/* ──────────────────────────────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-  .logo-animate, .hero-fade-in {
-    animation: none !important;
-    opacity: 1 !important;
-    clip-path: none !important;
-    transform: none !important;
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
+  .hero-fade-up { opacity: 1 !important; transform: none !important; animation: none !important; }
+  .review-carousel { animation: none !important; }
+  .doodle-float, .doodle-wiggle, .doodle-pop { animation: none !important; }
+  .doodle-draw path { animation: none !important; stroke-dashoffset: 0 !important; }
 }
