@@ -7,6 +7,15 @@ import {
   deleteMenuItem,
 } from "@/app/admin/(dashboard)/menu/actions";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { MENU_STATUS, type MenuStatus } from "@/components/admin/status";
+import { cn } from "@/lib/utils";
 import { Pencil, Trash2, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 
@@ -23,21 +32,22 @@ type Props = {
   };
 };
 
-const statusLabels: Record<string, { label: string; className: string }> = {
-  available: { label: "Available", className: "bg-green-100 text-green-800" },
-  sold_out: { label: "Sold Out", className: "bg-amber-100 text-amber-800" },
-  hidden: { label: "Hidden", className: "bg-stone-100 text-stone-500" },
-};
+// value -> label map so <SelectValue> renders the label, not the raw key.
+const STATUS_ITEMS: Record<string, string> = Object.fromEntries(
+  (Object.keys(MENU_STATUS) as MenuStatus[]).map((s) => [s, MENU_STATUS[s].label])
+);
 
 export function MenuItemRow({ item }: Props) {
   const [isPending, startTransition] = useTransition();
-  const currentStatus = item.status ?? (item.available ? "available" : "hidden");
+  const currentStatus = (item.status ??
+    (item.available ? "available" : "hidden")) as MenuStatus;
+  const meta = MENU_STATUS[currentStatus] ?? MENU_STATUS.available;
 
-  function handleStatusChange(e: React.ChangeEvent<HTMLSelectElement>) {
-    const newStatus = e.target.value as "available" | "sold_out" | "hidden";
+  function handleStatusChange(newStatus: MenuStatus) {
+    if (newStatus === currentStatus) return;
     startTransition(async () => {
       await updateMenuItemStatus(item.id, newStatus);
-      toast.success(`${item.name_en} → ${statusLabels[newStatus].label}`);
+      toast.success(`${item.name_en} → ${MENU_STATUS[newStatus].label}`);
     });
   }
 
@@ -49,15 +59,21 @@ export function MenuItemRow({ item }: Props) {
     });
   }
 
-  const style = statusLabels[currentStatus] ?? statusLabels.available;
-
   return (
     <div
-      className={`flex items-center justify-between rounded-lg border bg-white px-4 py-3 ${isPending ? "opacity-50" : ""} ${currentStatus === "hidden" ? "opacity-60" : ""}`}
+      className={cn(
+        "flex items-center justify-between gap-3 border-b border-border bg-card px-4 py-2.5 transition-colors last:border-b-0 hover:bg-muted/50",
+        isPending && "opacity-50"
+      )}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex min-w-0 items-center gap-3">
         {/* Thumbnail */}
-        <div className="h-10 w-10 shrink-0 overflow-hidden rounded-md bg-stone-100">
+        <div
+          className={cn(
+            "h-10 w-10 shrink-0 overflow-hidden rounded-md bg-muted",
+            currentStatus === "hidden" && "opacity-50"
+          )}
+        >
           {item.image_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -66,44 +82,67 @@ export function MenuItemRow({ item }: Props) {
               className="h-full w-full object-cover"
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-stone-300">
+            <div className="flex h-full w-full items-center justify-center text-muted-foreground">
               <ImageIcon className="h-4 w-4" />
             </div>
           )}
         </div>
 
-        {/* Status dropdown */}
-        <select
-          value={currentStatus}
-          onChange={handleStatusChange}
-          disabled={isPending}
-          className={`rounded-md border-0 px-2 py-1 text-xs font-medium ${style.className} cursor-pointer`}
-        >
-          <option value="available">Available</option>
-          <option value="sold_out">Sold Out</option>
-          <option value="hidden">Hidden</option>
-        </select>
-
-        <div>
-          <p className="text-sm font-medium">{item.name_en}</p>
-          <p className="text-xs text-stone-400">{item.name_fr}</p>
+        <div className="min-w-0">
+          <p className="truncate font-sans text-sm font-medium text-foreground">
+            {item.name_en}
+          </p>
+          <p className="truncate text-xs text-muted-foreground">{item.name_fr}</p>
         </div>
       </div>
-      <div className="flex items-center gap-3">
-        <span className="text-sm font-medium">
+
+      <div className="flex shrink-0 items-center gap-2">
+        <span className="text-sm font-medium tabular-nums text-foreground">
           ${Number(item.price).toFixed(2)}
         </span>
-        <Button variant="ghost" size="icon" className="h-8 w-8" nativeButton={false} render={<Link href={`/admin/menu/${item.id}/edit`} />}>
+
+        {/* Status control */}
+        <Select
+          items={STATUS_ITEMS}
+          value={currentStatus}
+          onValueChange={(value) => handleStatusChange(value as MenuStatus)}
+          disabled={isPending}
+        >
+          <SelectTrigger
+            size="sm"
+            aria-label="Change status"
+            className={cn("w-28 font-medium", meta.badge)}
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {(Object.keys(MENU_STATUS) as MenuStatus[]).map((status) => (
+              <SelectItem key={status} value={status}>
+                {MENU_STATUS[status].label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          nativeButton={false}
+          render={<Link href={`/admin/menu/${item.id}/edit`} />}
+          aria-label={`Edit ${item.name_en}`}
+        >
           <Pencil className="h-4 w-4" />
         </Button>
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8"
+          className="h-8 w-8 text-destructive"
           onClick={handleDelete}
           disabled={isPending}
+          aria-label={`Delete ${item.name_en}`}
         >
-          <Trash2 className="h-4 w-4 text-red-500" />
+          <Trash2 className="h-4 w-4" />
         </Button>
       </div>
     </div>

@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import { updateMenuItem } from "../../actions";
 import { MenuItemForm } from "@/components/admin/menu-item-form";
+import { AdminPageHeader } from "@/components/admin/page-header";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -53,20 +54,23 @@ export default async function EditMenuItemPage({ params }: Props) {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" nativeButton={false} render={<Link href="/admin/menu" />}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <h1 className="text-2xl font-bold text-stone-900">
-          Edit: {item.name_en}
-        </h1>
-      </div>
+    <div className="space-y-4">
+      <Button
+        variant="ghost"
+        size="sm"
+        nativeButton={false}
+        render={<Link href="/admin/menu" />}
+        className="-ml-2.5 text-muted-foreground"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back to menu
+      </Button>
+      <AdminPageHeader title="Edit menu item" subtitle={item.name_en} />
       <MenuItemForm
         categories={categories ?? []}
         initialData={initialData}
         action={updateMenuItem}
-        submitLabel="Save Changes"
+        submitLabel="Save changes"
       />
     </div>
   );

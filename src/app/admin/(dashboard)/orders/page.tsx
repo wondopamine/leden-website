@@ -1,7 +1,19 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { OrderCard, type Order } from "@/components/admin/order-card";
+import { type Order } from "@/components/admin/order-card";
 import type { OrderStatus } from "../actions";
 import { OrdersFilter } from "@/components/admin/orders-filter";
+import { AdminPageHeader } from "@/components/admin/page-header";
+import { ORDER_STATUS } from "@/components/admin/status";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 type Props = {
   searchParams: Promise<{
@@ -40,14 +52,15 @@ export default async function OrdersPage({ searchParams }: Props) {
   const { data: orders } = await query;
   const allOrders = (orders ?? []) as Order[];
 
+  const headClass =
+    "text-xs font-semibold uppercase tracking-wider text-muted-foreground";
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-stone-900">Orders</h1>
-        <p className="text-sm text-stone-500">
-          Browse and manage orders
-        </p>
-      </div>
+    <div className="space-y-4">
+      <AdminPageHeader
+        title="Orders"
+        subtitle={`${allOrders.length} ${allOrders.length === 1 ? "order" : "orders"}`}
+      />
 
       <OrdersFilter
         currentDate={selectedDate}
@@ -56,19 +69,69 @@ export default async function OrdersPage({ searchParams }: Props) {
       />
 
       {allOrders.length === 0 ? (
-        <div className="text-center py-12 text-stone-400">
-          <p className="text-lg">No orders found</p>
-          <p className="text-sm">
-            {q
-              ? "Try a different search term"
-              : "No orders for this date"}
+        <div className="rounded-lg border border-border bg-card py-16 text-center text-muted-foreground">
+          <p className="text-sm font-medium text-foreground">No orders found</p>
+          <p className="mt-1 text-caption">
+            {q ? "Try a different search term" : "No orders for this date"}
           </p>
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {allOrders.map((order) => (
-            <OrderCard key={order.id} order={order} />
-          ))}
+        <div className="overflow-hidden rounded-lg border border-border bg-card">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className={headClass}>Order</TableHead>
+                <TableHead className={headClass}>Customer</TableHead>
+                <TableHead className={`${headClass} text-right`}>Items</TableHead>
+                <TableHead className={`${headClass} text-right`}>Total</TableHead>
+                <TableHead className={headClass}>Status</TableHead>
+                <TableHead className={`${headClass} text-right`}>Time</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {allOrders.map((order) => {
+                const items = order.order_items ?? [];
+                const itemCount = items.reduce((sum, i) => sum + i.quantity, 0);
+                const created = new Date(order.created_at);
+                const meta = ORDER_STATUS[order.status];
+                return (
+                  <TableRow key={order.id} className="relative">
+                    <TableCell className="py-2.5">
+                      <Link
+                        href={`/admin/orders/${order.id}`}
+                        className="rounded-sm font-medium text-foreground after:absolute after:inset-0 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        {order.order_number}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="py-2.5 text-foreground">
+                      {order.customer_name}
+                    </TableCell>
+                    <TableCell className="py-2.5 text-right tabular-nums text-muted-foreground">
+                      {itemCount}
+                    </TableCell>
+                    <TableCell className="py-2.5 text-right font-medium tabular-nums">
+                      ${Number(order.total).toFixed(2)}
+                    </TableCell>
+                    <TableCell className="py-2.5">
+                      <Badge variant="outline" className={meta.badge}>
+                        {meta.label}
+                      </Badge>
+                    </TableCell>
+                    <TableCell
+                      className="py-2.5 text-right tabular-nums text-muted-foreground"
+                      title={created.toLocaleString("en-CA")}
+                    >
+                      {created.toLocaleTimeString("en-CA", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         </div>
       )}
     </div>

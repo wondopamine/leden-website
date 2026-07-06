@@ -85,45 +85,52 @@ export function SettingsForm({ initialData }: Props) {
 
   if (!initialData) {
     return (
-      <p className="text-stone-500">
+      <p className="text-sm text-muted-foreground">
         No cafe info found. Please run the seed migration.
       </p>
     );
   }
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="max-w-2xl space-y-4">
       {/* Hours */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Business Hours</CardTitle>
+          <CardTitle className="font-sans text-sm font-semibold">
+            Business Hours
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           {hours.map((h, idx) => (
-            <div key={h.day} className="flex items-center gap-3">
-              <span className="w-24 text-sm font-medium">{h.day}</span>
+            <div key={h.day} className="flex flex-wrap items-center gap-x-3 gap-y-2">
+              <span className="w-24 text-sm font-medium text-foreground">
+                {h.day}
+              </span>
               <Switch
                 checked={!h.closed}
                 onCheckedChange={(open) => updateHour(idx, "closed", !open)}
+                aria-label={`${h.day} open`}
               />
               {!h.closed ? (
-                <>
+                <div className="flex items-center gap-2">
                   <Input
                     type="time"
                     value={h.open}
                     onChange={(e) => updateHour(idx, "open", e.target.value)}
-                    className="w-32"
+                    className="w-32 tabular-nums"
+                    aria-label={`${h.day} opening time`}
                   />
-                  <span className="text-sm text-stone-400">to</span>
+                  <span className="text-sm text-muted-foreground">to</span>
                   <Input
                     type="time"
                     value={h.close}
                     onChange={(e) => updateHour(idx, "close", e.target.value)}
-                    className="w-32"
+                    className="w-32 tabular-nums"
+                    aria-label={`${h.day} closing time`}
                   />
-                </>
+                </div>
               ) : (
-                <span className="text-sm text-stone-400">Closed</span>
+                <span className="text-sm text-muted-foreground">Closed</span>
               )}
             </div>
           ))}
@@ -133,7 +140,9 @@ export function SettingsForm({ initialData }: Props) {
       {/* Contact */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Contact</CardTitle>
+          <CardTitle className="font-sans text-sm font-semibold">
+            Contact
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -150,7 +159,9 @@ export function SettingsForm({ initialData }: Props) {
       {/* Announcement */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Announcement</CardTitle>
+          <CardTitle className="font-sans text-sm font-semibold">
+            Announcement
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -177,7 +188,9 @@ export function SettingsForm({ initialData }: Props) {
       {/* Order settings */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Order Settings</CardTitle>
+          <CardTitle className="font-sans text-sm font-semibold">
+            Order Settings
+          </CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
@@ -189,6 +202,7 @@ export function SettingsForm({ initialData }: Props) {
               onChange={(e) =>
                 setPickupLeadTime(parseInt(e.target.value) || 15)
               }
+              className="tabular-nums"
             />
           </div>
           <div className="space-y-2">
@@ -200,6 +214,7 @@ export function SettingsForm({ initialData }: Props) {
               onChange={(e) =>
                 setMaxAdvanceDays(parseInt(e.target.value) || 3)
               }
+              className="tabular-nums"
             />
           </div>
         </CardContent>

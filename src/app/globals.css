@@ -81,7 +81,7 @@
   --destructive:          var(--red-9);
   --destructive-foreground: var(--cream-1);
   --border:               var(--cream-6);
-  --input:                var(--cream-8);      /* stronger edge for form fields */
+  --input:                var(--cream-9);      /* form-field edge — cream-9 clears WCAG 1.4.11 (3:1) on both cream-1 and cream-2 */
   --ring:                 var(--orange-10);    /* on-brand focus, distinct from primary */
 
   /* Chart tokens — brand-mapped */
