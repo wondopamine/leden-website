@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { WordmarkHorizontal } from "@/components/brand/wordmark-horizontal";
 import { useTranslations } from "next-intl";
 import { MapPin, Navigation } from "lucide-react";
 import { Link } from "@/i18n/navigation";
@@ -27,7 +27,8 @@ export function Footer({ locale, info }: { locale: string; info: CafeInfo }) {
         {/* Brand */}
         <div>
           <div className="flex items-center gap-3">
-            <Image src="/logo-header.png" alt="Café Le Den" width={160} height={48} className="h-11 w-auto" />
+            <WordmarkHorizontal className="inline-flex [&>svg]:h-11 [&>svg]:w-auto" />
+            <span className="sr-only">Café Le Den</span>
             <Watermelon size={40} />
           </div>
           <p className="mt-4 max-w-xs text-caption text-muted-foreground">{t("madeWith")}</p>

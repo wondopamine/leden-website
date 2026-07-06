@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import Image from "next/image";
+import { Wordmark } from "@/components/brand/wordmark";
 import { getTranslations } from "next-intl/server";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
@@ -40,15 +41,9 @@ export function Hero({ locale, hours }: { locale: string; hours: DayHours[] }) {
 
         <h1 className="hero-fade-up hero-delay-2 mt-8">
           <span className="sr-only">{t("title")}</span>
-          <Image
-            src="/logo.png"
-            alt={t("title")}
-            width={520}
-            height={360}
-            priority
-            sizes="(min-width: 1024px) 400px, (min-width: 640px) 340px, 248px"
-            className="h-auto w-[248px] sm:w-[340px] lg:w-[400px]"
-          />
+          {/* Inline vector wordmark: paints with the HTML (no image request), so the
+              hero LCP element is no longer network-bound. The sr-only title names it. */}
+          <Wordmark className="block w-[248px] sm:w-[340px] lg:w-[400px] [&>svg]:h-auto [&>svg]:w-full" />
         </h1>
 
         <p className="hero-fade-up hero-delay-2 mt-6 font-display text-h2 text-forest-11">
