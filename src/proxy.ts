@@ -9,6 +9,11 @@ const intlMiddleware = createMiddleware(routing);
 export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Dev routes: skip i18n (gallery is server-gated; not locale-aware)
+  if (pathname.startsWith("/dev")) {
+    return NextResponse.next();
+  }
+
   // Admin routes: skip i18n, handle Supabase session refresh
   if (pathname.startsWith("/admin")) {
     // Login page is always accessible

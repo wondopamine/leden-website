@@ -1,6 +1,7 @@
 "use client";
 
 import type { Period } from "@/lib/supabase/analytics";
+import { Button } from "@/components/ui/button";
 
 const PERIODS: { value: Period; label: string }[] = [
   { value: "daily", label: "Today" },
@@ -20,19 +21,21 @@ type Props = {
 export function PeriodSelector({ selected, onSelect }: Props) {
   return (
     <div className="flex flex-wrap gap-1">
-      {PERIODS.map(({ value, label }) => (
-        <button
-          key={value}
-          onClick={() => onSelect(value)}
-          className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-            selected === value
-              ? "bg-stone-900 text-white"
-              : "bg-stone-100 text-stone-600 hover:bg-stone-200"
-          }`}
-        >
-          {label}
-        </button>
-      ))}
+      {PERIODS.map(({ value, label }) => {
+        const isActive = selected === value;
+        return (
+          <Button
+            key={value}
+            type="button"
+            size="sm"
+            variant={isActive ? "default" : "ghost"}
+            aria-pressed={isActive}
+            onClick={() => onSelect(value)}
+          >
+            {label}
+          </Button>
+        );
+      })}
     </div>
   );
 }

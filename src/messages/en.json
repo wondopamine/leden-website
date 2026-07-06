@@ -20,14 +20,36 @@
     "continueShopping": "Continue Shopping",
     "emptyCart": "Your cart is empty",
     "phone": "Phone",
-    "name": "Name"
+    "name": "Name",
+    "skipToContent": "Skip to content",
+    "pause": "Pause",
+    "play": "Play",
+    "reviewsCount": "{count}+ reviews",
+    "directions": "Get directions",
+    "callUs": "Call",
+    "status": {
+      "open": "Open now",
+      "openUntil": "Open now · until {time}",
+      "closed": "Closed",
+      "opensToday": "Opens today at {time}",
+      "opensDay": "Opens {day} at {time}"
+    },
+    "daysShort": {
+      "Monday": "Mon",
+      "Tuesday": "Tue",
+      "Wednesday": "Wed",
+      "Thursday": "Thu",
+      "Friday": "Fri",
+      "Saturday": "Sat",
+      "Sunday": "Sun"
+    }
   },
   "landing": {
     "hero": {
       "tag": "Valois Village, Pointe-Claire",
-      "title": "Cafe Le Den",
+      "title": "Café Le Den",
       "subtitle": "Homemade with love since 1994",
-      "description": "Fresh bread baked daily, specialty lattes you won't find anywhere else, and homemade meals crafted with care — right in the heart of Valois Village.",
+      "description": "Fresh bread baked daily, specialty lattes you won't find anywhere else, and homemade meals crafted with care.",
       "since": "Serving since 1994"
     },
     "reviews": {
@@ -37,7 +59,8 @@
     },
     "about": {
       "title": "Our Story",
-      "description": "For over 30 years, Cafe Le Den has been the neighborhood's living room in Valois Village. Run by Gina and Josh, we bake our bread fresh every morning, simmer our soups from scratch, and craft specialty drinks with care. From the pistachio latte to our famous hot and sour soup — every item is made with love and the finest ingredients.",
+      "description": "For over 30 years, Café Le Den has been the neighbourhood's living room in Valois Village. Run by Gina and Josh, we bake our bread fresh every morning, simmer our soups from scratch, and craft specialty drinks with care. From the pistachio latte to our famous hot and sour soup, every item is made by hand with the finest ingredients.",
+      "panel": "Baked fresh, served warm",
       "years": "Years",
       "ranking": "in Pointe-Claire"
     },
@@ -49,7 +72,7 @@
       "findUs": "Find Us"
     },
     "featured": {
-      "title": "Customer Favorites",
+      "title": "Customer Favourites",
       "subtitle": "The dishes and drinks people keep coming back for"
     }
   },

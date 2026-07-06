@@ -19,6 +19,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ORDER_STATUS } from "@/components/admin/status";
+import { cn } from "@/lib/utils";
 import { ChevronRight, Phone, Clock, MoreVertical, X } from "lucide-react";
 import { toast } from "sonner";
 
@@ -45,47 +47,18 @@ export type Order = {
   order_items: OrderItem[];
 };
 
-const statusConfig: Record<
-  OrderStatus,
-  { label: string; color: string; next?: OrderStatus; nextLabel?: string }
-> = {
-  new: {
-    label: "New",
-    color: "bg-red-100 text-red-800",
-    next: "preparing",
-    nextLabel: "Start Preparing",
-  },
-  preparing: {
-    label: "Preparing",
-    color: "bg-yellow-100 text-yellow-800",
-    next: "ready",
-    nextLabel: "Mark Ready",
-  },
-  ready: {
-    label: "Ready",
-    color: "bg-green-100 text-green-800",
-    next: "picked_up",
-    nextLabel: "Picked Up",
-  },
-  picked_up: {
-    label: "Picked Up",
-    color: "bg-stone-100 text-stone-600",
-  },
-  cancelled: {
-    label: "Cancelled",
-    color: "bg-stone-100 text-stone-400",
-  },
-};
-
 export function OrderCard({ order }: { order: Order }) {
   const [isPending, startTransition] = useTransition();
-  const config = statusConfig[order.status];
+  const meta = ORDER_STATUS[order.status];
+  const isTerminal = order.status === "picked_up" || order.status === "cancelled";
 
   function handleStatusChange(newStatus: OrderStatus) {
     startTransition(async () => {
       try {
         await updateOrderStatus(order.id, newStatus);
-        toast.success(`Order ${order.order_number} → ${statusConfig[newStatus].label}`);
+        toast.success(
+          `Order ${order.order_number} → ${ORDER_STATUS[newStatus].label}`
+        );
       } catch {
         toast.error("Failed to update order status");
       }
@@ -102,35 +75,42 @@ export function OrderCard({ order }: { order: Order }) {
   const timeAgo = getTimeAgo(order.created_at);
 
   return (
-    <Card className={isPending ? "opacity-60" : ""}>
-      <CardHeader className="pb-2">
-        <div className="flex items-start justify-between">
-          <div>
-            <CardTitle className="text-base font-semibold">
-              {order.order_number}
+    <Card className={cn("gap-3 py-4", isPending && "opacity-60")}>
+      <CardHeader className="pb-0">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 space-y-0.5">
+            <CardTitle className="flex items-center gap-2 font-sans text-sm font-semibold text-foreground">
+              <span className={cn("size-2 shrink-0 rounded-full", meta.dot)} />
+              <span className="truncate tabular-nums">{order.order_number}</span>
             </CardTitle>
-            <p className="text-sm font-medium text-stone-700">
+            <p className="truncate text-sm font-medium text-foreground">
               {order.customer_name}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <Badge className={config.color} variant="secondary">
-              {config.label}
+          <div className="flex shrink-0 items-center gap-1.5">
+            <Badge variant="outline" className={meta.badge}>
+              {meta.label}
             </Badge>
-            {order.status !== "picked_up" && order.status !== "cancelled" && (
+            {!isTerminal && (
               <DropdownMenu>
                 <DropdownMenuTrigger
-                  render={<Button variant="ghost" size="icon" className="h-8 w-8" />}
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label="Order actions"
+                    />
+                  }
                 >
-                  <MoreVertical className="h-4 w-4" />
+                  <MoreVertical className="size-4" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem
                     onClick={() => handleStatusChange("cancelled")}
-                    className="text-red-600"
+                    className="text-destructive"
                   >
-                    <X className="mr-2 h-4 w-4" />
-                    Cancel Order
+                    <X className="mr-2 size-4" />
+                    Cancel order
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -139,48 +119,55 @@ export function OrderCard({ order }: { order: Order }) {
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="flex items-center gap-4 text-xs text-stone-500">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
           <span className="flex items-center gap-1">
-            <Phone className="h-3 w-3" />
-            {order.customer_phone}
+            <Phone className="size-3" />
+            <span className="tabular-nums">{order.customer_phone}</span>
           </span>
           <span className="flex items-center gap-1">
-            <Clock className="h-3 w-3" />
-            {pickupDisplay}
+            <Clock className="size-3" />
+            <span className="tabular-nums">{pickupDisplay}</span>
           </span>
-          <span>{timeAgo}</span>
+          <span className="tabular-nums">{timeAgo}</span>
         </div>
 
         <ul className="space-y-1 text-sm">
           {order.order_items.map((item) => (
-            <li key={item.id} className="flex justify-between">
-              <span>
-                {item.quantity}x {item.menu_item_name}
+            <li key={item.id} className="flex justify-between gap-2">
+              <span className="min-w-0">
+                <span className="tabular-nums">{item.quantity}x</span>{" "}
+                {item.menu_item_name}
                 {item.modifiers.length > 0 && (
-                  <span className="text-stone-400 text-xs ml-1">
+                  <span className="ml-1 text-xs text-muted-foreground">
                     ({item.modifiers.map((m) => m.option).join(", ")})
                   </span>
                 )}
               </span>
-              <span className="text-stone-500">
-                ${((item.price + item.modifiers.reduce((s, m) => s + m.priceAdjustment, 0)) * item.quantity).toFixed(2)}
+              <span className="shrink-0 tabular-nums text-muted-foreground">
+                $
+                {(
+                  (item.price +
+                    item.modifiers.reduce((s, m) => s + m.priceAdjustment, 0)) *
+                  item.quantity
+                ).toFixed(2)}
               </span>
             </li>
           ))}
         </ul>
 
-        <div className="flex items-center justify-between border-t pt-2">
-          <span className="font-semibold text-sm">
+        <div className="flex items-center justify-between gap-2 border-t border-border pt-2">
+          <span className="text-sm font-semibold tabular-nums text-foreground">
             ${Number(order.total).toFixed(2)}
           </span>
-          {config.next && (
+          {meta.next && (
             <Button
+              variant="default"
               size="sm"
-              onClick={() => handleStatusChange(config.next!)}
+              onClick={() => handleStatusChange(meta.next!)}
               disabled={isPending}
             >
-              {config.nextLabel}
-              <ChevronRight className="ml-1 h-4 w-4" />
+              {meta.nextLabel}
+              <ChevronRight className="ml-1 size-4" />
             </Button>
           )}
         </div>

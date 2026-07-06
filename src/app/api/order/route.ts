@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { getCafeWeekday, getCafeMinutes } from "@/lib/hours";
 
 type OrderItem = {
   name: string;
@@ -43,17 +44,17 @@ async function validateBusinessHours(supabase: any, pickupTime: string | null) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const info = cafeInfo as any;
   const hours = info.hours as { day: string; open: string; close: string; closed: boolean }[];
-  const dayName = new Date().toLocaleDateString("en-US", { weekday: "long" });
+  // Evaluate in the café's timezone so a UTC-hosted server agrees with the client UI.
+  const dayName = getCafeWeekday();
   const today = hours.find((h) => h.day === dayName);
 
   if (!today || today.closed) {
     return "The cafe is closed today. Please try again during business hours.";
   }
 
-  const now = new Date();
   const [openH, openM] = today.open.split(":").map(Number);
   const [closeH, closeM] = today.close.split(":").map(Number);
-  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const nowMin = getCafeMinutes();
   const openMin = openH * 60 + openM;
   const closeMin = closeH * 60 + closeM;
 

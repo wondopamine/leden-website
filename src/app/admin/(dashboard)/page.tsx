@@ -2,8 +2,8 @@ import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { OrdersDashboard } from "@/components/admin/orders-dashboard";
 import { AnalyticsDashboard } from "@/components/admin/analytics-dashboard";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ClipboardList, DollarSign, Clock, CheckCircle } from "lucide-react";
+import { AdminPageHeader } from "@/components/admin/page-header";
+import { StatStrip } from "@/components/admin/stat-strip";
 
 export default async function AdminDashboardPage() {
   const supabase = await createClient();
@@ -28,79 +28,42 @@ export default async function AdminDashboardPage() {
   const activeOrders = todayOrders.filter(
     (o) => o.status === "new" || o.status === "preparing" || o.status === "ready"
   ).length;
+  const readyOrders = todayOrders.filter((o) => o.status === "ready").length;
   const completedOrders = todayOrders.filter(
     (o) => o.status === "picked_up"
   ).length;
 
+  const dateLabel = today.toLocaleDateString("en-CA", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+  const tiles = [
+    { label: "Orders", value: String(todayOrders.length) },
+    { label: "Revenue", value: `$${totalRevenue.toFixed(2)}` },
+    { label: "Active", value: String(activeOrders) },
+    { label: "Ready", value: String(readyOrders) },
+    { label: "Done", value: String(completedOrders) },
+  ];
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-stone-900">Dashboard</h1>
-        <p className="text-sm text-stone-500">
-          {today.toLocaleDateString("en-CA", {
-            weekday: "long",
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          })}
-        </p>
-      </div>
+    <div className="space-y-4">
+      <AdminPageHeader title="Dashboard" subtitle={dateLabel} />
 
-      {/* Stats cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title="Today's Orders"
-          value={todayOrders.length.toString()}
-          icon={<ClipboardList className="h-4 w-4 text-stone-500" />}
-        />
-        <StatCard
-          title="Revenue"
-          value={`$${totalRevenue.toFixed(2)}`}
-          icon={<DollarSign className="h-4 w-4 text-stone-500" />}
-        />
-        <StatCard
-          title="Active"
-          value={activeOrders.toString()}
-          icon={<Clock className="h-4 w-4 text-stone-500" />}
-        />
-        <StatCard
-          title="Completed"
-          value={completedOrders.toString()}
-          icon={<CheckCircle className="h-4 w-4 text-stone-500" />}
-        />
-      </div>
+      {/* Compact stat strip */}
+      <StatStrip tiles={tiles} />
 
-      {/* Live orders board */}
+      {/* Live KDS board */}
       <OrdersDashboard initialOrders={todayOrders} />
 
       {/* Order analysis — loads independently */}
-      <Suspense fallback={<div className="h-64 animate-pulse rounded-lg bg-stone-100" />}>
+      <Suspense
+        fallback={<div className="h-64 animate-pulse rounded-xl bg-muted" />}
+      >
         <AnalyticsDashboard />
       </Suspense>
     </div>
-  );
-}
-
-function StatCard({
-  title,
-  value,
-  icon,
-}: {
-  title: string;
-  value: string;
-  icon: React.ReactNode;
-}) {
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-sm font-medium text-stone-500">
-          {title}
-        </CardTitle>
-        {icon}
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
-      </CardContent>
-    </Card>
   );
 }

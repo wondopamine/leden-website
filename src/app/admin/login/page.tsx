@@ -43,10 +43,12 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-stone-50 p-4">
+    <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">Cafe Le Den</CardTitle>
+          <CardTitle className="font-display text-2xl font-semibold">
+            Café Le Den
+          </CardTitle>
           <CardDescription>Sign in to your admin dashboard</CardDescription>
         </CardHeader>
         <CardContent>
@@ -73,9 +75,9 @@ export default function AdminLoginPage() {
               />
             </div>
             {error && (
-              <p className="text-sm text-red-600">{error}</p>
+              <p className="text-sm text-destructive">{error}</p>
             )}
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" variant="default" size="default" className="w-full" disabled={loading}>
               {loading ? "Signing in..." : "Sign In"}
             </Button>
           </form>

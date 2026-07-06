@@ -8,6 +8,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useParams } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { ShoppingBag, ChevronDown, Globe } from "lucide-react";
+import Image from "next/image";
 
 export function Header() {
   const t = useTranslations("common");
@@ -25,15 +26,22 @@ export function Header() {
     setLangOpen(false);
   };
 
-  // Close dropdown when clicking outside
+  // Close dropdown when clicking outside or pressing Escape
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (langRef.current && !langRef.current.contains(e.target as Node)) {
         setLangOpen(false);
       }
     }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setLangOpen(false);
+    }
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKey);
+    };
   }, []);
 
   const navItems = [
@@ -50,10 +58,9 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-md">
-      <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4">
-        <Link href="/" className="shrink-0">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo-header.png" alt="Cafe Le Den" className="h-10 w-auto" />
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
+        <Link href="/" className="shrink-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+          <Image src="/logo-header.png" alt="Café Le Den" width={160} height={40} priority className="h-10 w-auto" />
         </Link>
 
         {/* Desktop nav */}
@@ -72,7 +79,10 @@ export function Header() {
           <div className="relative" ref={langRef}>
             <button
               onClick={() => setLangOpen(!langOpen)}
-              className="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+              aria-label={t("language")}
+              aria-haspopup="menu"
+              aria-expanded={langOpen}
+              className="flex items-center gap-1.5 rounded-md px-1 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               <Globe className="h-4 w-4" />
               {currentLang.flag}
@@ -98,10 +108,10 @@ export function Header() {
 
           {/* Cart icon */}
           <Link href="/order">
-            <Button size="icon" variant="ghost" className="relative h-9 w-9">
+            <Button size="icon" variant="ghost" aria-label={t("cart")} className="relative h-11 w-11">
               <ShoppingBag className="h-5 w-5" />
               {itemCount > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">
+                <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-forest-9 text-[10px] font-bold text-cream-1">
                   {itemCount}
                 </span>
               )}
@@ -113,10 +123,10 @@ export function Header() {
         <div className="flex items-center gap-2 md:hidden">
           {/* Cart icon */}
           <Link href="/order">
-            <Button size="icon" variant="ghost" className="relative h-9 w-9">
+            <Button size="icon" variant="ghost" aria-label={t("cart")} className="relative h-11 w-11">
               <ShoppingBag className="h-5 w-5" />
               {itemCount > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">
+                <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-forest-9 text-[10px] font-bold text-cream-1">
                   {itemCount}
                 </span>
               )}
@@ -124,7 +134,8 @@ export function Header() {
           </Link>
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger
-              className="inline-flex h-9 items-center justify-center rounded-md px-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+              aria-label={t("menu")}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-md text-forest-11 transition-colors hover:bg-cream-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               <svg
                 width="20"

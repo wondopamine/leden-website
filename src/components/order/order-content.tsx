@@ -1,85 +1,33 @@
 "use client";
 
+import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { Plus, Minus, X, Clock } from "lucide-react";
 import { useCartStore } from "@/lib/cart-store";
 import { Link, useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Watermelon } from "@/components/brand/watermelon";
 import { formatPrice } from "@/lib/utils/format";
-import { useState } from "react";
+import { getOpenStatus, getCafeWeekday, getCafeMinutes, formatTime } from "@/lib/hours";
 import type { CafeInfo } from "@/lib/sanity/types";
 
-type Props = {
-  locale: string;
-  cafeInfo: CafeInfo;
-};
-
-function getTodayHours(cafeInfo: CafeInfo) {
-  const dayName = new Date().toLocaleDateString("en-US", { weekday: "long" });
-  return cafeInfo.hours.find((h) => h.day === dayName);
-}
-
-function isCafeOpen(cafeInfo: CafeInfo): boolean {
-  const today = getTodayHours(cafeInfo);
-  if (!today || today.closed) return false;
-
-  const now = new Date();
-  const [openH, openM] = today.open.split(":").map(Number);
-  const [closeH, closeM] = today.close.split(":").map(Number);
-  const nowMin = now.getHours() * 60 + now.getMinutes();
-  const openMin = openH * 60 + openM;
-  const closeMin = closeH * 60 + closeM;
-
-  return nowMin >= openMin && nowMin < closeMin;
-}
-
-function getNextOpenInfo(cafeInfo: CafeInfo): string {
-  const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-  const todayIdx = new Date().getDay();
-
-  // Check remaining time today
-  const today = getTodayHours(cafeInfo);
-  if (today && !today.closed) {
-    const now = new Date();
-    const [openH, openM] = today.open.split(":").map(Number);
-    const nowMin = now.getHours() * 60 + now.getMinutes();
-    const openMin = openH * 60 + openM;
-    if (nowMin < openMin) {
-      return `${today.open}`;
-    }
-  }
-
-  // Check next days
-  for (let i = 1; i <= 7; i++) {
-    const dayIdx = (todayIdx + i) % 7;
-    const dayName = days[dayIdx];
-    const dayHours = cafeInfo.hours.find((h) => h.day === dayName);
-    if (dayHours && !dayHours.closed) {
-      return `${dayName} ${dayHours.open}`;
-    }
-  }
-  return "";
-}
+type Props = { locale: string; cafeInfo: CafeInfo };
 
 function generateTimeSlots(cafeInfo: CafeInfo): string[] {
-  const today = getTodayHours(cafeInfo);
+  // Café-timezone clock, shared with getOpenStatus so slots and status agree.
+  const today = cafeInfo.hours.find((h) => h.day === getCafeWeekday());
   if (!today || today.closed) return [];
 
-  const now = new Date();
   const leadTime = cafeInfo.pickupLeadTime || 15;
   const [openH, openM] = today.open.split(":").map(Number);
   const [closeH, closeM] = today.close.split(":").map(Number);
   const openMin = openH * 60 + openM;
   const closeMin = closeH * 60 + closeM;
 
-  // Earliest possible pickup: now + lead time, rounded up to next 15-min slot
-  const earliestMin = Math.max(
-    Math.ceil((now.getHours() * 60 + now.getMinutes() + leadTime) / 15) * 15,
-    openMin
-  );
+  const earliestMin = Math.max(Math.ceil((getCafeMinutes() + leadTime) / 15) * 15, openMin);
 
   const slots: string[] = [];
   for (let m = earliestMin; m < closeMin; m += 15) {
@@ -107,16 +55,31 @@ export function OrderContent({ locale, cafeInfo }: Props) {
   const clearCart = useCartStore((s) => s.clearCart);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [attempted, setAttempted] = useState(false);
 
-  const cafeOpen = isCafeOpen(cafeInfo);
+  const status = getOpenStatus(cafeInfo.hours);
+  const cafeOpen = status.isOpen;
   const timeSlots = generateTimeSlots(cafeInfo);
+
+  const nameInvalid = attempted && !customerInfo.name.trim();
+  const phoneInvalid = attempted && customerInfo.phone.replace(/\D/g, "").length < 10;
 
   if (items.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-6 py-20 text-center">
-        <p className="text-lg text-muted-foreground">{tc("emptyCart")}</p>
+      <div className="mx-auto flex max-w-md flex-col items-center gap-6 px-5 py-24 text-center">
+        <Watermelon size={64} />
+        <div>
+          <h1 className="font-display text-h2 text-forest-12">{tc("emptyCart")}</h1>
+          <p className="mt-2 text-body text-muted-foreground">
+            {locale === "fr"
+              ? "Parcourez notre menu et ajoutez vos favoris."
+              : "Browse our menu and add a few favourites."}
+          </p>
+        </div>
         <Link href="/menu">
-          <Button>{tc("viewMenu")}</Button>
+          <Button variant="default" size="lg" className="h-12 rounded-full px-8">
+            {tc("viewMenu")}
+          </Button>
         </Link>
       </div>
     );
@@ -126,8 +89,15 @@ export function OrderContent({ locale, cafeInfo }: Props) {
   const tax = getTax();
   const total = getTotal();
 
+  const nextOpenLabel = status.isOpen
+    ? ""
+    : status.isToday
+      ? formatTime(status.nextOpen, locale)
+      : `${tc(`daysShort.${status.nextDay}`)} ${formatTime(status.nextOpen, locale)}`;
+
   const handleSubmitOrder = async () => {
-    if (!customerInfo.name || !customerInfo.phone) return;
+    setAttempted(true);
+    if (!customerInfo.name.trim() || customerInfo.phone.replace(/\D/g, "").length < 10) return;
     if (!cafeOpen) return;
     setLoading(true);
     setError(null);
@@ -165,181 +135,191 @@ export function OrderContent({ locale, cafeInfo }: Props) {
     }
   };
 
+  const card = "rounded-2xl border border-cream-6 bg-card";
+
   return (
-    <>
-      <h1 className="text-3xl font-bold">{t("title")}</h1>
+    <div className="mx-auto max-w-5xl px-5 pb-28 pt-10 md:pb-16">
+      <h1 className="text-h1">{t("title")}</h1>
 
-      {/* Closed banner */}
       {!cafeOpen && (
-        <Card className="mt-6 border-amber-200 bg-amber-50">
-          <CardContent className="p-4">
-            <p className="font-medium text-amber-800">{t("orderingClosed")}</p>
-            {getNextOpenInfo(cafeInfo) && (
-              <p className="mt-1 text-sm text-amber-700">
-                {t("opensAt", { time: getNextOpenInfo(cafeInfo) })}
-              </p>
+        <div className="mt-6 flex items-start gap-3 rounded-2xl border border-orange-6 bg-orange-2 p-4">
+          <Clock aria-hidden className="mt-0.5 size-5 shrink-0 text-orange-11" />
+          <div>
+            <p className="font-medium text-orange-12">{t("orderingClosed")}</p>
+            {nextOpenLabel && (
+              <p className="mt-0.5 text-caption text-orange-11">{t("opensAt", { time: nextOpenLabel })}</p>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
-      {/* Cart items */}
-      <Card className="mt-8">
-        <CardContent className="divide-y p-0">
-          {items.map((item) => (
-            <div key={item.id} className="flex items-center gap-4 p-4">
-              <div className="flex-1">
-                <p className="font-medium">
-                  {locale === "fr" ? item.nameFr : item.nameEn}
-                </p>
-                {item.modifiers.length > 0 && (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {item.modifiers.map((m) => `${m.name}: ${m.option}`).join(", ")}
-                  </p>
-                )}
+      <div className="mt-8 grid gap-6 lg:grid-cols-[1.5fr_1fr] lg:items-start">
+        {/* Left: items + pickup + info */}
+        <div className="space-y-6">
+          {/* Cart items */}
+          <div className={card}>
+            <ul className="divide-y divide-cream-6">
+              {items.map((item) => {
+                const lineTotal =
+                  (item.price + item.modifiers.reduce((s, m) => s + m.priceAdjustment, 0)) * item.quantity;
+                const itemName = locale === "fr" ? item.nameFr : item.nameEn;
+                return (
+                  <li key={item.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
+                    <div className="min-w-0 sm:flex-1">
+                      <p className="font-medium text-forest-12">{itemName}</p>
+                      {item.modifiers.length > 0 && (
+                        <p className="mt-0.5 truncate text-caption text-muted-foreground">
+                          {item.modifiers.map((m) => `${m.name}: ${m.option}`).join(", ")}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between gap-3 sm:justify-start">
+                      <div className="flex items-center rounded-full border border-cream-6">
+                        <button
+                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                          aria-label={`${tc("remove")} ${itemName}`}
+                          className="flex h-11 w-11 items-center justify-center rounded-l-full text-forest-11 transition-colors hover:bg-cream-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          <Minus aria-hidden className="size-4" />
+                        </button>
+                        <span className="w-8 text-center text-caption font-medium tabular-nums">{item.quantity}</span>
+                        <button
+                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                          aria-label={`${tc("add")} ${itemName}`}
+                          className="flex h-11 w-11 items-center justify-center rounded-r-full text-forest-11 transition-colors hover:bg-cream-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          <Plus aria-hidden className="size-4" />
+                        </button>
+                      </div>
+                      <span className="text-caption font-semibold tabular-nums text-forest-12 sm:w-20 sm:text-right">
+                        {formatPrice(lineTotal)}
+                      </span>
+                      <button
+                        onClick={() => removeItem(item.id)}
+                        aria-label={`${tc("remove")} ${itemName}`}
+                        className="flex size-11 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-cream-3 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <X aria-hidden className="size-4" />
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+
+          {/* Pickup time */}
+          {cafeOpen && (
+            <div className={`${card} p-5`}>
+              <h2 className="text-label uppercase tracking-wide text-muted-foreground">{t("pickupTime")}</h2>
+              <p className="mt-2 text-caption text-muted-foreground">{t("pickupTimeDescription")}</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <TimePill selected={!pickupTime} onClick={() => setPickupTime(null)}>
+                  {t("asap")}
+                </TimePill>
+                {timeSlots.map((time) => (
+                  <TimePill key={time} selected={pickupTime === time} onClick={() => setPickupTime(time)}>
+                    {formatTime(time, locale)}
+                  </TimePill>
+                ))}
               </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 w-7 p-0"
-                  onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                >
-                  -
-                </Button>
-                <span className="w-6 text-center text-sm">{item.quantity}</span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 w-7 p-0"
-                  onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                >
-                  +
-                </Button>
+            </div>
+          )}
+
+          {/* Customer info */}
+          {cafeOpen && (
+            <div className={`${card} p-5`}>
+              <h2 className="text-label uppercase tracking-wide text-muted-foreground">{t("customerInfo")}</h2>
+              <div className="mt-4 space-y-4">
+                <div>
+                  <Label htmlFor="name">{tc("name")} *</Label>
+                  <Input
+                    id="name"
+                    className="mt-1.5"
+                    placeholder={t("nameRequired")}
+                    value={customerInfo.name}
+                    aria-invalid={nameInvalid}
+                    onChange={(e) => setCustomerInfo({ name: e.target.value })}
+                  />
+                  {nameInvalid && <p className="mt-1 text-caption text-destructive">{t("nameRequired")}</p>}
+                </div>
+                <div>
+                  <Label htmlFor="phone">{tc("phone")} *</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    className="mt-1.5"
+                    placeholder={t("phoneRequired")}
+                    value={customerInfo.phone}
+                    aria-invalid={phoneInvalid}
+                    onChange={(e) => setCustomerInfo({ phone: e.target.value })}
+                  />
+                  {phoneInvalid && <p className="mt-1 text-caption text-destructive">{t("phoneRequired")}</p>}
+                </div>
               </div>
-              <span className="w-20 text-right text-sm font-medium">
-                {formatPrice(
-                  (item.price +
-                    item.modifiers.reduce((s, m) => s + m.priceAdjustment, 0)) *
-                    item.quantity
-                )}
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-                onClick={() => removeItem(item.id)}
-              >
-                &times;
-              </Button>
             </div>
-          ))}
-        </CardContent>
-      </Card>
+          )}
+        </div>
 
-      {/* Pickup time */}
-      {cafeOpen && (
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle className="text-base">{t("pickupTime")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="mb-3 text-sm text-muted-foreground">
-              {t("pickupTimeDescription")}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant={!pickupTime ? "default" : "outline"}
-                size="sm"
-                onClick={() => setPickupTime(null)}
-              >
-                {t("asap")}
-              </Button>
-              {timeSlots.map((time) => (
-                <Button
-                  key={time}
-                  variant={pickupTime === time ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setPickupTime(time)}
-                >
-                  {time}
-                </Button>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Customer info */}
-      {cafeOpen && (
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle className="text-base">{t("customerInfo")}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="name">{tc("name")} *</Label>
-              <Input
-                id="name"
-                placeholder={t("nameRequired")}
-                value={customerInfo.name}
-                onChange={(e) => setCustomerInfo({ name: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label htmlFor="phone">{tc("phone")} *</Label>
-              <Input
-                id="phone"
-                type="tel"
-                placeholder={t("phoneRequired")}
-                value={customerInfo.phone}
-                onChange={(e) => setCustomerInfo({ phone: e.target.value })}
-              />
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Order summary */}
-      <Card className="mt-6">
-        <CardContent className="p-4">
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span>{tc("subtotal")}</span>
-              <span>{formatPrice(subtotal)}</span>
-            </div>
-            <div className="flex justify-between text-muted-foreground">
-              <span>GST (5%)</span>
-              <span>{formatPrice(tax.gst)}</span>
-            </div>
-            <div className="flex justify-between text-muted-foreground">
-              <span>QST (9.975%)</span>
-              <span>{formatPrice(tax.qst)}</span>
-            </div>
-            <Separator />
-            <div className="flex justify-between text-base font-bold">
+        {/* Right: order summary (sticky on desktop) */}
+        <div className={`${card} p-5 lg:sticky lg:top-20`}>
+          <h2 className="font-display text-h3 text-forest-12">{tc("total")}</h2>
+          <div className="mt-4 space-y-2 text-caption">
+            <Row label={tc("subtotal")} value={formatPrice(subtotal)} />
+            <Row label="GST (5%)" value={formatPrice(tax.gst)} muted />
+            <Row label="QST (9.975%)" value={formatPrice(tax.qst)} muted />
+            <Separator className="my-2" />
+            <div className="flex justify-between text-body font-bold text-forest-12">
               <span>{tc("total")}</span>
-              <span>{formatPrice(total)}</span>
+              <span className="tabular-nums">{formatPrice(total)}</span>
             </div>
           </div>
-          <p className="mt-3 text-xs text-muted-foreground">{t("payInPerson")}</p>
-          {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
-          {cafeOpen ? (
-            <Button
-              className="mt-6 w-full"
-              size="lg"
-              disabled={!customerInfo.name || !customerInfo.phone || loading}
-              onClick={handleSubmitOrder}
-            >
-              {loading ? t("processing") : t("placeOrder")}
-            </Button>
-          ) : (
-            <Button className="mt-6 w-full" size="lg" disabled>
-              {t("orderingClosed")}
-            </Button>
-          )}
-        </CardContent>
-      </Card>
-    </>
+          <p className="mt-3 text-caption text-muted-foreground">{t("payInPerson")}</p>
+          {error && <p className="mt-2 text-caption text-destructive">{error}</p>}
+          <Button
+            variant="default"
+            size="lg"
+            className="mt-5 h-12 w-full rounded-full"
+            disabled={!cafeOpen || loading}
+            onClick={handleSubmitOrder}
+          >
+            {!cafeOpen ? t("orderingClosed") : loading ? t("processing") : t("placeOrder")}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Row({ label, value, muted }: { label: string; value: string; muted?: boolean }) {
+  return (
+    <div className={`flex justify-between ${muted ? "text-muted-foreground" : "text-forest-12"}`}>
+      <span>{label}</span>
+      <span className="tabular-nums">{value}</span>
+    </div>
+  );
+}
+
+function TimePill({
+  selected,
+  onClick,
+  children,
+}: {
+  selected: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      aria-pressed={selected}
+      className={`rounded-full border px-4 py-2 text-caption font-medium tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card ${
+        selected
+          ? "border-forest-9 bg-forest-9 text-cream-1"
+          : "border-cream-6 bg-card text-forest-11 hover:border-forest-8"
+      }`}
+    >
+      {children}
+    </button>
   );
 }

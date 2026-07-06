@@ -150,7 +150,7 @@ export function MenuItemForm({
   }
 
   return (
-    <form action={handleSubmit} className="space-y-6 max-w-2xl">
+    <form action={handleSubmit} className="space-y-4 max-w-2xl">
       {initialData?.id && (
         <input type="hidden" name="id" value={initialData.id} />
       )}
@@ -171,18 +171,19 @@ export function MenuItemForm({
               <img
                 src={imageUrl}
                 alt="Menu item"
-                className="h-32 w-32 rounded-lg object-cover border border-stone-200"
+                className="h-32 w-32 rounded-lg object-cover border border-border"
               />
               <button
                 type="button"
                 onClick={removeImage}
-                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                aria-label="Remove photo"
+                className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 <X className="h-3 w-3" />
               </button>
             </div>
           ) : (
-            <div className="h-32 w-32 rounded-lg border-2 border-dashed border-stone-300 flex flex-col items-center justify-center text-stone-400">
+            <div className="h-32 w-32 rounded-lg border-2 border-dashed border-input flex flex-col items-center justify-center text-muted-foreground">
               <ImageIcon className="h-8 w-8 mb-1" />
               <span className="text-xs">No photo</span>
             </div>
@@ -215,7 +216,7 @@ export function MenuItemForm({
                 variant="ghost"
                 size="sm"
                 onClick={removeImage}
-                className="text-red-500 hover:text-red-600"
+                className="text-destructive"
               >
                 <Trash2 className="mr-1 h-3 w-3" />
                 Remove
@@ -289,7 +290,7 @@ export function MenuItemForm({
             id="category_id"
             name="category_id"
             defaultValue={initialData?.category_id}
-            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs"
+            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm text-foreground shadow-xs outline-none transition-colors focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
             required
           >
             <option value="">Select...</option>
@@ -312,7 +313,7 @@ export function MenuItemForm({
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-sm">Modifiers</CardTitle>
+            <CardTitle className="font-sans text-sm">Modifiers</CardTitle>
             <Button type="button" variant="outline" size="sm" onClick={addModifier}>
               <Plus className="mr-1 h-3 w-3" />
               Add Modifier
@@ -321,12 +322,12 @@ export function MenuItemForm({
         </CardHeader>
         <CardContent className="space-y-4">
           {modifiers.length === 0 && (
-            <p className="text-sm text-stone-400">No modifiers</p>
+            <p className="text-sm text-muted-foreground">No modifiers</p>
           )}
           {modifiers.map((mod, modIdx) => (
             <div
               key={modIdx}
-              className="border rounded-lg p-4 space-y-3"
+              className="border border-border rounded-lg p-4 space-y-3"
             >
               <div className="flex items-start gap-2">
                 <div className="grid flex-1 gap-2 sm:grid-cols-2">
@@ -349,14 +350,16 @@ export function MenuItemForm({
                   type="button"
                   variant="ghost"
                   size="icon"
+                  className="text-destructive"
                   onClick={() => removeModifier(modIdx)}
+                  aria-label="Remove modifier"
                 >
-                  <Trash2 className="h-4 w-4 text-red-500" />
+                  <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
 
               <div className="pl-4 space-y-2">
-                <p className="text-xs font-medium text-stone-500">Options</p>
+                <p className="text-xs font-medium text-muted-foreground">Options</p>
                 {mod.options.map((opt, optIdx) => (
                   <div key={optIdx} className="flex items-center gap-2">
                     <Input
@@ -394,10 +397,11 @@ export function MenuItemForm({
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8"
+                      className="h-8 w-8 text-destructive"
                       onClick={() => removeOption(modIdx, optIdx)}
+                      aria-label="Remove option"
                     >
-                      <Trash2 className="h-3 w-3 text-red-400" />
+                      <Trash2 className="h-3 w-3" />
                     </Button>
                   </div>
                 ))}
@@ -418,7 +422,7 @@ export function MenuItemForm({
       </Card>
 
       <div className="flex gap-3">
-        <Button type="submit" disabled={isPending}>
+        <Button type="submit" variant="default" size="default" disabled={isPending}>
           {isPending ? "Saving..." : submitLabel}
         </Button>
       </div>

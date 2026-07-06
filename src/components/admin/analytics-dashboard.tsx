@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import {
   AreaChart,
   Area,
@@ -26,30 +26,49 @@ import {
   XCircle,
 } from "lucide-react";
 
+const TOOLTIP_CONTENT_STYLE = {
+  background: "var(--popover)",
+  border: "1px solid var(--border)",
+  borderRadius: "var(--radius-md)",
+  color: "var(--popover-foreground)",
+  fontSize: "13px",
+} as const;
+
+const TOOLTIP_TEXT_STYLE = { color: "var(--popover-foreground)" } as const;
+
 export function AnalyticsDashboard() {
   const [period, setPeriod] = useState<Period>("daily");
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const loadData = useCallback(async (p: Period) => {
-    setLoading(true);
-    const result = await fetchAnalytics(p);
-    setData(result);
-    setLoading(false);
-  }, []);
-
   useEffect(() => {
-    loadData(period);
-  }, [period, loadData]);
+    let cancelled = false;
+
+    async function run() {
+      setLoading(true);
+      const result = await fetchAnalytics(period);
+      if (!cancelled) {
+        setData(result);
+        setLoading(false);
+      }
+    }
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [period]);
 
   const handlePeriodChange = (p: Period) => {
     setPeriod(p);
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-lg font-semibold text-stone-900">Order Analysis</h2>
+        <h2 className="font-sans text-lg font-semibold text-foreground">
+          Order Analysis
+        </h2>
         <PeriodSelector selected={period} onSelect={handlePeriodChange} />
       </div>
 
@@ -57,34 +76,34 @@ export function AnalyticsDashboard() {
         <LoadingSkeleton />
       ) : data ? (
         <>
-          {/* Stats cards */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <AnalyticsStatCard
-              title="Total Orders"
+          {/* Stat strip */}
+          <div className="grid grid-cols-2 rounded-lg border border-border bg-card sm:grid-cols-4">
+            <StatTile
+              label="Total Orders"
               value={data.totalOrders.toString()}
-              icon={<ShoppingBag className="h-4 w-4 text-stone-500" />}
+              icon={<ShoppingBag className="size-3.5" />}
             />
-            <AnalyticsStatCard
-              title="Revenue"
+            <StatTile
+              label="Revenue"
               value={`$${data.totalRevenue.toFixed(2)}`}
-              icon={<DollarSign className="h-4 w-4 text-stone-500" />}
+              icon={<DollarSign className="size-3.5" />}
             />
-            <AnalyticsStatCard
-              title="Avg Order"
+            <StatTile
+              label="Avg Order"
               value={`$${data.avgOrderValue.toFixed(2)}`}
-              icon={<TrendingUp className="h-4 w-4 text-stone-500" />}
+              icon={<TrendingUp className="size-3.5" />}
             />
-            <AnalyticsStatCard
-              title="Cancelled"
+            <StatTile
+              label="Cancelled"
               value={`${data.cancelledRate}%`}
-              icon={<XCircle className="h-4 w-4 text-stone-500" />}
+              icon={<XCircle className="size-3.5" />}
             />
           </div>
 
           {/* Revenue trend chart */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium text-stone-500">
+            <CardHeader className="pb-2">
+              <CardTitle className="font-sans text-sm font-semibold text-foreground">
                 Revenue Trend
               </CardTitle>
             </CardHeader>
@@ -92,34 +111,34 @@ export function AnalyticsDashboard() {
               {data.revenueTrend.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
                   <AreaChart data={data.revenueTrend}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                     <XAxis
                       dataKey="label"
                       fontSize={12}
                       tickLine={false}
                       axisLine={false}
-                      tick={{ fill: "#78716c" }}
+                      tick={{ fill: "var(--muted-foreground)" }}
                     />
                     <YAxis
                       fontSize={12}
                       tickLine={false}
                       axisLine={false}
-                      tick={{ fill: "#78716c" }}
+                      tick={{ fill: "var(--muted-foreground)" }}
                       tickFormatter={(v) => `$${v}`}
                     />
                     <Tooltip
                       formatter={(value) => [`$${Number(value).toFixed(2)}`, "Revenue"]}
-                      contentStyle={{
-                        borderRadius: "8px",
-                        border: "1px solid #e7e5e4",
-                        fontSize: "13px",
-                      }}
+                      contentStyle={TOOLTIP_CONTENT_STYLE}
+                      labelStyle={TOOLTIP_TEXT_STYLE}
+                      itemStyle={TOOLTIP_TEXT_STYLE}
+                      cursor={{ fill: "var(--muted)" }}
                     />
                     <Area
                       type="monotone"
                       dataKey="revenue"
-                      stroke="#292524"
-                      fill="#d6d3d1"
+                      stroke="var(--chart-1)"
+                      fill="var(--chart-1)"
+                      fillOpacity={0.15}
                       strokeWidth={2}
                     />
                   </AreaChart>
@@ -131,11 +150,11 @@ export function AnalyticsDashboard() {
           </Card>
 
           {/* Bottom row: Top Items + Peak Hours */}
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid gap-4 lg:grid-cols-2">
             {/* Top items */}
             <Card>
-              <CardHeader>
-                <CardTitle className="text-sm font-medium text-stone-500">
+              <CardHeader className="pb-2">
+                <CardTitle className="font-sans text-sm font-semibold text-foreground">
                   Top Selling Items
                 </CardTitle>
               </CardHeader>
@@ -148,18 +167,18 @@ export function AnalyticsDashboard() {
                         className="flex items-center justify-between"
                       >
                         <div className="flex items-center gap-3">
-                          <span className="text-sm font-medium text-stone-400 w-5 text-right">
+                          <span className="w-5 text-right text-sm font-medium tabular-nums text-muted-foreground">
                             {i + 1}.
                           </span>
-                          <span className="text-sm font-medium text-stone-900">
+                          <span className="text-sm font-medium text-foreground">
                             {item.name}
                           </span>
                         </div>
                         <div className="flex items-center gap-4">
-                          <span className="text-sm text-stone-500">
+                          <span className="text-sm tabular-nums text-muted-foreground">
                             {item.quantity} sold
                           </span>
-                          <span className="text-sm font-medium text-stone-700 w-20 text-right">
+                          <span className="w-20 text-right text-sm font-medium tabular-nums text-foreground">
                             ${item.revenue.toFixed(2)}
                           </span>
                         </div>
@@ -174,8 +193,8 @@ export function AnalyticsDashboard() {
 
             {/* Peak hours */}
             <Card>
-              <CardHeader>
-                <CardTitle className="text-sm font-medium text-stone-500">
+              <CardHeader className="pb-2">
+                <CardTitle className="font-sans text-sm font-semibold text-foreground">
                   Orders by Hour
                 </CardTitle>
               </CardHeader>
@@ -183,32 +202,31 @@ export function AnalyticsDashboard() {
                 {data.peakHours.some((h) => h.orders > 0) ? (
                   <ResponsiveContainer width="100%" height={280}>
                     <BarChart data={data.peakHours.filter((h) => h.orders > 0)}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                       <XAxis
                         dataKey="hour"
                         fontSize={12}
                         tickLine={false}
                         axisLine={false}
-                        tick={{ fill: "#78716c" }}
+                        tick={{ fill: "var(--muted-foreground)" }}
                       />
                       <YAxis
                         fontSize={12}
                         tickLine={false}
                         axisLine={false}
-                        tick={{ fill: "#78716c" }}
+                        tick={{ fill: "var(--muted-foreground)" }}
                         allowDecimals={false}
                       />
                       <Tooltip
                         formatter={(value) => [value, "Orders"]}
-                        contentStyle={{
-                          borderRadius: "8px",
-                          border: "1px solid #e7e5e4",
-                          fontSize: "13px",
-                        }}
+                        contentStyle={TOOLTIP_CONTENT_STYLE}
+                        labelStyle={TOOLTIP_TEXT_STYLE}
+                        itemStyle={TOOLTIP_TEXT_STYLE}
+                        cursor={{ fill: "var(--muted)" }}
                       />
                       <Bar
                         dataKey="orders"
-                        fill="#78716c"
+                        fill="var(--chart-2)"
                         radius={[4, 4, 0, 0]}
                       />
                     </BarChart>
@@ -225,48 +243,45 @@ export function AnalyticsDashboard() {
   );
 }
 
-function AnalyticsStatCard({
-  title,
+function StatTile({
+  label,
   value,
   icon,
 }: {
-  title: string;
+  label: string;
   value: string;
   icon: React.ReactNode;
 }) {
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-sm font-medium text-stone-500">
-          {title}
-        </CardTitle>
+    <div className="border-border p-4 [&:nth-child(-n+2)]:border-b [&:nth-child(odd)]:border-r sm:border-b-0 sm:[&:nth-child(2)]:border-r">
+      <div className="flex items-center gap-1.5 text-muted-foreground">
         {icon}
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
-      </CardContent>
-    </Card>
+        <span className="text-label uppercase tracking-wide">{label}</span>
+      </div>
+      <div className="mt-1 text-xl font-semibold tabular-nums text-foreground">
+        {value}
+      </div>
+    </div>
   );
 }
 
 function LoadingSkeleton() {
   return (
-    <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 rounded-lg border border-border bg-card sm:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <Card key={i}>
-            <CardHeader className="pb-2">
-              <div className="h-4 w-20 bg-stone-200 rounded animate-pulse" />
-            </CardHeader>
-            <CardContent>
-              <div className="h-8 w-24 bg-stone-200 rounded animate-pulse" />
-            </CardContent>
-          </Card>
+          <div
+            key={i}
+            className="border-border p-4 [&:nth-child(-n+2)]:border-b [&:nth-child(odd)]:border-r sm:border-b-0 sm:[&:nth-child(2)]:border-r"
+          >
+            <div className="h-3 w-20 animate-pulse rounded bg-muted" />
+            <div className="mt-2 h-6 w-24 animate-pulse rounded bg-muted" />
+          </div>
         ))}
       </div>
       <Card>
-        <CardContent className="pt-6">
-          <div className="h-[300px] bg-stone-100 rounded animate-pulse" />
+        <CardContent>
+          <div className="h-[300px] animate-pulse rounded bg-muted" />
         </CardContent>
       </Card>
     </div>
@@ -275,7 +290,7 @@ function LoadingSkeleton() {
 
 function EmptyState({ text }: { text: string }) {
   return (
-    <div className="flex items-center justify-center h-[200px] text-sm text-stone-400">
+    <div className="flex h-[200px] items-center justify-center text-sm text-muted-foreground">
       {text}
     </div>
   );

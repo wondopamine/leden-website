@@ -37,12 +37,14 @@ export function OrdersFilter({ currentDate, currentStatus, currentSearch }: Prop
     <div className="flex flex-col sm:flex-row gap-4">
       <Input
         type="date"
+        aria-label="Filter by date"
         value={currentDate}
         onChange={(e) => updateParams("date", e.target.value)}
         className="w-auto"
       />
       <Input
         type="search"
+        aria-label="Search orders"
         placeholder="Search order # or name..."
         defaultValue={currentSearch}
         onChange={(e) => {

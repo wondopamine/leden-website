@@ -95,81 +95,88 @@ export function CategoriesManager({ initialCategories }: Props) {
   }
 
   return (
-    <div className="space-y-4 max-w-2xl">
+    <div className="max-w-2xl space-y-2">
       {/* Existing categories */}
       {categories.map((cat) => (
         <div
           key={cat.id}
-          className="flex items-center gap-2 rounded-lg border bg-white px-4 py-3"
+          className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card p-3"
         >
           <Input
             value={cat.sort_order}
             onChange={(e) =>
               handleFieldChange(cat.id, "sort_order", parseInt(e.target.value) || 0)
             }
-            className="w-16 text-center text-sm"
+            className="w-14 shrink-0 text-center text-sm tabular-nums"
             type="number"
+            aria-label={`${cat.name_en || "Category"} sort order`}
           />
           <Input
             value={cat.name_en}
             onChange={(e) => handleFieldChange(cat.id, "name_en", e.target.value)}
             placeholder="Name (EN)"
-            className="text-sm"
+            className="min-w-[7rem] flex-1 text-sm"
+            aria-label="Name (EN)"
           />
           <Input
             value={cat.name_fr}
             onChange={(e) => handleFieldChange(cat.id, "name_fr", e.target.value)}
             placeholder="Name (FR)"
-            className="text-sm"
+            className="min-w-[7rem] flex-1 text-sm"
+            aria-label="Name (FR)"
           />
           <Input
             value={cat.slug}
             onChange={(e) => handleFieldChange(cat.id, "slug", e.target.value)}
             placeholder="slug"
-            className="w-28 text-sm"
+            className="w-28 shrink-0 text-sm"
+            aria-label="Slug"
           />
           {editedIds.has(cat.id) && (
             <Button
               variant="outline"
               size="icon"
-              className="h-8 w-8"
               onClick={() => handleSave(cat)}
               disabled={isPending}
+              aria-label={`Save ${cat.name_en || "category"}`}
             >
-              <Save className="h-4 w-4" />
+              <Save />
             </Button>
           )}
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
             onClick={() => handleDelete(cat.id, cat.name_en)}
             disabled={isPending}
+            aria-label={`Delete ${cat.name_en || "category"}`}
           >
-            <Trash2 className="h-4 w-4 text-red-500" />
+            <Trash2 className="text-destructive" />
           </Button>
         </div>
       ))}
 
       {/* Add new */}
-      <div className="flex items-center gap-2 rounded-lg border border-dashed bg-stone-50 px-4 py-3">
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-border bg-muted/50 p-3">
         <Input
           value={newCat.name_en}
           onChange={(e) => setNewCat({ ...newCat, name_en: e.target.value })}
           placeholder="New category (EN)"
-          className="text-sm"
+          className="min-w-[7rem] flex-1 text-sm"
+          aria-label="New category name (EN)"
         />
         <Input
           value={newCat.name_fr}
           onChange={(e) => setNewCat({ ...newCat, name_fr: e.target.value })}
           placeholder="(FR)"
-          className="text-sm"
+          className="min-w-[7rem] flex-1 text-sm"
+          aria-label="New category name (FR)"
         />
         <Input
           value={newCat.slug}
           onChange={(e) => setNewCat({ ...newCat, slug: e.target.value })}
           placeholder="slug"
-          className="w-28 text-sm"
+          className="w-28 shrink-0 text-sm"
+          aria-label="New category slug"
         />
         <Button
           variant="outline"
@@ -177,7 +184,7 @@ export function CategoriesManager({ initialCategories }: Props) {
           onClick={handleAdd}
           disabled={isPending || !newCat.name_en || !newCat.slug}
         >
-          <Plus className="mr-1 h-3 w-3" />
+          <Plus />
           Add
         </Button>
       </div>
