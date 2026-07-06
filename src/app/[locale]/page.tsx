@@ -10,7 +10,7 @@ import { Visit } from "@/components/home/visit";
 import { StickyOrderBar } from "@/components/home/sticky-order-bar";
 import { HomeSkeleton } from "@/components/home/section-skeleton";
 import { WatermelonDivider } from "@/components/brand/watermelon";
-import type { CafeInfo } from "@/lib/sanity/types";
+import type { CafeInfo } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 

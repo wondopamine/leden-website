@@ -1,5 +1,5 @@
 import { createClient } from "./server";
-import type { MenuItem, Category, CafeInfo } from "../sanity/types";
+import type { MenuItem, Category, CafeInfo } from "../types";
 
 export async function getCategories(): Promise<Category[]> {
   const supabase = await createClient();
@@ -47,7 +47,7 @@ export async function getMenuItems(): Promise<MenuItem[]> {
       name: { en: row.category.name_en, fr: row.category.name_fr },
       slug: row.category.slug,
     },
-    image: row.image_url ? { asset: { _ref: row.image_url } } : undefined,
+    imageUrl: row.image_url ?? undefined,
     available: row.status !== "hidden",
     status: (row.status as "available" | "sold_out" | "hidden") || "available",
     modifiers: (row.modifiers ?? [])

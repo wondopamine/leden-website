@@ -3,7 +3,7 @@ import { MapPin, Phone, Navigation } from "lucide-react";
 import { FadeIn } from "@/components/fade-in";
 import { OpenStatusPill } from "@/components/brand/open-status";
 import { getOpenStatus, getCafeWeekday, formatTime, formatStatusLabel, type DayHours } from "@/lib/hours";
-import type { CafeInfo } from "@/lib/sanity/types";
+import type { CafeInfo } from "@/lib/types";
 
 export function Visit({ locale, info }: { locale: string; info: CafeInfo }) {
   const t = useTranslations("landing.hours");

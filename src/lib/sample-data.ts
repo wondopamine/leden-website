@@ -1,4 +1,4 @@
-import type { MenuItem, Category, CafeInfo } from "./sanity/types";
+import type { MenuItem, Category, CafeInfo } from "./types";
 
 export const sampleCategories: Category[] = [
   { _id: "cat-1", name: { en: "Coffee & Lattes", fr: "Café et lattés" }, slug: "coffee", order: 1 },

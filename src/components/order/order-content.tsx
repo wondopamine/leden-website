@@ -12,7 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { Watermelon } from "@/components/brand/watermelon";
 import { formatPrice } from "@/lib/utils/format";
 import { getOpenStatus, getCafeWeekday, getCafeMinutes, formatTime } from "@/lib/hours";
-import type { CafeInfo } from "@/lib/sanity/types";
+import type { CafeInfo } from "@/lib/types";
 
 type Props = { locale: string; cafeInfo: CafeInfo };
 

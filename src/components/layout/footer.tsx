@@ -5,7 +5,7 @@ import { Link } from "@/i18n/navigation";
 import { Watermelon } from "@/components/brand/watermelon";
 import { OpenStatusPill } from "@/components/brand/open-status";
 import { getOpenStatus, formatStatusLabel } from "@/lib/hours";
-import type { CafeInfo } from "@/lib/sanity/types";
+import type { CafeInfo } from "@/lib/types";
 
 export function Footer({ locale, info }: { locale: string; info: CafeInfo }) {
   const t = useTranslations("footer");

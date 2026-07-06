@@ -18,7 +18,7 @@ import { WatermelonSeed } from "@/components/brand/watermelon";
 import { useCartStore } from "@/lib/cart-store";
 import { getLocalizedString, formatPrice } from "@/lib/utils/format";
 import { getItemImageUrl } from "@/lib/menu-images";
-import type { MenuItem, Category } from "@/lib/sanity/types";
+import type { MenuItem, Category } from "@/lib/types";
 
 type Props = {
   categories: Category[];

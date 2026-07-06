@@ -1,3 +1,7 @@
+// Domain data types for the storefront + admin. Previously defined in the Sanity
+// layer; now vendor-neutral. Data is sourced from Supabase (with a sample-data
+// fallback) via src/lib/data.ts — these types are the shared contract.
+
 export type LocalizedString = {
   en: string;
   fr: string;
@@ -23,11 +27,8 @@ export type MenuItem = {
     name: LocalizedString;
     slug: string;
   };
-  image?: {
-    asset: {
-      _ref: string;
-    };
-  };
+  /** Absolute image URL, or undefined to fall back to a category image. */
+  imageUrl?: string;
   available: boolean;
   status: "available" | "sold_out" | "hidden";
   modifiers: Modifier[];
