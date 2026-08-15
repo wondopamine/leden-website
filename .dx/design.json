@@ -1,0 +1,81 @@
+{
+  "generated_from": "DESIGN.md",
+  "generated_at": "2026-08-15T09:28:00Z",
+  "catalog_version": "0.1",
+  "essence": "Café Le Den should feel warm, local, and appetite-led to customers, while staying calm and operational for café staff. When character and clarity compete, clarity wins without becoming generic.",
+  "colour": {
+    "primary": "--forest-9 #2F5436",
+    "accent": "--orange-9 #D9682E",
+    "canvas": "--cream-2 #EFE7D2",
+    "destructive": "--red-9 #B3261E",
+    "expression": "customer surfaces are warmer and appetite-led; admin surfaces use the same roles with lower warmth and higher density"
+  },
+  "typography": {
+    "family": "Fraunces 500/600 for display and headings; Inter 400/500/600 for body and UI",
+    "base": "16/24",
+    "scale": [
+      12,
+      14,
+      16,
+      20,
+      24,
+      30,
+      36,
+      48,
+      60
+    ],
+    "casing": "sentence case; preserve genuine acronyms such as EN, FR, GST, and QST",
+    "numerals": "Inter tabular figures for prices, totals, timers, counts, and aligned operational data"
+  },
+  "tokens": {
+    "source": "src/app/globals.css",
+    "prefix": "--cream-, --forest-, --orange-, and semantic role aliases",
+    "spacing": "8px base with a 4px half-step where compact controls require it",
+    "dark-mode": "light-only product; retain class-scoped `.dark` compatibility and never switch from the operating system preference"
+  },
+  "motion": {
+    "entrance": "restrained fade with up to 16px rise, 500ms, ease-out",
+    "state-change": "opacity or transform feedback, 150–300ms",
+    "emphasis": "one short spring accent for small brand details only, never for operational status changes"
+  },
+  "tone": "Friendly, direct, and food-forward. Customer copy uses “we”, short sentences, and no exclamation marks; French and English carry equal meaning and confidence. Admin copy is concise and operational, naming the state and the next valid action without marketing language.",
+  "layout_system": {
+    "columns": 12,
+    "gutter": "space-sm",
+    "margins": "space-md",
+    "breakpoints": [
+      320,
+      768,
+      1280
+    ],
+    "maxContentWidth": "1280px"
+  },
+  "components": {
+    "manifest": ".dx/component-manifest.json",
+    "foundation": "Base UI-backed shadcn primitives in src/components/ui",
+    "customer": "warmer composition, one dominant pickup action, and specialised item-modifier, quantity, pickup-time, and cart patterns",
+    "admin": "denser composition, text-plus-icon status, tabular operational figures, and specialised queue, filter, and availability patterns",
+    "actions": "explicit Button variant and size; never present two visually dominant actions together"
+  },
+  "guardrails": [
+    "Check the component manifest before creating a component or control.",
+    "Preserve the EN/FR route pair and equal meaning across both languages.",
+    "Keep pickup and pay-in-person truth explicit before submission.",
+    "Never round, hide, or decorate away item prices, modifiers, GST, QST, totals, order references, pickup times, or operational status.",
+    "Let food, place, and opening truth create appetite and trust before decorative brand gestures.",
+    "Treat the watermelon mascot as a small accent, never the primary action or a replacement for the wordmark.",
+    "Keep staff paths scannable under a dense queue; status and next action must remain paired.",
+    "Do not add customer accounts, payments, delivery, loyalty, new order states, or multi-location concepts without a separate product decision.",
+    "Do not claim operational readiness while order-integrity, authorization, recovery, or platform gates remain open.",
+    "Add no recurring software cost without explicit approval."
+  ],
+  "overrides": [
+    {
+      "control": "TYP-1",
+      "tier": "L1",
+      "rule": "Display and headings use Fraunces at 500/600; body and UI use Inter at 400/500/600; no third UI typeface",
+      "reason": "Fraunces carries Café Le Den’s established local, appetite-led character while Inter preserves interface clarity",
+      "approver": "Jeongwon Do"
+    }
+  ]
+}
