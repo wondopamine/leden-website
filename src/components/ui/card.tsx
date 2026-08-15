@@ -33,9 +33,23 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
-function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
+type CardTitleProps<T extends React.ElementType = "h3"> = {
+  as?: T
+} & Omit<React.ComponentPropsWithoutRef<T>, "as">
+
+/**
+ * Semantic card heading. It defaults to h3, which fits cards nested under a
+ * page h1 and section h2. Use `as` when the surrounding heading level differs.
+ */
+function CardTitle<T extends React.ElementType = "h3">({
+  as,
+  className,
+  ...props
+}: CardTitleProps<T>) {
+  const Component = as ?? "h3"
+
   return (
-    <div
+    <Component
       data-slot="card-title"
       className={cn(
         "font-heading text-base leading-snug font-medium group-data-[size=sm]/card:text-sm",

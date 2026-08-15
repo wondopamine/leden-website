@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { updateMenuItem } from "../../actions";
 import { MenuItemForm } from "@/components/admin/menu-item-form";
@@ -10,6 +11,14 @@ import { Button } from "@/components/ui/button";
 type Props = {
   params: Promise<{ id: string }>;
 };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  await params;
+  return {
+    title: "Edit menu item",
+    description: "Update a Café Le Den menu item, photo, and modifiers.",
+  };
+}
 
 export default async function EditMenuItemPage({ params }: Props) {
   const { id } = await params;

@@ -96,7 +96,7 @@ export function OrderCard({ order }: { order: Order }) {
       <CardHeader className="pb-0">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 space-y-0.5">
-            <CardTitle className="flex items-center gap-2 font-sans text-lg font-semibold text-foreground">
+            <CardTitle as="h3" className="flex items-center gap-2 font-sans text-lg font-semibold text-foreground">
               <span
                 aria-hidden="true"
                 className={cn("size-2.5 shrink-0 rounded-full", meta.dot)}

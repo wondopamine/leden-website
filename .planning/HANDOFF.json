@@ -1,0 +1,65 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-08-15T11:11:07.136Z",
+  "phase": "design-conformance",
+  "phase_name": "Customer storefront and cafe admin DX conformance",
+  "phase_dir": null,
+  "plan": 1,
+  "task": 5,
+  "total_tasks": 7,
+  "status": "paused",
+  "completed_tasks": [
+    { "id": 1, "name": "Create canonical design contract and baseline browser coverage", "status": "done", "commit": "edea7d5" },
+    { "id": 2, "name": "Reconcile semantic tokens and typography", "status": "done", "commit": "0a4389a" },
+    { "id": 3, "name": "Conform shared controls and component gallery", "status": "done", "commit": "fb7cd21" },
+    { "id": 4, "name": "Refactor customer storefront and cafe admin", "status": "done", "commit": "1c80afe" },
+    { "id": 5, "name": "Resolve independent DX review findings and integrate artifacts", "status": "in_progress", "progress": "All original ship blockers have implementations in the working tree and scoped checks passed. Final semantic-link/12-column cleanup, combined verification, and re-review remain." }
+  ],
+  "remaining_tasks": [
+    { "id": 5, "name": "Finish integration cleanup, deterministic checks, production browser suite, and final evidence", "status": "in_progress" },
+    { "id": 6, "name": "Run a fresh independent DX design re-review and fix any blockers", "status": "not_started" },
+    { "id": 7, "name": "Complete LFG code review, browser pipeline, commit, push, and PR", "status": "not_started" }
+  ],
+  "blockers": [],
+  "async_jobs": [],
+  "human_actions_pending": [
+    {
+      "action": "Provide a seeded non-production Supabase target only if authenticated mutation E2E coverage is desired.",
+      "context": "The mutation suite is deliberately fixture-gated and must never touch production data.",
+      "blocking": false
+    }
+  ],
+  "decisions": [
+    { "decision": "Use the DX Harness design contract as the source of truth and preserve the server/client split.", "rationale": "The project needs one coherent customer/admin system without changing commerce or operations behavior.", "phase": "design-conformance" },
+    { "decision": "Use forest for primary actions and orange only as a supporting appetite/status accent.", "rationale": "This matches DESIGN.md and the independent review's COL-1 finding.", "phase": "design-conformance" },
+    { "decision": "Use a server-safe button-variants module for styled links.", "rationale": "Calling the export from the client-marked Button module in a Server Component caused runtime 500 responses despite a successful build.", "phase": "design-conformance" },
+    { "decision": "Keep authenticated mutations gated and use mocked/auth-free previews for error, dirty-state, and responsive verification.", "rationale": "This preserves production data safety while still verifying interaction contracts.", "phase": "design-conformance" }
+  ],
+  "uncommitted_files": [
+    ".dx/component-manifest.json",
+    "docs/design-tickets/TODO.md",
+    "src/app/[locale]/**/page.tsx",
+    "src/app/admin/**",
+    "src/app/api/order/route.ts",
+    "src/app/dev/admin/**",
+    "src/app/globals.css",
+    "src/app/layout.tsx",
+    "src/components/admin/**",
+    "src/components/brand/open-status.tsx",
+    "src/components/home/**",
+    "src/components/layout/**",
+    "src/components/order/order-content.tsx",
+    "src/components/ui/button.tsx",
+    "src/components/ui/button-variants.ts",
+    "src/components/ui/card.tsx",
+    "src/components/ui/table.tsx",
+    "src/lib/supabase/analytics.ts",
+    "src/lib/use-unsaved-changes.ts",
+    "src/messages/en.json",
+    "src/messages/fr.json",
+    "tests/e2e/admin-design.spec.ts",
+    "tests/e2e/storefront-design.spec.ts"
+  ],
+  "next_action": "Read .planning/.continue-here.md, inspect git diff/status, then finish converting remaining navigation anchors away from Base UI role=button composition and move footer/order customer layouts to the declared 12-column grid before running combined checks.",
+  "context_notes": "The first independent combined design review failed with 11 blockers. Customer and admin repair agents implemented every reported blocker and their scoped checks passed. Root then added contract-level motion/layout cleanup and a server-safe button style module. The user paused during a final non-blocking semantic-link/12-column cleanup patch; that patch was aborted before applying. Do not re-run competing production builds in parallel."
+}

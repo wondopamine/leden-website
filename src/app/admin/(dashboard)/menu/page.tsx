@@ -1,9 +1,15 @@
 import { createClient } from "@/lib/supabase/server";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/page-header";
 import { MenuItemRow } from "@/components/admin/menu-item-row";
+
+export const metadata: Metadata = {
+  title: "Menu",
+  description: "Manage Café Le Den menu items and availability.",
+};
 
 export default async function MenuPage() {
   const supabase = await createClient();

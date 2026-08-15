@@ -6,7 +6,7 @@ import { MapPin } from "lucide-react";
 import { Wordmark } from "@/components/brand/wordmark";
 import { OpenStatusPill } from "@/components/brand/open-status";
 import { Watermelon } from "@/components/brand/watermelon";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { Stars } from "@/components/ui/stars";
 import { Link } from "@/i18n/navigation";
 import { formatStatusLabel, getOpenStatus } from "@/lib/hours";
@@ -21,8 +21,8 @@ export function Hero({ locale, info }: { locale: string; info: CafeInfo }) {
 
   return (
     <section className="relative isolate overflow-hidden bg-primary text-primary-foreground">
-      <div className="mx-auto grid min-h-[calc(100svh-4rem)] max-w-7xl lg:min-h-[42rem] lg:grid-cols-[1.04fr_0.96fr]">
-        <div className="relative min-h-56 overflow-hidden sm:min-h-72 lg:order-2 lg:min-h-full">
+      <div className="mx-auto grid min-h-[calc(100svh-4rem)] max-w-7xl lg:min-h-[42rem] lg:grid-cols-12">
+        <div className="relative min-h-56 overflow-hidden sm:min-h-72 lg:order-2 lg:col-span-6 lg:min-h-full">
           <Image
             src="/story-coffee.jpg"
             alt=""
@@ -41,7 +41,7 @@ export function Hero({ locale, info }: { locale: string; info: CafeInfo }) {
           />
         </div>
 
-        <div className="relative flex flex-col justify-center px-5 py-8 sm:px-10 sm:py-12 lg:order-1 lg:px-16 lg:py-20">
+        <div className="relative flex flex-col justify-center px-5 py-8 sm:px-10 sm:py-12 lg:order-1 lg:col-span-6 lg:px-16 lg:py-20">
           <div className="hero-fade-up hero-delay-1 flex flex-wrap items-center gap-2.5">
             <OpenStatusPill
               isOpen={status.isOpen}
@@ -67,23 +67,28 @@ export function Hero({ locale, info }: { locale: string; info: CafeInfo }) {
           </p>
 
           <div className="hero-fade-up hero-delay-3 mt-6 flex flex-wrap items-center gap-3">
-            <Button
-              nativeButton={false}
-              render={<Link href="/menu" />}
-              size="lg"
-              className="h-12 rounded-full bg-accent px-7 text-base text-accent-foreground hover:bg-accent/90"
+            <Link
+              href="/menu"
+              className={buttonVariants({
+                variant: "default",
+                size: "lg",
+                className:
+                  "h-12 rounded-full bg-primary px-7 text-base text-primary-foreground ring-1 ring-primary-foreground/35 hover:bg-primary/90",
+              })}
             >
               {tc("orderForPickup")}
-            </Button>
-            <Button
-              nativeButton={false}
-              render={<Link href="/menu" />}
-              variant="ghost"
-              size="lg"
-              className="h-12 rounded-full px-5 text-primary-foreground underline-offset-4 hover:text-primary-foreground hover:opacity-80 hover:underline"
+            </Link>
+            <Link
+              href="/menu"
+              className={buttonVariants({
+                variant: "ghost",
+                size: "lg",
+                className:
+                  "h-12 rounded-full px-5 text-primary-foreground underline-offset-4 hover:text-primary-foreground hover:opacity-80 hover:underline",
+              })}
             >
               {tc("viewMenu")}
-            </Button>
+            </Link>
           </div>
 
           <Suspense fallback={<div className="mt-6 h-7" />}>

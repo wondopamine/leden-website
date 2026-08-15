@@ -140,7 +140,10 @@ export async function fetchAnalytics(period: Period): Promise<AnalyticsData> {
     query = query.gte("created_at", start.toISOString());
   }
 
-  const { data: orders } = await query;
+  const { data: orders, error } = await query;
+  if (error) {
+    throw new Error("Order analytics could not be loaded.", { cause: error });
+  }
   const allOrders = (orders ?? []) as Array<{
     id: string;
     status: string;

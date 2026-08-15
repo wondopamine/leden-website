@@ -23,6 +23,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -45,9 +46,19 @@ export function AdminSidebar() {
     setIsSigningOut(true);
     try {
       const supabase = createClient();
-      await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        toast.error("Could not sign out", {
+          description: "Check your connection, then try signing out again.",
+        });
+        return;
+      }
       router.push("/admin/login");
       router.refresh();
+    } catch {
+      toast.error("Could not sign out", {
+        description: "Check your connection, then try signing out again.",
+      });
     } finally {
       setIsSigningOut(false);
     }
@@ -146,6 +157,11 @@ export function AdminSidebar() {
         {brand}
         <Navigation />
       </aside>
+      {isSigningOut ? (
+        <span role="status" className="sr-only">
+          Signing out…
+        </span>
+      ) : null}
     </>
   );
 }

@@ -5,7 +5,7 @@ import { ShoppingBag, ArrowRight } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { useCartStore } from "@/lib/cart-store";
 import { formatPrice } from "@/lib/utils/format";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 
 /**
  * Mobile-only sticky order action in the thumb zone. Follows the whole scroll.
@@ -23,12 +23,15 @@ export function StickyOrderBar({ hideWhenEmpty = false }: { hideWhenEmpty?: bool
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 md:hidden">
-      <div className="border-t border-primary bg-primary px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
-        <Button
-          nativeButton={false}
-          render={<Link href={hasItems ? "/order" : "/menu"} />}
-          size="lg"
-          className="flex h-12 w-full justify-between gap-3 rounded-full bg-accent px-5 text-accent-foreground shadow-sm hover:bg-accent/90 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-primary"
+      <div className="border-t border-border bg-background/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-md">
+        <Link
+          href={hasItems ? "/order" : "/menu"}
+          className={buttonVariants({
+            variant: "default",
+            size: "lg",
+            className:
+              "flex h-12 w-full justify-between gap-3 rounded-full bg-primary px-5 text-primary-foreground shadow-sm hover:bg-primary/90 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+          })}
         >
           <span className="flex items-center gap-2 font-semibold">
             <ShoppingBag aria-hidden className="size-5" />
@@ -38,7 +41,7 @@ export function StickyOrderBar({ hideWhenEmpty = false }: { hideWhenEmpty?: bool
             {hasItems && <span>{formatPrice(getSubtotal())}</span>}
             <ArrowRight aria-hidden className="size-5" />
           </span>
-        </Button>
+        </Link>
       </div>
     </div>
   );

@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Plus, Minus, X, Clock } from "lucide-react";
 import { useCartStore } from "@/lib/cart-store";
 import { Link, useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -15,6 +16,11 @@ import { getOpenStatus, getCafeWeekday, getCafeMinutes, formatTime } from "@/lib
 import type { CafeInfo } from "@/lib/types";
 
 type Props = { locale: string; cafeInfo: CafeInfo };
+
+type SubmitError = {
+  message: string;
+  showMenuLink: boolean;
+};
 
 function generateTimeSlots(cafeInfo: CafeInfo): string[] {
   // Café-timezone clock, shared with getOpenStatus so slots and status agree.
@@ -54,8 +60,11 @@ export function OrderContent({ locale, cafeInfo }: Props) {
   const getTotal = useCartStore((s) => s.getTotal);
   const clearCart = useCartStore((s) => s.clearCart);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<SubmitError | null>(null);
   const [attempted, setAttempted] = useState(false);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const phoneInputRef = useRef<HTMLInputElement>(null);
+  const errorSummaryRef = useRef<HTMLDivElement>(null);
 
   const status = getOpenStatus(cafeInfo.hours);
   const cafeOpen = status.isOpen;
@@ -63,6 +72,12 @@ export function OrderContent({ locale, cafeInfo }: Props) {
 
   const nameInvalid = attempted && !customerInfo.name.trim();
   const phoneInvalid = attempted && customerInfo.phone.replace(/\D/g, "").length < 10;
+
+  useEffect(() => {
+    if (error) {
+      errorSummaryRef.current?.focus();
+    }
+  }, [error]);
 
   if (items.length === 0) {
     return (
@@ -101,7 +116,14 @@ export function OrderContent({ locale, cafeInfo }: Props) {
 
   const handleSubmitOrder = async () => {
     setAttempted(true);
-    if (!customerInfo.name.trim() || customerInfo.phone.replace(/\D/g, "").length < 10) return;
+    if (!customerInfo.name.trim()) {
+      nameInputRef.current?.focus();
+      return;
+    }
+    if (customerInfo.phone.replace(/\D/g, "").length < 10) {
+      phoneInputRef.current?.focus();
+      return;
+    }
     if (!cafeOpen) return;
     setLoading(true);
     setError(null);
@@ -126,15 +148,32 @@ export function OrderContent({ locale, cafeInfo }: Props) {
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to submit order");
+        const data: unknown = await res.json().catch(() => null);
+        const code =
+          data && typeof data === "object" && "code" in data && typeof data.code === "string"
+            ? data.code
+            : "UNKNOWN";
+
+        if (["CAFE_CLOSED_TODAY", "CAFE_CLOSED_NOW", "PICKUP_TIME_INVALID"].includes(code)) {
+          setError({ message: t("errorHours"), showMenuLink: false });
+        } else if (["ITEM_REMOVED", "ITEM_UNAVAILABLE", "PRICE_CHANGED", "EMPTY_ORDER"].includes(code)) {
+          setError({ message: t("errorMenuChanged"), showMenuLink: true });
+        } else if (code === "SERVICE_UNAVAILABLE") {
+          setError({ message: t("errorService"), showMenuLink: false });
+        } else if (code === "ORDER_ITEMS_SAVE_FAILED") {
+          setError({ message: t("errorOrderDetails"), showMenuLink: false });
+        } else {
+          setError({ message: t("errorSubmitting"), showMenuLink: false });
+        }
+        return;
       }
 
       const data = await res.json();
       clearCart();
       router.push(`/order/confirmation?order=${data.orderNumber}`);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t("errorSubmitting"));
+    } catch {
+      setError({ message: t("errorSubmitting"), showMenuLink: false });
+    } finally {
       setLoading(false);
     }
   };
@@ -245,6 +284,7 @@ export function OrderContent({ locale, cafeInfo }: Props) {
                   <Label htmlFor="name">{tc("name")} *</Label>
                   <Input
                     id="name"
+                    ref={nameInputRef}
                     className="mt-1.5"
                     placeholder={t("nameRequired")}
                     value={customerInfo.name}
@@ -265,6 +305,7 @@ export function OrderContent({ locale, cafeInfo }: Props) {
                   <Label htmlFor="phone">{tc("phone")} *</Label>
                   <Input
                     id="phone"
+                    ref={phoneInputRef}
                     type="tel"
                     className="mt-1.5"
                     placeholder={t("phoneRequired")}
@@ -302,9 +343,27 @@ export function OrderContent({ locale, cafeInfo }: Props) {
           </div>
           <p id="payment-note" className="mt-3 text-caption text-muted-foreground">{t("payInPerson")}</p>
           {error && (
-            <p id="submit-error" role="alert" aria-live="assertive" className="mt-2 text-caption text-destructive">
-              {error}
-            </p>
+            <div
+              id="submit-error"
+              ref={errorSummaryRef}
+              role="alert"
+              aria-live="assertive"
+              tabIndex={-1}
+              className="mt-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-caption text-destructive outline-none focus-visible:ring-2 focus-visible:ring-destructive/40"
+            >
+              <p>{error.message}</p>
+              {error.showMenuLink && (
+                <Link
+                  href="/menu"
+                  className={buttonVariants({
+                    variant: "link",
+                    className: "mt-2 h-11 px-0 text-destructive",
+                  })}
+                >
+                  {tc("viewMenu")}
+                </Link>
+              )}
+            </div>
           )}
           <Button
             variant="default"

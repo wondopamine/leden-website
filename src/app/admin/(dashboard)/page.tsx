@@ -1,9 +1,15 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { OrdersDashboard } from "@/components/admin/orders-dashboard";
 import { AnalyticsDashboard } from "@/components/admin/analytics-dashboard";
 import { AdminPageHeader } from "@/components/admin/page-header";
 import { StatStrip } from "@/components/admin/stat-strip";
+
+export const metadata: Metadata = {
+  title: "Live orders",
+  description: "Monitor and advance today's Café Le Den pickup orders.",
+};
 
 export default async function AdminDashboardPage() {
   const supabase = await createClient();

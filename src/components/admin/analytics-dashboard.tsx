@@ -13,6 +13,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { PeriodSelector } from "./period-selector";
 import {
   type Period,
@@ -40,16 +41,27 @@ export function AnalyticsDashboard() {
   const [period, setPeriod] = useState<Period>("daily");
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
 
     async function run() {
       setLoading(true);
-      const result = await fetchAnalytics(period);
-      if (!cancelled) {
-        setData(result);
-        setLoading(false);
+      setError(null);
+      try {
+        const result = await fetchAnalytics(period);
+        if (!cancelled) setData(result);
+      } catch {
+        if (!cancelled) {
+          setData(null);
+          setError(
+            "Order analysis could not be loaded. Check your connection and try again.",
+          );
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     }
 
@@ -57,7 +69,7 @@ export function AnalyticsDashboard() {
     return () => {
       cancelled = true;
     };
-  }, [period]);
+  }, [period, retryKey]);
 
   const handlePeriodChange = (p: Period) => {
     setPeriod(p);
@@ -80,6 +92,11 @@ export function AnalyticsDashboard() {
 
       {loading ? (
         <LoadingSkeleton />
+      ) : error ? (
+        <AnalyticsErrorState
+          message={error}
+          onRetry={() => setRetryKey((key) => key + 1)}
+        />
       ) : data ? (
         <>
           {/* Stat strip */}
@@ -109,7 +126,7 @@ export function AnalyticsDashboard() {
           {/* Revenue trend chart */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="font-sans text-sm font-semibold text-foreground">
+              <CardTitle as="h3" className="font-sans text-sm font-semibold text-foreground">
                 Submitted order value
               </CardTitle>
             </CardHeader>
@@ -163,7 +180,7 @@ export function AnalyticsDashboard() {
             {/* Top items */}
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="font-sans text-sm font-semibold text-foreground">
+                <CardTitle as="h3" className="font-sans text-sm font-semibold text-foreground">
                   Top-selling items
                 </CardTitle>
               </CardHeader>
@@ -203,7 +220,7 @@ export function AnalyticsDashboard() {
             {/* Peak hours */}
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="font-sans text-sm font-semibold text-foreground">
+                <CardTitle as="h3" className="font-sans text-sm font-semibold text-foreground">
                   Orders by hour
                 </CardTitle>
               </CardHeader>
@@ -249,6 +266,35 @@ export function AnalyticsDashboard() {
         </>
       ) : null}
     </section>
+  );
+}
+
+export function AnalyticsErrorState({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry: () => void;
+}) {
+  return (
+    <Card role="alert" className="border-destructive/30">
+      <CardHeader>
+        <CardTitle as="h3" className="font-sans text-base font-semibold text-foreground">
+          Analysis unavailable
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-sm text-muted-foreground">{message}</p>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={onRetry}
+        >
+          Try again
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
 

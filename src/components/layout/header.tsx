@@ -2,13 +2,14 @@
 
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Check, ChevronDown, Globe, Menu, ShoppingBag, X } from "lucide-react";
+import { ChevronDown, Globe, Menu, ShoppingBag, X } from "lucide-react";
 import { WordmarkHorizontal } from "@/components/brand/wordmark-horizontal";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -205,16 +206,21 @@ function LanguageMenu({
         {!compact && <ChevronDown aria-hidden className="size-4" />}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-44">
-        {languages.map((language) => (
-          <DropdownMenuItem
-            key={language.code}
-            onClick={() => onSelect(language.code)}
-            className="justify-between"
-          >
-            <span>{language.label}</span>
-            {locale === language.code && <Check aria-hidden className="size-4" />}
-          </DropdownMenuItem>
-        ))}
+        <DropdownMenuRadioGroup
+          aria-label={label}
+          value={locale}
+          onValueChange={(value) => onSelect(String(value))}
+        >
+          {languages.map((language) => (
+            <DropdownMenuRadioItem
+              key={language.code}
+              value={language.code}
+              closeOnClick
+            >
+              {language.label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );

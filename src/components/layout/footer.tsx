@@ -41,7 +41,7 @@ export function Footer({ locale, info }: { locale: string; info: CafeInfo }) {
             <Link
               key={l.href}
               href={l.href}
-              className="w-fit rounded-sm text-body text-foreground transition-colors hover:text-accent-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+              className="inline-flex min-h-11 min-w-11 items-center rounded-sm py-2 text-body text-foreground transition-colors hover:text-accent-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
             >
               {l.label}
             </Link>

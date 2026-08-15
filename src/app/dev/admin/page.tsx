@@ -11,10 +11,8 @@
 // guards its realtime subscribe/createClient in try/catch; OrderCard / MenuItemRow /
 // SettingsForm only reach their server actions on click/submit (never at render).
 //
-// The analytics chart area is shown two ways: the live <AnalyticsDashboard /> (which
-// fetches on mount and, without env, degrades to its loading skeleton) and a static
-// <AnalyticsPreview /> that renders the same chart JSX + token props against sample
-// data so the recharts token migration is actually visible.
+// Analytics uses a static preview that renders the production chart structure and
+// token props against sample data. The auth-free gallery never contacts Supabase.
 
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -26,7 +24,6 @@ import { OrdersDashboard } from "@/components/admin/orders-dashboard";
 import { OrderCard, type Order } from "@/components/admin/order-card";
 import { MenuItemRow } from "@/components/admin/menu-item-row";
 import { SettingsForm } from "@/components/admin/settings-form";
-import { AnalyticsDashboard } from "@/components/admin/analytics-dashboard";
 import {
   ORDER_STATUS,
   ORDER_STATUS_SEQUENCE,
@@ -44,6 +41,7 @@ import {
 } from "@/components/ui/table";
 
 import { AnalyticsPreview } from "./analytics-preview";
+import { AnalyticsErrorPreview } from "./analytics-error-preview";
 
 // created_at stamps are computed once at render so the KDS "Xm ago" labels read
 // naturally in a screenshot.
@@ -308,11 +306,13 @@ const statTiles = [
   },
 ];
 
-const headClass =
-  "text-xs font-semibold uppercase tracking-wider text-muted-foreground";
+const headClass = "text-xs font-semibold text-muted-foreground";
 
 export default function DevAdminPreviewPage() {
-  if (process.env.NODE_ENV !== "development") {
+  if (
+    process.env.NODE_ENV !== "development" &&
+    process.env.PLAYWRIGHT_ADMIN_PREVIEW !== "1"
+  ) {
     notFound();
   }
 
@@ -323,7 +323,7 @@ export default function DevAdminPreviewPage() {
         <div className="space-y-10 p-6">
           <header className="border-b border-border pb-6">
             <h1 className="font-sans text-xl font-semibold tracking-tight text-foreground">
-              Admin Redesign Preview
+              Admin redesign preview
             </h1>
             <p className="mt-2 text-caption text-muted-foreground">
               Dev-only, auth-free and Supabase-free. Every block below is a real
@@ -349,12 +349,12 @@ export default function DevAdminPreviewPage() {
 
           <Section
             title="Order cards - one per status"
-            note="OrderCard across all five statuses. Badges and dots come from ORDER_STATUS; the advance-status button and cancel dropdown are live but only reach their server action on click."
+            note="OrderCard across all five statuses. Badges and dots come from ORDER_STATUS; the advance-status button and cancel dropdown are live but only reach their server action when used."
           >
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {ORDER_STATUS_SEQUENCE.map((status) => (
                 <div key={status} className="space-y-2">
-                  <p className="text-label uppercase tracking-wide text-muted-foreground">
+                  <p className="text-label font-semibold text-muted-foreground">
                     {ORDER_STATUS[status].label}
                   </p>
                   <OrderCard order={firstByStatus(status)} />
@@ -386,8 +386,8 @@ export default function DevAdminPreviewPage() {
             note="Dense scanning table (Order / Customer / Items / Total / Status / Time) mirroring /admin/orders. Rows link to detail; status uses ORDER_STATUS badges."
           >
             <div className="overflow-hidden rounded-lg border border-border bg-card">
-              <Table>
-                <TableHeader>
+              <Table containerClassName="max-h-96">
+                <TableHeader sticky>
                   <TableRow className="hover:bg-transparent">
                     <TableHead className={headClass}>Order</TableHead>
                     <TableHead className={headClass}>Customer</TableHead>
@@ -457,10 +457,10 @@ export default function DevAdminPreviewPage() {
           </Section>
 
           <Section
-            title="Analytics - live component (graceful degrade)"
-            note="The real <AnalyticsDashboard /> fetches from Supabase on mount. Without env it degrades to its loading skeleton instead of crashing."
+            title="Analytics recovery state"
+            note="The production analysis error surface remains distinct from a valid empty period and keeps an explicit retry action."
           >
-            <AnalyticsDashboard />
+            <AnalyticsErrorPreview />
           </Section>
 
           <Section

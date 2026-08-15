@@ -2,14 +2,16 @@
 
 import { useState, useRef, useTransition } from "react";
 import Image from "next/image";
-import { toast } from "sonner";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Trash2, Upload, ImageIcon, X, Loader2 } from "lucide-react";
+import { useUnsavedChanges } from "@/lib/use-unsaved-changes";
 
 type Category = {
   id: string;
@@ -64,40 +66,61 @@ export function MenuItemForm({
     initialData?.modifiers ?? []
   );
   const [isPending, startTransition] = useTransition();
+  const [isDirty, setIsDirty] = useState(false);
+  const [submissionMessage, setSubmissionMessage] = useState<{
+    tone: "success" | "error";
+    text: string;
+  } | null>(null);
+  const [photoMessage, setPhotoMessage] = useState("");
   const isEdit = !!initialData?.id;
+  const { confirmDiscard, suspendProtection, resumeProtection } =
+    useUnsavedChanges(isDirty, () => setIsDirty(false));
 
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setUploading(true);
+    setPhotoMessage("Uploading photo…");
     const body = new FormData();
     body.append("file", file);
 
-    const res = await fetch("/api/upload-menu-image", { method: "POST", body });
-    const data = await res.json();
-
-    if (!res.ok) {
-      toast.error("Photo was not uploaded", {
-        description: data.error
-          ? `${data.error} Check the file and try again.`
-          : "Check the file and try again.",
+    try {
+      const res = await fetch("/api/upload-menu-image", {
+        method: "POST",
+        body,
       });
-      setUploading(false);
-      return;
-    }
+      const data = (await res.json().catch(() => null)) as {
+        error?: string;
+        url?: string;
+      } | null;
 
-    setImageUrl(data.url);
-    setUploading(false);
-    if (fileInputRef.current) fileInputRef.current.value = "";
+      if (!res.ok || !data?.url) {
+        throw new Error(data?.error || "The upload service returned no photo.");
+      }
+
+      setImageUrl(data.url);
+      setIsDirty(true);
+      setPhotoMessage("Photo uploaded. Save the menu item to keep it.");
+    } catch {
+      setPhotoMessage(
+        "Photo was not uploaded. Check the file and your connection, then try again.",
+      );
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   }
 
   function removeImage() {
     setImageUrl(null);
+    setIsDirty(true);
+    setPhotoMessage("Photo removed. Save the menu item to keep this change.");
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   function addModifier() {
+    setIsDirty(true);
     setModifiers([
       ...modifiers,
       { name_en: "", name_fr: "", options: [{ name_en: "", name_fr: "", price_adjustment: 0 }] },
@@ -105,22 +128,26 @@ export function MenuItemForm({
   }
 
   function removeModifier(idx: number) {
+    setIsDirty(true);
     setModifiers(modifiers.filter((_, i) => i !== idx));
   }
 
   function updateModifier(idx: number, field: "name_en" | "name_fr", value: string) {
+    setIsDirty(true);
     const updated = [...modifiers];
     updated[idx] = { ...updated[idx], [field]: value };
     setModifiers(updated);
   }
 
   function addOption(modIdx: number) {
+    setIsDirty(true);
     const updated = [...modifiers];
     updated[modIdx].options.push({ name_en: "", name_fr: "", price_adjustment: 0 });
     setModifiers(updated);
   }
 
   function removeOption(modIdx: number, optIdx: number) {
+    setIsDirty(true);
     const updated = [...modifiers];
     updated[modIdx].options = updated[modIdx].options.filter(
       (_, i) => i !== optIdx
@@ -134,28 +161,44 @@ export function MenuItemForm({
     field: string,
     value: string | number
   ) {
+    setIsDirty(true);
     const updated = [...modifiers];
     (updated[modIdx].options[optIdx] as Record<string, string | number>)[field] = value;
     setModifiers(updated);
   }
 
   function handleSubmit(formData: FormData) {
-    if (isEdit) {
-      startTransition(async () => {
-        try {
-          await action(formData);
-          toast.success("Changes saved");
-        } catch {
-          toast.error("Failed to save changes");
-        }
-      });
-    } else {
-      action(formData);
-    }
+    setSubmissionMessage(null);
+    // A successful create redirects from its server action. Suspend the guard
+    // for this intentional save navigation; restore it if the request fails.
+    suspendProtection();
+    setIsDirty(false);
+    startTransition(async () => {
+      try {
+        await action(formData);
+        setIsDirty(false);
+        const text = isEdit
+          ? "Menu item changes saved."
+          : "Menu item created.";
+        setSubmissionMessage({ tone: "success", text });
+      } catch {
+        resumeProtection();
+        setIsDirty(true);
+        setSubmissionMessage({
+          tone: "error",
+          text: "Menu item was not saved. Review the fields and your connection, then try again.",
+        });
+      }
+    });
   }
 
   return (
-    <form action={handleSubmit} className="max-w-2xl space-y-5">
+    <form
+      action={handleSubmit}
+      onChange={() => setIsDirty(true)}
+      className="max-w-2xl space-y-5"
+      aria-busy={isPending}
+    >
       {initialData?.id && (
         <input type="hidden" name="id" value={initialData.id} />
       )}
@@ -221,6 +264,9 @@ export function MenuItemForm({
               )}
               {uploading ? "Uploading…" : imageUrl ? "Change photo" : "Upload photo"}
             </Button>
+            <p className="max-w-56 text-caption text-muted-foreground" aria-live="polite">
+              {photoMessage}
+            </p>
             {imageUrl && (
               <Button
                 type="button"
@@ -318,7 +364,10 @@ export function MenuItemForm({
             <Switch
               id="available"
               checked={available}
-              onCheckedChange={setAvailable}
+              onCheckedChange={(checked) => {
+                setAvailable(checked);
+                setIsDirty(true);
+              }}
             />
             <span className="text-sm text-muted-foreground">
               {available ? "Shown for ordering" : "Hidden from ordering"}
@@ -331,7 +380,7 @@ export function MenuItemForm({
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="font-sans text-sm">Modifiers</CardTitle>
+            <CardTitle as="h2" className="font-sans text-sm">Modifiers</CardTitle>
             <Button type="button" variant="outline" size="sm" onClick={addModifier}>
               <Plus className="mr-1 h-3 w-3" />
               Add modifier
@@ -465,7 +514,28 @@ export function MenuItemForm({
         </CardContent>
       </Card>
 
-      <div className="flex gap-3">
+      {isPending ? (
+        <p role="status" className="text-sm text-muted-foreground">
+          {isEdit ? "Saving menu item changes…" : "Creating menu item…"}
+        </p>
+      ) : submissionMessage ? (
+        <p
+          role={submissionMessage.tone === "error" ? "alert" : "status"}
+          className={
+            submissionMessage.tone === "error"
+              ? "text-sm text-destructive"
+              : "text-sm text-status-active-foreground"
+          }
+        >
+          {submissionMessage.text}
+        </p>
+      ) : isDirty ? (
+        <p role="status" className="text-sm text-muted-foreground">
+          Unsaved changes
+        </p>
+      ) : null}
+
+      <div className="flex flex-wrap gap-3">
         <Button
           type="submit"
           variant="default"
@@ -475,6 +545,15 @@ export function MenuItemForm({
         >
           {isPending ? "Saving…" : submitLabel}
         </Button>
+        <Link
+          href="/admin/menu"
+          className={buttonVariants({ variant: "outline", size: "default" })}
+          onClick={(event) => {
+            if (!confirmDiscard()) event.preventDefault();
+          }}
+        >
+          Cancel
+        </Link>
       </div>
     </form>
   );

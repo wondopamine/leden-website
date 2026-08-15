@@ -174,7 +174,7 @@
   /* Motion — DESIGN.md. The compatibility alias remains non-overshooting. */
   --duration-fast: 150ms;
   --duration-base: 300ms;
-  --duration-slow: 500ms;
+  --duration-slow: 300ms;
   --ease-in:     cubic-bezier(0.4, 0, 1, 1);
   --ease-out:    cubic-bezier(0.22, 1, 0.36, 1);  /* ease-out-quint — exponential, no bounce */
   --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
@@ -305,7 +305,6 @@
 
   /* Font families — Fraunces (display serif) + Inter (body), loaded via next/font */
   --font-sans:    var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-mono:    var(--font-geist-mono), ui-monospace, monospace;
   --font-display: var(--font-fraunces), Georgia, "Times New Roman", serif;
   --font-heading: var(--font-display);
 
@@ -377,14 +376,10 @@
 /* ──────────────────────────────────────────────────────────────────────────── */
 /* Animation utility classes (durations/easings consume motion tokens).          */
 /* ──────────────────────────────────────────────────────────────────────────── */
-.doodle-float  { animation: doodle-float  calc(var(--duration-slow) * 8) var(--ease-out) infinite; }
-.doodle-wiggle { animation: doodle-wiggle calc(var(--duration-slow) * 6) var(--ease-out) infinite; }
+.doodle-float,
+.doodle-wiggle { animation: none; }
 .doodle-pop    { animation: doodle-pop    var(--duration-slow) var(--ease-spring) both; }
-.doodle-draw path { stroke-dasharray: 200; animation: doodle-draw calc(var(--duration-slow) * 3) var(--ease-out) forwards; }
-
-/* Review carousel (decorative marquee; duration is out of the motion budget). */
-.review-carousel { animation: scroll-reviews 48s linear infinite; }
-.review-carousel:hover { animation-play-state: paused; }
+.doodle-draw path { stroke-dasharray: 200; animation: doodle-draw var(--duration-slow) var(--ease-out) forwards; }
 
 .hero-fade-up { opacity: 0; animation: hero-fade-up var(--duration-slow) var(--ease-out) forwards; }
 .hero-delay-1 { animation-delay: 80ms; }
@@ -403,7 +398,6 @@
     scroll-behavior: auto !important;
   }
   .hero-fade-up { opacity: 1 !important; transform: none !important; animation: none !important; }
-  .review-carousel { animation: none !important; }
   .doodle-float, .doodle-wiggle, .doodle-pop { animation: none !important; }
   .doodle-draw path { animation: none !important; stroke-dashoffset: 0 !important; }
 }

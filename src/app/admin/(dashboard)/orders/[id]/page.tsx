@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { OrderCard, type Order } from "@/components/admin/order-card";
 import { AdminPageHeader } from "@/components/admin/page-header";
@@ -10,6 +11,14 @@ import { Button } from "@/components/ui/button";
 type Props = {
   params: Promise<{ id: string }>;
 };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  await params;
+  return {
+    title: "Order detail",
+    description: "Review an order's customer, items, status, and pricing.",
+  };
+}
 
 export default async function OrderDetailPage({ params }: Props) {
   const { id } = await params;
@@ -47,7 +56,7 @@ export default async function OrderDetailPage({ params }: Props) {
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="font-sans text-sm font-semibold">
+          <CardTitle as="h2" className="font-sans text-sm font-semibold">
             Pricing breakdown
           </CardTitle>
         </CardHeader>

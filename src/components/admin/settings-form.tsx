@@ -1,14 +1,16 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { updateCafeInfo } from "@/app/admin/(dashboard)/settings/actions";
 import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { toast } from "sonner";
+import { useUnsavedChanges } from "@/lib/use-unsaved-changes";
 
 type HourEntry = {
   day: string;
@@ -51,19 +53,31 @@ export function SettingsForm({ initialData }: Props) {
   const [maxAdvanceDays, setMaxAdvanceDays] = useState(
     initialData?.max_advance_order_days ?? 3
   );
+  const [isDirty, setIsDirty] = useState(false);
+  const [submissionMessage, setSubmissionMessage] = useState<{
+    tone: "success" | "error";
+    text: string;
+  } | null>(null);
+  const { confirmDiscard, suspendProtection, resumeProtection } =
+    useUnsavedChanges(isDirty, () => setIsDirty(false));
 
   function updateHour(
     idx: number,
     field: keyof HourEntry,
     value: string | boolean
   ) {
+    setIsDirty(true);
     const updated = [...hours];
     (updated[idx] as Record<string, string | boolean>)[field] = value;
     setHours(updated);
   }
 
-  function handleSave() {
+  function handleSave(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     if (!initialData?.id) return;
+    setSubmissionMessage(null);
+    suspendProtection();
+    setIsDirty(false);
     startTransition(async () => {
       try {
         await updateCafeInfo({
@@ -76,10 +90,14 @@ export function SettingsForm({ initialData }: Props) {
           pickup_lead_time: pickupLeadTime,
           max_advance_order_days: maxAdvanceDays,
         });
-        toast.success("Settings saved");
+        setIsDirty(false);
+        setSubmissionMessage({ tone: "success", text: "Settings saved." });
       } catch {
-        toast.error("Settings were not saved", {
-          description: "Check the fields and your connection, then try again.",
+        resumeProtection();
+        setIsDirty(true);
+        setSubmissionMessage({
+          tone: "error",
+          text: "Settings were not saved. Check the fields and your connection, then try again.",
         });
       }
     });
@@ -100,11 +118,16 @@ export function SettingsForm({ initialData }: Props) {
   }
 
   return (
-    <div className="max-w-2xl space-y-4">
+    <form
+      onSubmit={handleSave}
+      onChange={() => setIsDirty(true)}
+      aria-busy={isPending}
+      className="max-w-2xl space-y-4"
+    >
       {/* Hours */}
       <Card>
         <CardHeader>
-          <CardTitle className="font-sans text-sm font-semibold">
+          <CardTitle as="h2" className="font-sans text-sm font-semibold">
             Business hours
           </CardTitle>
         </CardHeader>
@@ -167,7 +190,7 @@ export function SettingsForm({ initialData }: Props) {
       {/* Contact */}
       <Card>
         <CardHeader>
-          <CardTitle className="font-sans text-sm font-semibold">
+          <CardTitle as="h2" className="font-sans text-sm font-semibold">
             Contact
           </CardTitle>
         </CardHeader>
@@ -194,7 +217,7 @@ export function SettingsForm({ initialData }: Props) {
       {/* Announcement */}
       <Card>
         <CardHeader>
-          <CardTitle className="font-sans text-sm font-semibold">
+          <CardTitle as="h2" className="font-sans text-sm font-semibold">
             Announcement
           </CardTitle>
         </CardHeader>
@@ -225,7 +248,7 @@ export function SettingsForm({ initialData }: Props) {
       {/* Order settings */}
       <Card>
         <CardHeader>
-          <CardTitle className="font-sans text-sm font-semibold">
+          <CardTitle as="h2" className="font-sans text-sm font-semibold">
             Order settings
           </CardTitle>
         </CardHeader>
@@ -259,15 +282,47 @@ export function SettingsForm({ initialData }: Props) {
         </CardContent>
       </Card>
 
-      <Button
-        variant="default"
-        size="default"
-        onClick={handleSave}
-        disabled={isPending}
-        aria-busy={isPending}
-      >
-        {isPending ? "Saving…" : "Save settings"}
-      </Button>
-    </div>
+      {isPending ? (
+        <p role="status" className="text-sm text-muted-foreground">
+          Saving settings…
+        </p>
+      ) : submissionMessage ? (
+        <p
+          role={submissionMessage.tone === "error" ? "alert" : "status"}
+          className={
+            submissionMessage.tone === "error"
+              ? "text-sm text-destructive"
+              : "text-sm text-status-active-foreground"
+          }
+        >
+          {submissionMessage.text}
+        </p>
+      ) : isDirty ? (
+        <p role="status" className="text-sm text-muted-foreground">
+          Unsaved changes
+        </p>
+      ) : null}
+
+      <div className="flex flex-wrap gap-3">
+        <Button
+          type="submit"
+          variant="default"
+          size="default"
+          disabled={isPending}
+          aria-busy={isPending}
+        >
+          {isPending ? "Saving…" : "Save settings"}
+        </Button>
+        <Link
+          href="/admin"
+          className={buttonVariants({ variant: "outline", size: "default" })}
+          onClick={(event) => {
+            if (!confirmDiscard()) event.preventDefault();
+          }}
+        >
+          Cancel
+        </Link>
+      </div>
+    </form>
   );
 }

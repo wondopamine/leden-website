@@ -1,10 +1,16 @@
 import { createClient } from "@/lib/supabase/server";
+import type { Metadata } from "next";
 import { createMenuItem } from "../actions";
 import { MenuItemForm } from "@/components/admin/menu-item-form";
 import { AdminPageHeader } from "@/components/admin/page-header";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+
+export const metadata: Metadata = {
+  title: "New menu item",
+  description: "Add a new item to the Café Le Den menu.",
+};
 
 export default async function NewMenuItemPage() {
   const supabase = await createClient();

@@ -3,32 +3,48 @@ import { expect, test, type Page } from "@playwright/test";
 const locales = [
   {
     locale: "en",
-    menuTitle: "Our Menu",
+    homeTitle: "Café Le Den — Café in Pointe-Claire",
+    menuPageTitle: "Menu for pickup | Café Le Den",
+    orderPageTitle: "Order for pickup | Café Le Den",
+    confirmationPageTitle: "Order confirmation | Café Le Den",
+    menuTitle: "Our menu",
     emptyCart: "Your cart is empty",
-    confirmationTitle: "Order Placed!",
+    confirmationTitle: "Order placed",
     skipLabel: "Skip to content",
     languageLabel: "Language: English",
+    currentLanguage: "English",
     alternateLanguage: "Français",
+    orderForPickup: "Order for pickup",
+    reviewsTitle: "What our guests say",
     addLabel: "Add",
     closeLabel: "Close",
-    addToOrder: /Add to Order/,
-    placeOrder: "Place Order",
+    addToOrder: /Add to order/,
+    placeOrder: "Place order",
+    submitError: "We couldn’t place your order. Your cart is saved. Check your connection and try again.",
     nameLabel: "Name",
     phoneLabel: "Phone",
     homeLabel: "Home",
   },
   {
     locale: "fr",
+    homeTitle: "Café Le Den — Café à Pointe-Claire",
+    menuPageTitle: "Menu pour cueillette | Café Le Den",
+    orderPageTitle: "Commander pour cueillette | Café Le Den",
+    confirmationPageTitle: "Confirmation de commande | Café Le Den",
     menuTitle: "Notre menu",
     emptyCart: "Votre panier est vide",
-    confirmationTitle: "Commande envoyée!",
+    confirmationTitle: "Commande envoyée",
     skipLabel: "Aller au contenu",
     languageLabel: "Langue: Français",
+    currentLanguage: "Français",
     alternateLanguage: "English",
+    orderForPickup: "Commander pour cueillette",
+    reviewsTitle: "Ce que disent nos clients",
     addLabel: "Ajouter",
     closeLabel: "Fermer",
     addToOrder: /Ajouter à la commande/,
     placeOrder: "Passer la commande",
+    submitError: "Nous n’avons pas pu passer votre commande. Votre panier est conservé. Vérifiez votre connexion et réessayez.",
     nameLabel: "Nom",
     phoneLabel: "Téléphone",
     homeLabel: "Accueil",
@@ -50,12 +66,20 @@ async function expectNoHorizontalPageOverflow(page: Page) {
   expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1);
 }
 
-for (const { locale, skipLabel } of locales) {
+async function expectMinimumTouchTarget(locator: ReturnType<Page["locator"]>) {
+  const box = await locator.boundingBox();
+  expect(box).not.toBeNull();
+  expect(box?.width).toBeGreaterThanOrEqual(44);
+  expect(box?.height).toBeGreaterThanOrEqual(44);
+}
+
+for (const { locale, skipLabel, homeTitle, orderForPickup, reviewsTitle } of locales) {
   for (const viewport of viewports) {
     test(`${locale} home preserves the ${viewport.name} shell`, async ({ page }) => {
       await page.setViewportSize(viewport);
       await page.goto(`/${locale}`, { waitUntil: "domcontentloaded" });
 
+      await expect(page).toHaveTitle(homeTitle);
       await expect(page.locator("html")).toHaveAttribute("lang", locale);
       await expect(page.getByRole("heading", { level: 1, name: "Café Le Den" })).toBeVisible();
       await expect(page.locator("main#main")).toBeVisible();
@@ -67,22 +91,57 @@ for (const { locale, skipLabel } of locales) {
       await expect(page.getByRole("link", { name: skipLabel })).toBeFocused();
       await page.keyboard.press("Enter");
       await expect(page.locator("main#main")).toBeFocused();
+
+      const hero = page
+        .getByRole("heading", { level: 1, name: "Café Le Den" })
+        .locator("xpath=ancestor::section");
+      const heroPickup = hero.getByRole("link", { name: orderForPickup });
+      await expect(heroPickup).toHaveClass(/bg-primary/);
+      await expect(heroPickup).not.toHaveClass(/bg-accent/);
+
+      if (viewport.name === "phone") {
+        const stickyPickup = page.locator(".fixed").getByRole("link", { name: orderForPickup });
+        await expect(stickyPickup).toHaveClass(/bg-primary/);
+        await expect(stickyPickup).not.toHaveClass(/bg-accent/);
+
+        const footerNavigation = page.getByRole("navigation", { name: "Footer" });
+        await footerNavigation.scrollIntoViewIfNeeded();
+        for (const footerLink of await footerNavigation.getByRole("link").all()) {
+          await expectMinimumTouchTarget(footerLink);
+        }
+
+        const reviewsSection = page
+          .getByRole("heading", { level: 2, name: reviewsTitle })
+          .locator("xpath=ancestor::section");
+        await expectMinimumTouchTarget(reviewsSection.getByRole("link", { name: /Google/ }));
+      }
     });
   }
 }
 
-for (const { locale, menuTitle, emptyCart, confirmationTitle } of locales) {
+for (const {
+  locale,
+  menuTitle,
+  menuPageTitle,
+  emptyCart,
+  orderPageTitle,
+  confirmationTitle,
+  confirmationPageTitle,
+} of locales) {
   test(`${locale} public order route states remain reachable`, async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 760 });
 
     await page.goto(`/${locale}/menu`, { waitUntil: "domcontentloaded" });
+    await expect(page).toHaveTitle(menuPageTitle);
     await expect(page.getByRole("heading", { level: 1, name: menuTitle })).toBeVisible();
     await expectNoHorizontalPageOverflow(page);
 
     await page.goto(`/${locale}/order`, { waitUntil: "domcontentloaded" });
+    await expect(page).toHaveTitle(orderPageTitle);
     await expect(page.getByRole("heading", { name: emptyCart })).toBeVisible();
 
     await page.goto(`/${locale}/order/confirmation`, { waitUntil: "domcontentloaded" });
+    await expect(page).toHaveTitle(confirmationPageTitle);
     await expect(page.getByRole("heading", { name: confirmationTitle })).toBeVisible();
   });
 }
@@ -90,11 +149,13 @@ for (const { locale, menuTitle, emptyCart, confirmationTitle } of locales) {
 for (const {
   locale,
   languageLabel,
+  currentLanguage,
   alternateLanguage,
   addLabel,
   closeLabel,
   addToOrder,
   placeOrder,
+  submitError,
   nameLabel,
   phoneLabel,
   homeLabel,
@@ -106,11 +167,14 @@ for (const {
 
     const languageTrigger = page.getByRole("button", { name: languageLabel });
     await languageTrigger.click();
-    await expect(page.getByRole("menuitem", { name: alternateLanguage })).toBeVisible();
+    const currentLanguageItem = page.getByRole("menuitemradio", { name: currentLanguage });
+    const alternateLanguageItem = page.getByRole("menuitemradio", { name: alternateLanguage });
+    await expect(currentLanguageItem).toHaveAttribute("aria-checked", "true");
+    await expect(alternateLanguageItem).toHaveAttribute("aria-checked", "false");
     await page.keyboard.press("Escape");
     await expect(languageTrigger).toBeFocused();
     await languageTrigger.click();
-    await page.getByRole("menuitem", { name: alternateLanguage }).click();
+    await page.getByRole("menuitemradio", { name: alternateLanguage }).click();
     await expect(page).toHaveURL(new RegExp(`/${locale === "en" ? "fr" : "en"}/menu$`));
     await page.goto(`/${locale}/menu`, { waitUntil: "domcontentloaded" });
 
@@ -156,6 +220,28 @@ for (const {
     await expect(phoneInput).toHaveAttribute("aria-errormessage", "phone-requirement");
     await expect(page.locator("#phone-requirement")).toHaveAttribute("role", "alert");
     await expect(placeOrderButton).toHaveAttribute("aria-busy", "false");
+
+    await nameInput.fill("Test customer");
+    await phoneInput.fill("5145550100");
+    await page.route("**/api/order", async (route) => {
+      expect(route.request().method()).toBe("POST");
+      await route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: JSON.stringify({
+          code: "ORDER_SAVE_FAILED",
+          error: "SERVER TEXT MUST NOT BE RENDERED",
+        }),
+      });
+    });
+    await placeOrderButton.click();
+
+    const submitErrorSummary = page.locator("#submit-error");
+    await expect(submitErrorSummary).toContainText(submitError);
+    await expect(submitErrorSummary).not.toContainText("SERVER TEXT MUST NOT BE RENDERED");
+    await expect(submitErrorSummary).toBeFocused();
+    await expect(placeOrderButton).toHaveAttribute("aria-describedby", "payment-note submit-error");
+    await expect(page.getByText(itemName ?? "", { exact: true }).first()).toBeVisible();
     await expectNoHorizontalPageOverflow(page);
   });
 }

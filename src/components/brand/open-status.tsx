@@ -22,7 +22,7 @@ export function OpenStatusPill({
       className={cn(
         "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-caption font-medium",
         onForest
-          ? "border-cream-1/20 bg-cream-1/10 text-cream-1"
+          ? "border-forest-8 bg-forest-10 text-cream-1"
           : "border-cream-6 bg-cream-1 text-forest-11 shadow-sm",
         className
       )}

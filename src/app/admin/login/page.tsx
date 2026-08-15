@@ -26,28 +26,33 @@ export default function AdminLoginPage() {
     setError("");
     setLoading(true);
 
-    const supabase = createClient();
-    const { error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const supabase = createClient();
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (authError) {
+      if (authError) {
+        setError("Sign-in failed. Check your email and password, then try again.");
+        return;
+      }
+
+      router.push("/admin");
+      router.refresh();
+    } catch {
       setError("Sign-in failed. Check your email and password, then try again.");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    router.push("/admin");
-    router.refresh();
   }
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-sm shadow-sm">
         <CardHeader className="text-center">
-          <CardTitle className="font-display text-2xl font-semibold">
-            <h1>Café Le Den</h1>
+          <CardTitle as="h1" className="font-display text-2xl font-semibold">
+            Café Le Den
           </CardTitle>
           <CardDescription>Sign in to the admin workspace</CardDescription>
         </CardHeader>
@@ -91,6 +96,11 @@ export default function AdminLoginPage() {
             >
               {loading ? "Signing in…" : "Sign in"}
             </Button>
+            {loading ? (
+              <span role="status" className="sr-only">
+                Signing in…
+              </span>
+            ) : null}
           </form>
         </CardContent>
       </Card>

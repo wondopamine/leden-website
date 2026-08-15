@@ -43,7 +43,7 @@ export function Featured({ locale, items }: { locale: string; items: MenuItem[] 
             <FadeIn as="li" key={item._id} delay={Math.min(i, 2) * 90}>
               <Link
                 href="/menu"
-                className="group flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className="group flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card transition-[transform,box-shadow] duration-[var(--duration-base)] hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
                 <div className="relative aspect-[4/3] overflow-hidden bg-cream-3">
                   <Image
@@ -51,7 +51,7 @@ export function Featured({ locale, items }: { locale: string; items: MenuItem[] 
                     alt={getLocalizedString(item.name, locale)}
                     fill
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                    className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+                    className="object-cover transition-transform duration-[var(--duration-base)] group-hover:scale-[1.04]"
                   />
                   {soldOut && (
                     <div className="absolute inset-0 flex items-center justify-center bg-cream-1/70">

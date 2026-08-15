@@ -98,7 +98,7 @@ export function AnalyticsPreview() {
       {/* Revenue trend chart */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="font-sans text-sm font-semibold text-foreground">
+          <CardTitle as="h3" className="font-sans text-sm font-semibold text-foreground">
             Revenue Trend
           </CardTitle>
         </CardHeader>
@@ -144,7 +144,7 @@ export function AnalyticsPreview() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="font-sans text-sm font-semibold text-foreground">
+            <CardTitle as="h3" className="font-sans text-sm font-semibold text-foreground">
               Top Selling Items
             </CardTitle>
           </CardHeader>
@@ -179,7 +179,7 @@ export function AnalyticsPreview() {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="font-sans text-sm font-semibold text-foreground">
+            <CardTitle as="h3" className="font-sans text-sm font-semibold text-foreground">
               Orders by Hour
             </CardTitle>
           </CardHeader>
@@ -231,7 +231,7 @@ function StatTile({
     <div className="border-border p-4 [&:nth-child(-n+2)]:border-b [&:nth-child(odd)]:border-r sm:border-b-0 sm:[&:nth-child(2)]:border-r">
       <div className="flex items-center gap-1.5 text-muted-foreground">
         {icon}
-        <span className="text-label uppercase tracking-wide">{label}</span>
+        <span className="text-label font-semibold">{label}</span>
       </div>
       <div className="mt-1 text-xl font-semibold tabular-nums text-foreground">
         {value}

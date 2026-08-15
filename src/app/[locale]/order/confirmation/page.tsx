@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { use } from "react";
 import { useTranslations } from "next-intl";
@@ -12,6 +13,16 @@ type Props = {
   params: Promise<{ locale: string }>;
   searchParams: Promise<{ order?: string }>;
 };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "metadata.confirmation" });
+
+  return {
+    title: t("title"),
+    description: t("description"),
+  };
+}
 
 async function getOrderDetails(orderNumber: string) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {

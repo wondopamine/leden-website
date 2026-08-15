@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { type Order } from "@/components/admin/order-card";
 import type { OrderStatus } from "../actions";
@@ -21,6 +22,11 @@ type Props = {
     status?: string;
     q?: string;
   }>;
+};
+
+export const metadata: Metadata = {
+  title: "Order history",
+  description: "Search and review Café Le Den pickup orders by date and status.",
 };
 
 export default async function OrdersPage({ searchParams }: Props) {
@@ -76,8 +82,8 @@ export default async function OrdersPage({ searchParams }: Props) {
         </div>
       ) : (
         <div className="overflow-hidden rounded-lg border border-border bg-card">
-          <Table>
-            <TableHeader>
+          <Table containerClassName="max-h-[calc(100dvh-16rem)]">
+            <TableHeader sticky>
               <TableRow className="hover:bg-transparent">
                 <TableHead className={headClass}>Order</TableHead>
                 <TableHead className={headClass}>Customer</TableHead>
