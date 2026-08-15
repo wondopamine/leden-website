@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { Pause, Play } from "lucide-react";
 import { Stars } from "@/components/ui/stars";
+import { Button } from "@/components/ui/button";
 import type { GoogleReview } from "@/lib/google-places";
 
 /**
@@ -19,15 +20,17 @@ export function ReviewMarquee({ reviews }: { reviews: GoogleReview[] }) {
   return (
     <div className="relative mt-8">
       <div className="mx-auto mb-4 flex max-w-6xl justify-end px-5">
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="default"
           onClick={() => setPaused((p) => !p)}
           aria-pressed={paused}
-          className="inline-flex items-center gap-1.5 rounded-full border border-cream-1/25 px-3 py-1.5 text-caption font-medium text-cream-1 transition-colors hover:bg-cream-1/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cream-1 focus-visible:ring-offset-2 focus-visible:ring-offset-forest-9"
+          className="rounded-full border border-primary-foreground/25 text-caption text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground focus-visible:border-primary-foreground focus-visible:ring-primary-foreground/50"
         >
           {paused ? <Play aria-hidden className="size-3.5" /> : <Pause aria-hidden className="size-3.5" />}
           {paused ? tc("play") : tc("pause")}
-        </button>
+        </Button>
       </div>
 
       {/* edge fades */}

@@ -3,12 +3,13 @@
 import { useState, useCallback } from "react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
-import { Plus, Minus } from "lucide-react";
+import { Minus, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
+  DialogClose,
   DialogHeader,
   DialogTitle,
   DialogDescription,
@@ -27,7 +28,7 @@ type Props = {
 };
 
 const tabBase =
-  "shrink-0 rounded-full px-4 py-2 text-caption font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+  "min-h-11 shrink-0 rounded-full px-4 py-2 text-caption font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
 export function MenuContent({ categories, items, locale }: Props) {
   const t = useTranslations("menu");
@@ -50,15 +51,15 @@ export function MenuContent({ categories, items, locale }: Props) {
       <h1 className="text-h1">{t("title")}</h1>
 
       {/* Category filters — sticky on scroll */}
-      <div className="sticky top-16 z-30 -mx-5 mt-6 overflow-x-auto border-b border-cream-6/60 bg-background/90 px-5 py-3 backdrop-blur-sm">
-        <div className="flex gap-2">
+      <div className="sticky top-16 z-30 -mx-5 mt-6 overflow-x-auto border-b border-border/70 bg-background/90 px-5 py-3 backdrop-blur-sm">
+        <div className="flex gap-2" role="group" aria-label={t("title")}>
           <button
             onClick={() => setActiveCategory(null)}
             aria-pressed={activeCategory === null}
             className={`${tabBase} ${
               activeCategory === null
-                ? "bg-forest-9 text-cream-1"
-                : "bg-cream-3 text-forest-11 hover:bg-cream-4"
+                ? "bg-primary text-primary-foreground"
+                : "bg-secondary text-secondary-foreground hover:bg-muted"
             }`}
           >
             {t("allCategories")}
@@ -70,8 +71,8 @@ export function MenuContent({ categories, items, locale }: Props) {
               aria-pressed={activeCategory === cat.slug}
               className={`${tabBase} ${
                 activeCategory === cat.slug
-                  ? "bg-forest-9 text-cream-1"
-                  : "bg-cream-3 text-forest-11 hover:bg-cream-4"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-secondary text-secondary-foreground hover:bg-muted"
               }`}
             >
               {getLocalizedString(cat.name, locale)}
@@ -157,11 +158,11 @@ function MenuItemCard({
     <button
       onClick={disabled ? undefined : onSelect}
       disabled={disabled}
-      className={`group flex w-full items-center gap-4 rounded-2xl border bg-card p-3 text-left transition-[transform,box-shadow,border-color] sm:p-4 ${
+      className={`group flex min-h-24 w-full items-center gap-3 rounded-2xl border bg-card p-3 text-left transition-[transform,box-shadow,border-color] sm:gap-4 sm:p-4 ${
         disabled
-          ? "cursor-not-allowed border-cream-6 opacity-70"
-          : "cursor-pointer border-cream-6 hover:-translate-y-px hover:border-forest-8 hover:shadow-sm active:translate-y-0"
-      } ${justAdded ? "border-forest-8 ring-2 ring-forest-9/30" : ""} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background`}
+          ? "cursor-not-allowed border-border opacity-70"
+          : "cursor-pointer border-border hover:-translate-y-px hover:border-primary/60 hover:shadow-sm active:translate-y-0"
+      } ${justAdded ? "border-primary/60 ring-2 ring-primary/30" : ""} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background`}
     >
       {/* Photo thumbnail */}
       <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-cream-3 sm:h-20 sm:w-20">
@@ -173,7 +174,7 @@ function MenuItemCard({
           className={`object-cover ${disabled ? "grayscale" : ""}`}
         />
         {!disabled && cartCount > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-forest-9 text-[11px] font-bold text-cream-1 shadow-sm">
+          <span className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-primary text-label font-bold tabular-nums text-primary-foreground shadow-sm">
             {cartCount}
           </span>
         )}
@@ -185,7 +186,7 @@ function MenuItemCard({
           <h3 className="font-medium leading-tight text-forest-12">
             {getLocalizedString(item.name, locale)}
           </h3>
-          <span className="shrink-0 text-body font-semibold tabular-nums text-orange-11">
+          <span className="shrink-0 text-body font-semibold tabular-nums text-accent-text">
             {formatPrice(item.price)}
           </span>
         </div>
@@ -202,11 +203,11 @@ function MenuItemCard({
       {/* Add indicator */}
       {!disabled &&
         (cartCount > 0 ? (
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-forest-9 text-caption font-bold text-cream-1">
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary text-caption font-bold tabular-nums text-primary-foreground">
             {cartCount}
           </div>
         ) : (
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-forest-2 text-forest-9 transition-colors group-hover:bg-forest-9 group-hover:text-cream-1">
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-secondary text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
             <Plus aria-hidden className="size-4" strokeWidth={2.5} />
           </div>
         ))}
@@ -228,6 +229,7 @@ function ItemDetailDialog({
   onAdded: (itemId: string) => void;
 }) {
   const t = useTranslations("menu");
+  const tc = useTranslations("common");
   const addItem = useCartStore((s) => s.addItem);
   const [quantity, setQuantity] = useState(1);
   const [selections, setSelections] = useState<Record<string, number>>(() => {
@@ -275,8 +277,23 @@ function ItemDetailDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-md gap-0 overflow-hidden p-0">
+    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
+      <DialogContent
+        showCloseButton={false}
+        className="max-h-[calc(100svh-2rem)] max-w-md gap-0 overflow-y-auto p-0"
+      >
+        <DialogClose
+          render={
+            <Button
+              variant="secondary"
+              size="icon"
+              aria-label={tc("close")}
+              className="absolute right-3 top-3 z-10 shadow-sm"
+            />
+          }
+        >
+          <X aria-hidden className="size-4" />
+        </DialogClose>
         {/* Hero photo */}
         <div className="relative h-48 overflow-hidden bg-cream-3">
           <Image
@@ -301,10 +318,10 @@ function ItemDetailDialog({
           {item.modifiers.length > 0 && (
             <div className="mt-5 space-y-5">
               {item.modifiers.map((mod, modIdx) => (
-                <div key={modIdx}>
-                  <h4 className="mb-2.5 text-label uppercase tracking-wide text-muted-foreground">
+                <fieldset key={modIdx}>
+                  <legend className="mb-2.5 text-caption font-semibold text-muted-foreground">
                     {getLocalizedString(mod.name, locale)}
-                  </h4>
+                  </legend>
                   <div className="flex flex-wrap gap-2">
                     {mod.options.map((option, optIdx) => {
                       const selected = selections[modIdx] === optIdx;
@@ -313,10 +330,10 @@ function ItemDetailDialog({
                           key={optIdx}
                           onClick={() => setSelections((prev) => ({ ...prev, [modIdx]: optIdx }))}
                           aria-pressed={selected}
-                          className={`rounded-full border px-3.5 py-2 text-caption transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-popover ${
+                          className={`min-h-11 rounded-full border px-3.5 py-2 text-caption transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-popover ${
                             selected
-                              ? "border-forest-9 bg-forest-9 text-cream-1"
-                              : "border-cream-6 bg-card text-forest-11 hover:border-forest-8"
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border bg-card text-foreground hover:border-primary/60"
                           }`}
                         >
                           {getLocalizedString(option.name, locale)}
@@ -327,7 +344,7 @@ function ItemDetailDialog({
                       );
                     })}
                   </div>
-                </div>
+                </fieldset>
               ))}
             </div>
           )}
@@ -336,19 +353,19 @@ function ItemDetailDialog({
 
           <div className="flex items-center gap-4">
             {/* Quantity selector */}
-            <div className="flex items-center rounded-full border border-cream-6">
+            <div className="flex items-center rounded-full border border-border">
               <button
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                aria-label="Decrease quantity"
-                className="flex h-11 w-11 items-center justify-center rounded-l-full text-forest-11 transition-colors hover:bg-cream-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label={`${tc("remove")} ${getLocalizedString(item.name, locale)}`}
+                className="flex size-11 items-center justify-center rounded-l-full text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <Minus aria-hidden className="size-4" />
               </button>
-              <span className="w-8 text-center text-body font-medium tabular-nums">{quantity}</span>
+              <span className="w-8 text-center text-body font-medium tabular-nums" aria-live="polite">{quantity}</span>
               <button
                 onClick={() => setQuantity(quantity + 1)}
-                aria-label="Increase quantity"
-                className="flex h-11 w-11 items-center justify-center rounded-r-full text-forest-11 transition-colors hover:bg-cream-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label={`${tc("add")} ${getLocalizedString(item.name, locale)}`}
+                className="flex size-11 items-center justify-center rounded-r-full text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <Plus aria-hidden className="size-4" />
               </button>

@@ -5,6 +5,7 @@ import { Link } from "@/i18n/navigation";
 import { Watermelon } from "@/components/brand/watermelon";
 import { OpenStatusPill } from "@/components/brand/open-status";
 import { getOpenStatus, formatStatusLabel } from "@/lib/hours";
+import { Button } from "@/components/ui/button";
 import type { CafeInfo } from "@/lib/types";
 
 export function Footer({ locale, info }: { locale: string; info: CafeInfo }) {
@@ -22,7 +23,7 @@ export function Footer({ locale, info }: { locale: string; info: CafeInfo }) {
   ] as const;
 
   return (
-    <footer className="border-t border-cream-6 bg-cream-1 pb-[max(5rem,env(safe-area-inset-bottom))] md:pb-0">
+    <footer className="border-t border-border bg-card pb-[max(5rem,env(safe-area-inset-bottom))] md:pb-0">
       <div className="mx-auto grid max-w-6xl gap-10 px-5 py-14 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1.2fr]">
         {/* Brand */}
         <div>
@@ -40,7 +41,7 @@ export function Footer({ locale, info }: { locale: string; info: CafeInfo }) {
             <Link
               key={l.href}
               href={l.href}
-              className="w-fit text-body text-forest-11 transition-colors hover:text-orange-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-cream-1"
+              className="w-fit rounded-sm text-body text-foreground transition-colors hover:text-accent-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
             >
               {l.label}
             </Link>
@@ -51,21 +52,21 @@ export function Footer({ locale, info }: { locale: string; info: CafeInfo }) {
         <div className="flex flex-col items-start gap-3">
           <OpenStatusPill isOpen={status.isOpen} label={statusLabel} />
           <p className="flex items-start gap-2 text-caption text-muted-foreground">
-            <MapPin aria-hidden className="mt-0.5 size-4 shrink-0 text-forest-9" />
+            <MapPin aria-hidden className="mt-0.5 size-4 shrink-0 text-primary" />
             {info.address}
           </p>
-          <a
-            href={mapsHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-caption font-medium text-forest-11 transition-colors hover:text-orange-11"
+          <Button
+            nativeButton={false}
+            render={<a href={mapsHref} target="_blank" rel="noopener noreferrer" />}
+            variant="link"
+            className="h-11 px-0 text-caption text-foreground hover:text-accent-text"
           >
             <Navigation aria-hidden className="size-4" /> {tc("directions")}
-          </a>
+          </Button>
         </div>
       </div>
 
-      <div className="border-t border-cream-6/70">
+      <div className="border-t border-border/70">
         <p className="mx-auto max-w-6xl px-5 py-5 text-center text-label text-muted-foreground">
           &copy; {year} Café Le Den. {t("rights")}
         </p>

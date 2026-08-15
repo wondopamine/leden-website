@@ -35,7 +35,7 @@ export default function ConfirmationPage({ params, searchParams }: Props) {
   setRequestLocale(locale);
 
   return (
-    <section className="mx-auto max-w-lg px-5 py-20">
+    <section className="mx-auto max-w-lg px-5 py-14 sm:py-20">
       {order ? <ConfirmationContent orderNumber={order} locale={locale} /> : <FallbackContent />}
     </section>
   );
@@ -71,10 +71,10 @@ async function ConfirmationContent({ orderNumber, locale }: { orderNumber: strin
     <>
       <SuccessHeader title={t("title")} subtitle={t("thankYou")} />
 
-      <div className="mt-8 rounded-2xl border border-cream-6 bg-card p-6">
+      <div className="mt-8 rounded-2xl border border-border bg-card p-5 sm:p-6">
         <div className="grid grid-cols-2 gap-4">
           <Field label={t("orderNumber")}>
-            <span className="font-mono text-body font-bold text-forest-12">{orderNumber}</span>
+            <span className="text-body font-bold tabular-nums text-foreground">{orderNumber}</span>
           </Field>
           <Field label={t("pickupTime")}>
             <span className="text-body font-semibold text-forest-12">{pickupDisplay}</span>
@@ -87,7 +87,7 @@ async function ConfirmationContent({ orderNumber, locale }: { orderNumber: strin
         {order?.order_items && order.order_items.length > 0 && (
           <>
             <Separator className="my-5" />
-            <p className="mb-2 text-label uppercase tracking-wide text-muted-foreground">{t("items")}</p>
+            <p className="mb-2 text-caption font-semibold text-muted-foreground">{t("items")}</p>
             <div className="space-y-2">
               {order.order_items.map(
                 (item: {
@@ -129,11 +129,15 @@ async function ConfirmationContent({ orderNumber, locale }: { orderNumber: strin
       </div>
 
       <div className="mt-8 text-center">
-        <Link href="/menu">
-          <Button variant="outline" size="lg" className="h-12 rounded-full px-8">
-            {t("backToMenu")}
-          </Button>
-        </Link>
+        <Button
+          nativeButton={false}
+          render={<Link href="/menu" />}
+          variant="outline"
+          size="lg"
+          className="h-12 rounded-full px-8"
+        >
+          {t("backToMenu")}
+        </Button>
       </div>
     </>
   );
@@ -142,7 +146,7 @@ async function ConfirmationContent({ orderNumber, locale }: { orderNumber: strin
 function Field({ label, children, className = "" }: { label: string; children: React.ReactNode; className?: string }) {
   return (
     <div className={className}>
-      <p className="text-label uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="text-caption font-semibold text-muted-foreground">{label}</p>
       <p className="mt-1">{children}</p>
     </div>
   );
@@ -163,11 +167,15 @@ function FallbackContent() {
     <>
       <SuccessHeader title={t("title")} subtitle={t("thankYou")} />
       <div className="mt-8 text-center">
-        <Link href="/menu">
-          <Button variant="outline" size="lg" className="h-12 rounded-full px-8">
-            {t("backToMenu")}
-          </Button>
-        </Link>
+        <Button
+          nativeButton={false}
+          render={<Link href="/menu" />}
+          variant="outline"
+          size="lg"
+          className="h-12 rounded-full px-8"
+        >
+          {t("backToMenu")}
+        </Button>
       </div>
     </>
   );

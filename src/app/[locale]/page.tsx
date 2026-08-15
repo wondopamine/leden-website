@@ -25,7 +25,7 @@ export default async function HomePage({ params }: Props) {
 
   return (
     <>
-      <Hero locale={locale} hours={info.hours} />
+      <Hero locale={locale} info={info} />
 
       <Suspense fallback={<HomeSkeleton />}>
         <BelowHero locale={locale} info={info} />

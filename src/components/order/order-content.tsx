@@ -76,11 +76,15 @@ export function OrderContent({ locale, cafeInfo }: Props) {
               : "Browse our menu and add a few favourites."}
           </p>
         </div>
-        <Link href="/menu">
-          <Button variant="default" size="lg" className="h-12 rounded-full px-8">
-            {tc("viewMenu")}
-          </Button>
-        </Link>
+        <Button
+          nativeButton={false}
+          render={<Link href="/menu" />}
+          variant="default"
+          size="lg"
+          className="h-12 rounded-full px-8"
+        >
+          {tc("viewMenu")}
+        </Button>
       </div>
     );
   }
@@ -135,19 +139,19 @@ export function OrderContent({ locale, cafeInfo }: Props) {
     }
   };
 
-  const card = "rounded-2xl border border-cream-6 bg-card";
+  const card = "rounded-2xl border border-border bg-card";
 
   return (
     <div className="mx-auto max-w-5xl px-5 pb-28 pt-10 md:pb-16">
       <h1 className="text-h1">{t("title")}</h1>
 
       {!cafeOpen && (
-        <div className="mt-6 flex items-start gap-3 rounded-2xl border border-orange-6 bg-orange-2 p-4">
-          <Clock aria-hidden className="mt-0.5 size-5 shrink-0 text-orange-11" />
+        <div className="mt-6 flex items-start gap-3 rounded-2xl border border-accent-border bg-accent-surface p-4" role="status">
+          <Clock aria-hidden className="mt-0.5 size-5 shrink-0 text-accent-text" />
           <div>
-            <p className="font-medium text-orange-12">{t("orderingClosed")}</p>
+            <p className="font-medium text-accent-text">{t("orderingClosed")}</p>
             {nextOpenLabel && (
-              <p className="mt-0.5 text-caption text-orange-11">{t("opensAt", { time: nextOpenLabel })}</p>
+              <p className="mt-0.5 text-caption text-accent-text">{t("opensAt", { time: nextOpenLabel })}</p>
             )}
           </div>
         </div>
@@ -158,7 +162,7 @@ export function OrderContent({ locale, cafeInfo }: Props) {
         <div className="space-y-6">
           {/* Cart items */}
           <div className={card}>
-            <ul className="divide-y divide-cream-6">
+            <ul className="divide-y divide-border">
               {items.map((item) => {
                 const lineTotal =
                   (item.price + item.modifiers.reduce((s, m) => s + m.priceAdjustment, 0)) * item.quantity;
@@ -174,33 +178,39 @@ export function OrderContent({ locale, cafeInfo }: Props) {
                       )}
                     </div>
                     <div className="flex items-center justify-between gap-3 sm:justify-start">
-                      <div className="flex items-center rounded-full border border-cream-6">
-                        <button
+                      <div className="flex items-center rounded-full border border-border">
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={() => updateQuantity(item.id, item.quantity - 1)}
                           aria-label={`${tc("remove")} ${itemName}`}
-                          className="flex h-11 w-11 items-center justify-center rounded-l-full text-forest-11 transition-colors hover:bg-cream-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          className="rounded-l-full rounded-r-none text-foreground"
                         >
                           <Minus aria-hidden className="size-4" />
-                        </button>
+                        </Button>
                         <span className="w-8 text-center text-caption font-medium tabular-nums">{item.quantity}</span>
-                        <button
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={() => updateQuantity(item.id, item.quantity + 1)}
                           aria-label={`${tc("add")} ${itemName}`}
-                          className="flex h-11 w-11 items-center justify-center rounded-r-full text-forest-11 transition-colors hover:bg-cream-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          className="rounded-l-none rounded-r-full text-foreground"
                         >
                           <Plus aria-hidden className="size-4" />
-                        </button>
+                        </Button>
                       </div>
                       <span className="text-caption font-semibold tabular-nums text-forest-12 sm:w-20 sm:text-right">
                         {formatPrice(lineTotal)}
                       </span>
-                      <button
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         onClick={() => removeItem(item.id)}
                         aria-label={`${tc("remove")} ${itemName}`}
-                        className="flex size-11 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-cream-3 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        className="shrink-0 rounded-full text-muted-foreground hover:text-destructive"
                       >
                         <X aria-hidden className="size-4" />
-                      </button>
+                      </Button>
                     </div>
                   </li>
                 );
@@ -210,8 +220,8 @@ export function OrderContent({ locale, cafeInfo }: Props) {
 
           {/* Pickup time */}
           {cafeOpen && (
-            <div className={`${card} p-5`}>
-              <h2 className="text-label uppercase tracking-wide text-muted-foreground">{t("pickupTime")}</h2>
+            <fieldset className={`${card} p-5`}>
+              <legend className="px-1 text-caption font-semibold text-foreground">{t("pickupTime")}</legend>
               <p className="mt-2 text-caption text-muted-foreground">{t("pickupTimeDescription")}</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <TimePill selected={!pickupTime} onClick={() => setPickupTime(null)}>
@@ -223,13 +233,13 @@ export function OrderContent({ locale, cafeInfo }: Props) {
                   </TimePill>
                 ))}
               </div>
-            </div>
+            </fieldset>
           )}
 
           {/* Customer info */}
           {cafeOpen && (
             <div className={`${card} p-5`}>
-              <h2 className="text-label uppercase tracking-wide text-muted-foreground">{t("customerInfo")}</h2>
+              <h2 className="text-caption font-semibold text-foreground">{t("customerInfo")}</h2>
               <div className="mt-4 space-y-4">
                 <div>
                   <Label htmlFor="name">{tc("name")} *</Label>
@@ -239,9 +249,17 @@ export function OrderContent({ locale, cafeInfo }: Props) {
                     placeholder={t("nameRequired")}
                     value={customerInfo.name}
                     aria-invalid={nameInvalid}
+                    aria-describedby="name-requirement"
+                    aria-errormessage={nameInvalid ? "name-requirement" : undefined}
                     onChange={(e) => setCustomerInfo({ name: e.target.value })}
                   />
-                  {nameInvalid && <p className="mt-1 text-caption text-destructive">{t("nameRequired")}</p>}
+                  <p
+                    id="name-requirement"
+                    role={nameInvalid ? "alert" : undefined}
+                    className={`mt-1 text-caption ${nameInvalid ? "text-destructive" : "text-muted-foreground"}`}
+                  >
+                    {t("nameRequired")}
+                  </p>
                 </div>
                 <div>
                   <Label htmlFor="phone">{tc("phone")} *</Label>
@@ -252,9 +270,17 @@ export function OrderContent({ locale, cafeInfo }: Props) {
                     placeholder={t("phoneRequired")}
                     value={customerInfo.phone}
                     aria-invalid={phoneInvalid}
+                    aria-describedby="phone-requirement"
+                    aria-errormessage={phoneInvalid ? "phone-requirement" : undefined}
                     onChange={(e) => setCustomerInfo({ phone: e.target.value })}
                   />
-                  {phoneInvalid && <p className="mt-1 text-caption text-destructive">{t("phoneRequired")}</p>}
+                  <p
+                    id="phone-requirement"
+                    role={phoneInvalid ? "alert" : undefined}
+                    className={`mt-1 text-caption ${phoneInvalid ? "text-destructive" : "text-muted-foreground"}`}
+                  >
+                    {t("phoneRequired")}
+                  </p>
                 </div>
               </div>
             </div>
@@ -274,14 +300,20 @@ export function OrderContent({ locale, cafeInfo }: Props) {
               <span className="tabular-nums">{formatPrice(total)}</span>
             </div>
           </div>
-          <p className="mt-3 text-caption text-muted-foreground">{t("payInPerson")}</p>
-          {error && <p className="mt-2 text-caption text-destructive">{error}</p>}
+          <p id="payment-note" className="mt-3 text-caption text-muted-foreground">{t("payInPerson")}</p>
+          {error && (
+            <p id="submit-error" role="alert" aria-live="assertive" className="mt-2 text-caption text-destructive">
+              {error}
+            </p>
+          )}
           <Button
             variant="default"
             size="lg"
             className="mt-5 h-12 w-full rounded-full"
             disabled={!cafeOpen || loading}
             onClick={handleSubmitOrder}
+            aria-busy={loading}
+            aria-describedby={error ? "payment-note submit-error" : "payment-note"}
           >
             {!cafeOpen ? t("orderingClosed") : loading ? t("processing") : t("placeOrder")}
           </Button>
@@ -310,16 +342,17 @@ function TimePill({
   children: React.ReactNode;
 }) {
   return (
-    <button
+    <Button
+      variant="outline"
       onClick={onClick}
       aria-pressed={selected}
-      className={`rounded-full border px-4 py-2 text-caption font-medium tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card ${
+      className={`min-h-11 rounded-full px-4 text-caption font-medium tabular-nums ${
         selected
-          ? "border-forest-9 bg-forest-9 text-cream-1"
-          : "border-cream-6 bg-card text-forest-11 hover:border-forest-8"
+          ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
+          : "border-border bg-card text-foreground hover:border-primary/60"
       }`}
     >
       {children}
-    </button>
+    </Button>
   );
 }
