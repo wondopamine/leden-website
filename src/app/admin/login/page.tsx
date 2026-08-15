@@ -33,7 +33,7 @@ export default function AdminLoginPage() {
     });
 
     if (authError) {
-      setError(authError.message);
+      setError("Sign-in failed. Check your email and password, then try again.");
       setLoading(false);
       return;
     }
@@ -43,13 +43,13 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-sm">
+    <main className="flex min-h-screen items-center justify-center bg-background p-4">
+      <Card className="w-full max-w-sm shadow-sm">
         <CardHeader className="text-center">
           <CardTitle className="font-display text-2xl font-semibold">
-            Café Le Den
+            <h1>Café Le Den</h1>
           </CardTitle>
-          <CardDescription>Sign in to your admin dashboard</CardDescription>
+          <CardDescription>Sign in to the admin workspace</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -61,6 +61,7 @@ export default function AdminLoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="admin@cafeleden.com"
+                autoComplete="email"
                 required
               />
             </div>
@@ -71,18 +72,28 @@ export default function AdminLoginPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
                 required
               />
             </div>
             {error && (
-              <p className="text-sm text-destructive">{error}</p>
+              <p role="alert" className="text-sm text-destructive">
+                {error}
+              </p>
             )}
-            <Button type="submit" variant="default" size="default" className="w-full" disabled={loading}>
-              {loading ? "Signing in..." : "Sign In"}
+            <Button
+              type="submit"
+              variant="default"
+              size="default"
+              className="w-full"
+              disabled={loading}
+              aria-busy={loading}
+            >
+              {loading ? "Signing in…" : "Sign in"}
             </Button>
           </form>
         </CardContent>
       </Card>
-    </div>
+    </main>
   );
 }

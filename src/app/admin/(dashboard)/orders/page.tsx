@@ -52,8 +52,7 @@ export default async function OrdersPage({ searchParams }: Props) {
   const { data: orders } = await query;
   const allOrders = (orders ?? []) as Order[];
 
-  const headClass =
-    "text-xs font-semibold uppercase tracking-wider text-muted-foreground";
+  const headClass = "text-xs font-semibold text-muted-foreground";
 
   return (
     <div className="space-y-4">
@@ -115,6 +114,7 @@ export default async function OrdersPage({ searchParams }: Props) {
                     </TableCell>
                     <TableCell className="py-2.5">
                       <Badge variant="outline" className={meta.badge}>
+                        <meta.icon aria-hidden="true" data-icon="inline-start" />
                         {meta.label}
                       </Badge>
                     </TableCell>

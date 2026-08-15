@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useTransition } from "react";
+import Image from "next/image";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -77,7 +78,11 @@ export function MenuItemForm({
     const data = await res.json();
 
     if (!res.ok) {
-      alert(`Upload failed: ${data.error}`);
+      toast.error("Photo was not uploaded", {
+        description: data.error
+          ? `${data.error} Check the file and try again.`
+          : "Check the file and try again.",
+      });
       setUploading(false);
       return;
     }
@@ -150,7 +155,7 @@ export function MenuItemForm({
   }
 
   return (
-    <form action={handleSubmit} className="space-y-4 max-w-2xl">
+    <form action={handleSubmit} className="max-w-2xl space-y-5">
       {initialData?.id && (
         <input type="hidden" name="id" value={initialData.id} />
       )}
@@ -164,23 +169,27 @@ export function MenuItemForm({
 
       {/* Image */}
       <div className="space-y-2">
-        <Label>Photo</Label>
+        <Label htmlFor="menu-item-photo">Photo</Label>
         <div className="flex items-start gap-4">
           {imageUrl ? (
-            <div className="relative group">
-              <img
+            <div className="relative">
+              <Image
                 src={imageUrl}
                 alt="Menu item"
-                className="h-32 w-32 rounded-lg object-cover border border-border"
+                width={128}
+                height={128}
+                className="h-32 w-32 rounded-lg border border-border object-cover"
               />
-              <button
+              <Button
                 type="button"
+                variant="destructive"
+                size="icon-sm"
                 onClick={removeImage}
                 aria-label="Remove photo"
-                className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute -right-2 -top-2 rounded-full"
               >
                 <X className="h-3 w-3" />
-              </button>
+              </Button>
             </div>
           ) : (
             <div className="h-32 w-32 rounded-lg border-2 border-dashed border-input flex flex-col items-center justify-center text-muted-foreground">
@@ -191,6 +200,7 @@ export function MenuItemForm({
           <div className="flex flex-col gap-2">
             <input
               ref={fileInputRef}
+              id="menu-item-photo"
               type="file"
               accept="image/*"
               onChange={handleImageUpload}
@@ -202,13 +212,14 @@ export function MenuItemForm({
               size="sm"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
+              aria-busy={uploading}
             >
               {uploading ? (
                 <Loader2 className="mr-1 h-3 w-3 animate-spin" />
               ) : (
                 <Upload className="mr-1 h-3 w-3" />
               )}
-              {uploading ? "Uploading..." : imageUrl ? "Change Photo" : "Upload Photo"}
+              {uploading ? "Uploading…" : imageUrl ? "Change photo" : "Upload photo"}
             </Button>
             {imageUrl && (
               <Button
@@ -290,10 +301,10 @@ export function MenuItemForm({
             id="category_id"
             name="category_id"
             defaultValue={initialData?.category_id}
-            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm text-foreground shadow-xs outline-none transition-colors focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+            className="flex h-11 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-base text-foreground shadow-xs outline-none transition-colors focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 sm:h-9 sm:px-2.5 sm:py-1 sm:text-sm"
             required
           >
-            <option value="">Select...</option>
+            <option value="">Select category</option>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name_en}
@@ -302,9 +313,16 @@ export function MenuItemForm({
           </select>
         </div>
         <div className="space-y-2">
-          <Label>Available</Label>
-          <div className="pt-1">
-            <Switch checked={available} onCheckedChange={setAvailable} />
+          <Label htmlFor="available">Available</Label>
+          <div className="flex min-h-11 items-center gap-2 sm:min-h-9">
+            <Switch
+              id="available"
+              checked={available}
+              onCheckedChange={setAvailable}
+            />
+            <span className="text-sm text-muted-foreground">
+              {available ? "Shown for ordering" : "Hidden from ordering"}
+            </span>
           </div>
         </div>
       </div>
@@ -316,7 +334,7 @@ export function MenuItemForm({
             <CardTitle className="font-sans text-sm">Modifiers</CardTitle>
             <Button type="button" variant="outline" size="sm" onClick={addModifier}>
               <Plus className="mr-1 h-3 w-3" />
-              Add Modifier
+              Add modifier
             </Button>
           </div>
         </CardHeader>
@@ -330,21 +348,31 @@ export function MenuItemForm({
               className="border border-border rounded-lg p-4 space-y-3"
             >
               <div className="flex items-start gap-2">
-                <div className="grid flex-1 gap-2 sm:grid-cols-2">
-                  <Input
-                    placeholder="Modifier name (EN)"
-                    value={mod.name_en}
-                    onChange={(e) =>
-                      updateModifier(modIdx, "name_en", e.target.value)
-                    }
-                  />
-                  <Input
-                    placeholder="Modifier name (FR)"
-                    value={mod.name_fr}
-                    onChange={(e) =>
-                      updateModifier(modIdx, "name_fr", e.target.value)
-                    }
-                  />
+                <div className="grid flex-1 gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor={`modifier-${modIdx}-name-en`}>
+                      Modifier name (English)
+                    </Label>
+                    <Input
+                      id={`modifier-${modIdx}-name-en`}
+                      value={mod.name_en}
+                      onChange={(e) =>
+                        updateModifier(modIdx, "name_en", e.target.value)
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor={`modifier-${modIdx}-name-fr`}>
+                      Modifier name (French)
+                    </Label>
+                    <Input
+                      id={`modifier-${modIdx}-name-fr`}
+                      value={mod.name_fr}
+                      onChange={(e) =>
+                        updateModifier(modIdx, "name_fr", e.target.value)
+                      }
+                    />
+                  </div>
                 </div>
                 <Button
                   type="button"
@@ -358,46 +386,62 @@ export function MenuItemForm({
                 </Button>
               </div>
 
-              <div className="pl-4 space-y-2">
-                <p className="text-xs font-medium text-muted-foreground">Options</p>
+              <div className="space-y-3 border-l-2 border-border pl-3 sm:pl-4">
+                <p className="text-sm font-medium text-foreground">Options</p>
                 {mod.options.map((opt, optIdx) => (
-                  <div key={optIdx} className="flex items-center gap-2">
-                    <Input
-                      placeholder="Option (EN)"
-                      value={opt.name_en}
-                      onChange={(e) =>
-                        updateOption(modIdx, optIdx, "name_en", e.target.value)
-                      }
-                      className="text-sm"
-                    />
-                    <Input
-                      placeholder="Option (FR)"
-                      value={opt.name_fr}
-                      onChange={(e) =>
-                        updateOption(modIdx, optIdx, "name_fr", e.target.value)
-                      }
-                      className="text-sm"
-                    />
-                    <Input
-                      placeholder="+$"
-                      type="number"
-                      step="0.01"
-                      value={opt.price_adjustment}
-                      onChange={(e) =>
-                        updateOption(
-                          modIdx,
-                          optIdx,
-                          "price_adjustment",
-                          parseFloat(e.target.value) || 0
-                        )
-                      }
-                      className="w-20 text-sm"
-                    />
+                  <div
+                    key={optIdx}
+                    className="grid gap-2 rounded-lg bg-muted/50 p-3 sm:grid-cols-[1fr_1fr_7rem_auto] sm:items-end"
+                  >
+                    <div className="space-y-1.5">
+                      <Label htmlFor={`modifier-${modIdx}-option-${optIdx}-en`}>
+                        Option (English)
+                      </Label>
+                      <Input
+                        id={`modifier-${modIdx}-option-${optIdx}-en`}
+                        value={opt.name_en}
+                        onChange={(e) =>
+                          updateOption(modIdx, optIdx, "name_en", e.target.value)
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor={`modifier-${modIdx}-option-${optIdx}-fr`}>
+                        Option (French)
+                      </Label>
+                      <Input
+                        id={`modifier-${modIdx}-option-${optIdx}-fr`}
+                        value={opt.name_fr}
+                        onChange={(e) =>
+                          updateOption(modIdx, optIdx, "name_fr", e.target.value)
+                        }
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor={`modifier-${modIdx}-option-${optIdx}-price`}>
+                        Price change
+                      </Label>
+                      <Input
+                        id={`modifier-${modIdx}-option-${optIdx}-price`}
+                        type="number"
+                        step="0.01"
+                        value={opt.price_adjustment}
+                        onChange={(e) =>
+                          updateOption(
+                            modIdx,
+                            optIdx,
+                            "price_adjustment",
+                            parseFloat(e.target.value) || 0
+                          )
+                        }
+                        className="tabular-nums"
+                      />
+                    </div>
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 text-destructive"
+                      className="text-destructive"
                       onClick={() => removeOption(modIdx, optIdx)}
                       aria-label="Remove option"
                     >
@@ -413,7 +457,7 @@ export function MenuItemForm({
                   className="text-xs"
                 >
                   <Plus className="mr-1 h-3 w-3" />
-                  Add Option
+                  Add option
                 </Button>
               </div>
             </div>
@@ -422,8 +466,14 @@ export function MenuItemForm({
       </Card>
 
       <div className="flex gap-3">
-        <Button type="submit" variant="default" size="default" disabled={isPending}>
-          {isPending ? "Saving..." : submitLabel}
+        <Button
+          type="submit"
+          variant="default"
+          size="default"
+          disabled={isPending || uploading}
+          aria-busy={isPending}
+        >
+          {isPending ? "Saving…" : submitLabel}
         </Button>
       </div>
     </form>

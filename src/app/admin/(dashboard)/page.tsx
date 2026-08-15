@@ -42,15 +42,15 @@ export default async function AdminDashboardPage() {
 
   const tiles = [
     { label: "Orders", value: String(todayOrders.length) },
-    { label: "Revenue", value: `$${totalRevenue.toFixed(2)}` },
+    { label: "Submitted value", value: `$${totalRevenue.toFixed(2)}` },
     { label: "Active", value: String(activeOrders) },
     { label: "Ready", value: String(readyOrders) },
-    { label: "Done", value: String(completedOrders) },
+    { label: "Completed", value: String(completedOrders) },
   ];
 
   return (
     <div className="space-y-4">
-      <AdminPageHeader title="Dashboard" subtitle={dateLabel} />
+      <AdminPageHeader title="Live orders" subtitle={dateLabel} />
 
       {/* Compact stat strip */}
       <StatStrip tiles={tiles} />
@@ -60,7 +60,14 @@ export default async function AdminDashboardPage() {
 
       {/* Order analysis — loads independently */}
       <Suspense
-        fallback={<div className="h-64 animate-pulse rounded-xl bg-muted" />}
+        fallback={
+          <div
+            role="status"
+            className="h-64 animate-pulse rounded-xl bg-muted"
+          >
+            <span className="sr-only">Loading order analysis…</span>
+          </div>
+        }
       >
         <AnalyticsDashboard />
       </Suspense>

@@ -7,8 +7,8 @@ const PERIODS: { value: Period; label: string }[] = [
   { value: "daily", label: "Today" },
   { value: "weekly", label: "Week" },
   { value: "monthly", label: "Month" },
-  { value: "3months", label: "3M" },
-  { value: "6months", label: "6M" },
+  { value: "3months", label: "3 months" },
+  { value: "6months", label: "6 months" },
   { value: "yearly", label: "Year" },
   { value: "all", label: "All" },
 ];
@@ -20,7 +20,11 @@ type Props = {
 
 export function PeriodSelector({ selected, onSelect }: Props) {
   return (
-    <div className="flex flex-wrap gap-1">
+    <div
+      role="group"
+      aria-label="Analysis period"
+      className="flex flex-wrap gap-1"
+    >
       {PERIODS.map(({ value, label }) => {
         const isActive = selected === value;
         return (

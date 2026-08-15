@@ -64,10 +64,16 @@ export function AnalyticsDashboard() {
   };
 
   return (
-    <div className="space-y-4">
+    <section
+      aria-labelledby="order-analysis-heading"
+      className="space-y-4 tabular-nums"
+    >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="font-sans text-lg font-semibold text-foreground">
-          Order Analysis
+        <h2
+          id="order-analysis-heading"
+          className="font-sans text-lg font-semibold text-foreground"
+        >
+          Order analysis
         </h2>
         <PeriodSelector selected={period} onSelect={handlePeriodChange} />
       </div>
@@ -79,17 +85,17 @@ export function AnalyticsDashboard() {
           {/* Stat strip */}
           <div className="grid grid-cols-2 rounded-lg border border-border bg-card sm:grid-cols-4">
             <StatTile
-              label="Total Orders"
+              label="Total orders"
               value={data.totalOrders.toString()}
               icon={<ShoppingBag className="size-3.5" />}
             />
             <StatTile
-              label="Revenue"
+              label="Submitted value"
               value={`$${data.totalRevenue.toFixed(2)}`}
               icon={<DollarSign className="size-3.5" />}
             />
             <StatTile
-              label="Avg Order"
+              label="Average order"
               value={`$${data.avgOrderValue.toFixed(2)}`}
               icon={<TrendingUp className="size-3.5" />}
             />
@@ -104,7 +110,7 @@ export function AnalyticsDashboard() {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="font-sans text-sm font-semibold text-foreground">
-                Revenue Trend
+                Submitted order value
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -127,7 +133,10 @@ export function AnalyticsDashboard() {
                       tickFormatter={(v) => `$${v}`}
                     />
                     <Tooltip
-                      formatter={(value) => [`$${Number(value).toFixed(2)}`, "Revenue"]}
+                      formatter={(value) => [
+                        `$${Number(value).toFixed(2)}`,
+                        "Submitted value",
+                      ]}
                       contentStyle={TOOLTIP_CONTENT_STYLE}
                       labelStyle={TOOLTIP_TEXT_STYLE}
                       itemStyle={TOOLTIP_TEXT_STYLE}
@@ -155,7 +164,7 @@ export function AnalyticsDashboard() {
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="font-sans text-sm font-semibold text-foreground">
-                  Top Selling Items
+                  Top-selling items
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -195,7 +204,7 @@ export function AnalyticsDashboard() {
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="font-sans text-sm font-semibold text-foreground">
-                  Orders by Hour
+                  Orders by hour
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -239,7 +248,7 @@ export function AnalyticsDashboard() {
           </div>
         </>
       ) : null}
-    </div>
+    </section>
   );
 }
 
@@ -256,7 +265,7 @@ function StatTile({
     <div className="border-border p-4 [&:nth-child(-n+2)]:border-b [&:nth-child(odd)]:border-r sm:border-b-0 sm:[&:nth-child(2)]:border-r">
       <div className="flex items-center gap-1.5 text-muted-foreground">
         {icon}
-        <span className="text-label uppercase tracking-wide">{label}</span>
+        <span className="text-label">{label}</span>
       </div>
       <div className="mt-1 text-xl font-semibold tabular-nums text-foreground">
         {value}
@@ -267,7 +276,7 @@ function StatTile({
 
 function LoadingSkeleton() {
   return (
-    <div className="space-y-4">
+    <div role="status" aria-label="Loading order analysis" className="space-y-4">
       <div className="grid grid-cols-2 rounded-lg border border-border bg-card sm:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
           <div

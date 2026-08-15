@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   updateMenuItemStatus,
   deleteMenuItem,
@@ -46,28 +47,48 @@ export function MenuItemRow({ item }: Props) {
   function handleStatusChange(newStatus: MenuStatus) {
     if (newStatus === currentStatus) return;
     startTransition(async () => {
-      await updateMenuItemStatus(item.id, newStatus);
-      toast.success(`${item.name_en} → ${MENU_STATUS[newStatus].label}`);
+      try {
+        await updateMenuItemStatus(item.id, newStatus);
+        toast.success(`${item.name_en} → ${MENU_STATUS[newStatus].label}`);
+      } catch {
+        toast.error(`${item.name_en} was not updated`, {
+          description: "Check your connection, then try the status change again.",
+        });
+      }
     });
   }
 
   function handleDelete() {
-    if (!confirm(`Delete "${item.name_en}"?`)) return;
+    if (
+      !confirm(
+        `Delete "${item.name_en}"? This permanently removes it from the menu.`
+      )
+    ) {
+      return;
+    }
     startTransition(async () => {
-      await deleteMenuItem(item.id);
-      toast.success(`${item.name_en} deleted`);
+      try {
+        await deleteMenuItem(item.id);
+        toast.success(`${item.name_en} deleted`);
+      } catch {
+        toast.error(`${item.name_en} was not deleted`, {
+          description: "Check whether the item is still in use, then try again.",
+        });
+      }
     });
   }
 
+  const StatusIcon = meta.icon;
+
   return (
     <div
+      aria-busy={isPending}
       className={cn(
-        "flex items-center justify-between gap-3 border-b border-border bg-card px-4 py-2.5 transition-colors last:border-b-0 hover:bg-muted/50",
+        "grid gap-3 border-b border-border bg-card px-3 py-3 transition-colors last:border-b-0 hover:bg-muted/50 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:px-4",
         isPending && "opacity-50"
       )}
     >
       <div className="flex min-w-0 items-center gap-3">
-        {/* Thumbnail */}
         <div
           className={cn(
             "h-10 w-10 shrink-0 overflow-hidden rounded-md bg-muted",
@@ -75,10 +96,11 @@ export function MenuItemRow({ item }: Props) {
           )}
         >
           {item.image_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={item.image_url}
               alt={item.name_en}
+              width={40}
+              height={40}
               className="h-full w-full object-cover"
             />
           ) : (
@@ -96,7 +118,7 @@ export function MenuItemRow({ item }: Props) {
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="flex min-w-0 flex-wrap items-center gap-2 sm:justify-end">
         <span className="text-sm font-medium tabular-nums text-foreground">
           ${Number(item.price).toFixed(2)}
         </span>
@@ -110,9 +132,11 @@ export function MenuItemRow({ item }: Props) {
         >
           <SelectTrigger
             size="sm"
-            aria-label="Change status"
-            className={cn("w-28 font-medium", meta.badge)}
+            aria-label={`Change status for ${item.name_en}`}
+            aria-busy={isPending}
+            className={cn("min-w-32 font-medium", meta.badge)}
           >
+            <StatusIcon aria-hidden="true" className="size-3.5" />
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -127,7 +151,6 @@ export function MenuItemRow({ item }: Props) {
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8"
           nativeButton={false}
           render={<Link href={`/admin/menu/${item.id}/edit`} />}
           aria-label={`Edit ${item.name_en}`}
@@ -137,9 +160,10 @@ export function MenuItemRow({ item }: Props) {
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 text-destructive"
+          className="text-destructive"
           onClick={handleDelete}
           disabled={isPending}
+          aria-busy={isPending}
           aria-label={`Delete ${item.name_en}`}
         >
           <Trash2 className="h-4 w-4" />

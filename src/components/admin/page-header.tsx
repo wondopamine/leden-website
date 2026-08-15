@@ -14,9 +14,9 @@ export function AdminPageHeader({
   children?: ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 border-b border-border pb-4">
+    <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 border-b border-border pb-4">
       <div className="space-y-1">
-        <h1 className="font-sans text-xl font-semibold tracking-tight text-foreground">
+        <h1 className="font-sans text-2xl font-semibold tracking-tight text-foreground">
           {title}
         </h1>
         {subtitle ? (
@@ -26,6 +26,6 @@ export function AdminPageHeader({
       {children ? (
         <div className="flex flex-shrink-0 items-center gap-2">{children}</div>
       ) : null}
-    </div>
+    </header>
   );
 }

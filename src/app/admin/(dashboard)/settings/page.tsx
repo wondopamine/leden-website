@@ -14,7 +14,7 @@ export default async function SettingsPage() {
     <div className="space-y-4">
       <AdminPageHeader
         title="Settings"
-        subtitle="Manage cafe information and hours"
+        subtitle="Manage café information and hours"
       />
       <SettingsForm initialData={cafeInfo} />
     </div>

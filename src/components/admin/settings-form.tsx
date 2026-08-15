@@ -78,16 +78,24 @@ export function SettingsForm({ initialData }: Props) {
         });
         toast.success("Settings saved");
       } catch {
-        toast.error("Failed to save settings");
+        toast.error("Settings were not saved", {
+          description: "Check the fields and your connection, then try again.",
+        });
       }
     });
   }
 
   if (!initialData) {
     return (
-      <p className="text-sm text-muted-foreground">
-        No cafe info found. Please run the seed migration.
-      </p>
+      <div className="rounded-xl border border-border bg-card p-4">
+        <h2 className="font-sans text-sm font-semibold text-foreground">
+          Settings unavailable
+        </h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          No café information was found. Run the seed migration, then reload this
+          page.
+        </p>
+      </div>
     );
   }
 
@@ -97,40 +105,59 @@ export function SettingsForm({ initialData }: Props) {
       <Card>
         <CardHeader>
           <CardTitle className="font-sans text-sm font-semibold">
-            Business Hours
+            Business hours
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           {hours.map((h, idx) => (
-            <div key={h.day} className="flex flex-wrap items-center gap-x-3 gap-y-2">
-              <span className="w-24 text-sm font-medium text-foreground">
+            <div
+              key={h.day}
+              className="grid gap-2 border-b border-border py-3 first:pt-0 last:border-b-0 last:pb-0 sm:grid-cols-[6rem_auto_1fr] sm:items-center"
+            >
+              <span className="text-sm font-medium text-foreground">
                 {h.day}
               </span>
-              <Switch
-                checked={!h.closed}
-                onCheckedChange={(open) => updateHour(idx, "closed", !open)}
-                aria-label={`${h.day} open`}
-              />
+              <div className="flex min-h-11 items-center gap-2 sm:min-h-9">
+                <Switch
+                  id={`hours-${idx}-open`}
+                  checked={!h.closed}
+                  onCheckedChange={(open) => updateHour(idx, "closed", !open)}
+                  aria-label={`${h.day} is open`}
+                />
+                <Label htmlFor={`hours-${idx}-open`} className="font-normal">
+                  {h.closed ? "Closed" : "Open"}
+                </Label>
+              </div>
               {!h.closed ? (
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="time"
-                    value={h.open}
-                    onChange={(e) => updateHour(idx, "open", e.target.value)}
-                    className="w-32 tabular-nums"
-                    aria-label={`${h.day} opening time`}
-                  />
-                  <span className="text-sm text-muted-foreground">to</span>
-                  <Input
-                    type="time"
-                    value={h.close}
-                    onChange={(e) => updateHour(idx, "close", e.target.value)}
-                    className="w-32 tabular-nums"
-                    aria-label={`${h.day} closing time`}
-                  />
+                <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor={`hours-${idx}-start`}>Opens</Label>
+                    <Input
+                      id={`hours-${idx}-start`}
+                      type="time"
+                      value={h.open}
+                      onChange={(e) => updateHour(idx, "open", e.target.value)}
+                      className="tabular-nums"
+                    />
+                  </div>
+                  <span className="pb-3 text-sm text-muted-foreground sm:pb-2">
+                    to
+                  </span>
+                  <div className="space-y-1.5">
+                    <Label htmlFor={`hours-${idx}-end`}>Closes</Label>
+                    <Input
+                      id={`hours-${idx}-end`}
+                      type="time"
+                      value={h.close}
+                      onChange={(e) => updateHour(idx, "close", e.target.value)}
+                      className="tabular-nums"
+                    />
+                  </div>
                 </div>
               ) : (
-                <span className="text-sm text-muted-foreground">Closed</span>
+                <span className="text-sm text-muted-foreground">
+                  No pickup hours
+                </span>
               )}
             </div>
           ))}
@@ -146,12 +173,20 @@ export function SettingsForm({ initialData }: Props) {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>Address</Label>
-            <Input value={address} onChange={(e) => setAddress(e.target.value)} />
+            <Label htmlFor="cafe-address">Address</Label>
+            <Input
+              id="cafe-address"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+            />
           </div>
           <div className="space-y-2">
-            <Label>Phone</Label>
-            <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
+            <Label htmlFor="cafe-phone">Phone</Label>
+            <Input
+              id="cafe-phone"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+            />
           </div>
         </CardContent>
       </Card>
@@ -165,8 +200,9 @@ export function SettingsForm({ initialData }: Props) {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>English</Label>
+            <Label htmlFor="announcement-en">English</Label>
             <Textarea
+              id="announcement-en"
               value={announcementEn}
               onChange={(e) => setAnnouncementEn(e.target.value)}
               rows={2}
@@ -174,8 +210,9 @@ export function SettingsForm({ initialData }: Props) {
             />
           </div>
           <div className="space-y-2">
-            <Label>French</Label>
+            <Label htmlFor="announcement-fr">French</Label>
             <Textarea
+              id="announcement-fr"
               value={announcementFr}
               onChange={(e) => setAnnouncementFr(e.target.value)}
               rows={2}
@@ -189,13 +226,14 @@ export function SettingsForm({ initialData }: Props) {
       <Card>
         <CardHeader>
           <CardTitle className="font-sans text-sm font-semibold">
-            Order Settings
+            Order settings
           </CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label>Pickup Lead Time (minutes)</Label>
+            <Label htmlFor="pickup-lead-time">Pickup lead time (minutes)</Label>
             <Input
+              id="pickup-lead-time"
               type="number"
               min="5"
               value={pickupLeadTime}
@@ -206,8 +244,9 @@ export function SettingsForm({ initialData }: Props) {
             />
           </div>
           <div className="space-y-2">
-            <Label>Max Advance Order Days</Label>
+            <Label htmlFor="max-advance-days">Maximum advance order days</Label>
             <Input
+              id="max-advance-days"
               type="number"
               min="0"
               value={maxAdvanceDays}
@@ -220,8 +259,14 @@ export function SettingsForm({ initialData }: Props) {
         </CardContent>
       </Card>
 
-      <Button variant="default" size="default" onClick={handleSave} disabled={isPending}>
-        {isPending ? "Saving..." : "Save Settings"}
+      <Button
+        variant="default"
+        size="default"
+        onClick={handleSave}
+        disabled={isPending}
+        aria-busy={isPending}
+      >
+        {isPending ? "Saving…" : "Save settings"}
       </Button>
     </div>
   );

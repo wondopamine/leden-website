@@ -34,7 +34,7 @@ export default async function MenuPage() {
 
           return (
             <section key={cat.id} className="space-y-2">
-              <h2 className="font-sans text-label uppercase tracking-wider text-muted-foreground">
+              <h2 className="font-sans text-sm font-semibold text-foreground">
                 {cat.name_en}
               </h2>
               <div className="overflow-hidden rounded-lg border border-border bg-card">

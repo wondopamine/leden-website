@@ -30,7 +30,7 @@ export function StatStrip({
             key={tile.label}
             className="min-w-[7.5rem] flex-1 border-r border-b border-border px-4 py-3"
           >
-            <p className="text-label uppercase tracking-wide text-muted-foreground">
+            <p className="text-label text-muted-foreground">
               {tile.label}
             </p>
             <p className="mt-1 text-xl font-semibold tabular-nums text-foreground">

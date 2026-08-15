@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "Admin — Cafe Le Den",
+  title: "Admin — Café Le Den",
 };
 
 export default function AdminRootLayout({
