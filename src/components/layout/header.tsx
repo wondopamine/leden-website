@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/sheet";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { useCartStore } from "@/lib/cart-store";
+import { resolveOrderStatusSession } from "@/lib/orders/checkout-attempt";
 import { useState } from "react";
 
 const languages = [
@@ -39,6 +40,30 @@ export function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const switchLocale = (newLocale: string) => {
+    if (pathname === "/order/status") {
+      const historyState =
+        typeof window.history.state === "object" && window.history.state !== null
+          ? window.history.state
+          : {};
+      let resolved = null;
+      try {
+        resolved = resolveOrderStatusSession(window.sessionStorage, {
+          fragment: "",
+          historyContextId:
+            typeof historyState.cafeLedenOrderStatusContext === "string"
+              ? historyState.cafeLedenOrderStatusContext
+              : null,
+        });
+      } catch {
+        resolved = null;
+      }
+      if (resolved) {
+        router.replace(`/order/status#${resolved.session.trackingSecret}`, {
+          locale: newLocale,
+        });
+        return;
+      }
+    }
     router.replace(pathname, { locale: newLocale });
   };
 

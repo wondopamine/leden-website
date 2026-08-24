@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Order lifecycle hardening active — U1-U4 complete; U5 customer lifecycle UX next
-last_updated: "2026-08-24T14:32:00+08:00"
+status: Order lifecycle hardening active — U1-U5 complete; U6 admin reconciliation next
+last_updated: "2026-08-24T16:30:00+08:00"
 progress:
   total_phases: 5
   completed_phases: 1
@@ -23,7 +23,7 @@ progress:
 
 **Milestone:** Comprehensive refactor — same features, rebuilt on a coherent design system + consolidated data layer + major visual lift.
 
-**Current focus:** Order Lifecycle Hardening — U5 customer lifecycle UX after U4 replaced the legacy order endpoint with strict server-only create, replay, recovery, tracking, abuse, and Turnstile boundaries.
+**Current focus:** Order Lifecycle Hardening — U6 admin reconciliation after U5 added identity-safe checkout, ambiguous-response recovery, and private bilingual customer tracking.
 
 ## Current Position
 
@@ -140,10 +140,14 @@ Next: Phase 02 — Data Layer Consolidation + Image Pipeline + RLS Hardening
 - U4 requires same-origin requests, a trusted deployment identity, versioned HMAC rate keys, independent create/status/recovery buckets, and exact Turnstile action/hostname verification. Committed replay is resolved before a fresh challenge.
 - U4 isolates its non-cookie privileged Supabase client in a server-only module. The three Route Handlers only orchestrate validation, abuse controls, repository calls, and no-store/no-referrer responses; Resend is no longer part of order acceptance.
 - Real local service-role proof now covers create, identical replay, one-order persistence, recovery, and status through the public RPC chain. This exposed and fixed missing invoker read/lock privileges without granting direct café/menu updates.
+- U5 persists cart identity by canonical menu and modifier IDs only; customer PII is excluded from durable browser storage, and accepted or ambiguous attempts remain non-resubmittable across reloads until authoritative recovery resolves them.
+- U5 uses a fresh Turnstile challenge for each bounded submission, consumes private tracking secrets from URL fragments into session-scoped state, removes them from URL/history/referrers, and fails closed for malformed, unknown, or revoked status responses.
+- Customer status polling is visibility-aware, monotonic by order version, explicitly stale-safe, and terminal-state bounded. English/French locale switching, reload, Back/Forward, and copied private links preserve the privacy boundary.
+- U5 browser verification now waits for the language control's real expanded state, avoiding pre-hydration clicks under parallel production-build load without weakening the accessibility assertions.
 
 ### Open Todos
 
-- Execute U5-U8 in dependency order from the reviewed order-lifecycle plan.
+- Execute U6-U8 in dependency order from the reviewed order-lifecycle plan.
 - Resume the legacy Phase 2 roadmap only where it does not conflict with the active lifecycle-hardening units.
 
 ### Blockers
@@ -158,9 +162,9 @@ Next: Phase 02 — Data Layer Consolidation + Image Pipeline + RLS Hardening
 
 ## Session Continuity
 
-**Last session:** U4 completed. A role-accurate regression fixed the service-role invoker chain; 214 pgTAP assertions, 121 unit tests, the real local create/replay/recovery/status flow, four lock races, typecheck, lint, and the webpack production build passed. The default Turbopack build remains environment-blocked by its internal PostCSS worker port binding, with no code diagnostic.
+**Last session:** U5 completed. Correctness and security reviews passed; 133 unit tests, typecheck, lint, the webpack production build, DX token/type/accessibility/contrast checks, and all 24 intercepted Chromium scenarios passed. The hydration-sensitive language-menu assertion also passed three repeated isolated runs. The default Turbopack build remains environment-blocked by its internal PostCSS worker port binding, with no code diagnostic.
 
-**Next session entry point:** Execute U5 customer checkout identity, Turnstile, lost-response recovery, durable receipt, and bilingual tracking flow against the new server boundary. Do not touch a hosted target until U7's owner-approved sentinel bootstrap and full target handshake are available.
+**Next session entry point:** Execute U6 authorized admin order listing, mutation conflict recovery, realtime-as-hint reconciliation, freshness health, and stale-safe transitions. Do not touch a hosted target until U7's owner-approved sentinel bootstrap and full target handshake are available.
 
 **Files of record:**
 

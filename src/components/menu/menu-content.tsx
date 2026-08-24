@@ -231,33 +231,52 @@ function ItemDetailDialog({
   const t = useTranslations("menu");
   const tc = useTranslations("common");
   const addItem = useCartStore((s) => s.addItem);
+  const cartItems = useCartStore((s) => s.items);
   const [quantity, setQuantity] = useState(1);
-  const [selections, setSelections] = useState<Record<string, number>>(() => {
-    const initial: Record<string, number> = {};
-    item.modifiers.forEach((_, idx) => {
-      initial[idx] = 0;
+  const [selections, setSelections] = useState<Record<string, string | undefined>>(() => {
+    const initial: Record<string, string | undefined> = {};
+    item.modifiers.forEach((modifier) => {
+      initial[modifier._id] =
+        modifier.minSelections === 1 ? modifier.options[0]?._id : undefined;
     });
     return initial;
   });
 
-  const modifierTotal = item.modifiers.reduce((sum, mod, idx) => {
-    const optionIdx = selections[idx] ?? 0;
-    return sum + (mod.options[optionIdx]?.priceAdjustment ?? 0);
+  const modifierTotal = item.modifiers.reduce((sum, modifier) => {
+    const selectedId = selections[modifier._id];
+    const option = modifier.options.find((candidate) => candidate._id === selectedId);
+    return sum + (option?.priceAdjustment ?? 0);
   }, 0);
 
   const unitPrice = item.price + modifierTotal;
   const totalPrice = unitPrice * quantity;
   const imgSrc = getItemImageUrl(item);
+  const remainingLineSlots = Math.max(0, 50 - cartItems.length);
+  const remainingItemSlots = Math.max(
+    0,
+    100 - cartItems.reduce((sum, cartItem) => sum + cartItem.quantity, 0),
+  );
+  const maxQuantity = Math.min(20, remainingLineSlots, remainingItemSlots);
+  const requiredSelectionsComplete = item.modifiers.every(
+    (modifier) =>
+      modifier.minSelections === 0 || Boolean(selections[modifier._id]),
+  );
+  const canAdd = maxQuantity > 0 && requiredSelectionsComplete;
 
   const handleAdd = () => {
-    const modifiers = item.modifiers.map((mod, idx) => {
-      const optionIdx = selections[idx] ?? 0;
-      const option = mod.options[optionIdx];
-      return {
-        name: getLocalizedString(mod.name, locale),
+    if (!canAdd || quantity > maxQuantity) return;
+    const modifiers = item.modifiers.flatMap((modifier) => {
+      const option = modifier.options.find(
+        (candidate) => candidate._id === selections[modifier._id],
+      );
+      if (!option) return [];
+      return [{
+        modifierId: modifier._id,
+        optionId: option._id,
+        name: getLocalizedString(modifier.name, locale),
         option: getLocalizedString(option.name, locale),
         priceAdjustment: option.priceAdjustment,
-      };
+      }];
     });
 
     for (let i = 0; i < quantity; i++) {
@@ -317,18 +336,29 @@ function ItemDetailDialog({
 
           {item.modifiers.length > 0 && (
             <div className="mt-5 space-y-5">
-              {item.modifiers.map((mod, modIdx) => (
-                <fieldset key={modIdx}>
+              {item.modifiers.map((mod) => (
+                <fieldset key={mod._id}>
                   <legend className="mb-2.5 text-caption font-semibold text-muted-foreground">
                     {getLocalizedString(mod.name, locale)}
+                    <span className="ml-1 font-normal">
+                      {mod.minSelections === 1 ? t("required") : t("optional")}
+                    </span>
                   </legend>
                   <div className="flex flex-wrap gap-2">
-                    {mod.options.map((option, optIdx) => {
-                      const selected = selections[modIdx] === optIdx;
+                    {mod.options.map((option) => {
+                      const selected = selections[mod._id] === option._id;
                       return (
                         <button
-                          key={optIdx}
-                          onClick={() => setSelections((prev) => ({ ...prev, [modIdx]: optIdx }))}
+                          key={option._id}
+                          onClick={() =>
+                            setSelections((previous) => ({
+                              ...previous,
+                              [mod._id]:
+                                selected && mod.minSelections === 0
+                                  ? undefined
+                                  : option._id,
+                            }))
+                          }
                           aria-pressed={selected}
                           className={`min-h-11 rounded-full border px-3.5 py-2 text-caption transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-popover ${
                             selected
@@ -363,18 +393,30 @@ function ItemDetailDialog({
               </button>
               <span className="w-8 text-center text-body font-medium tabular-nums" aria-live="polite">{quantity}</span>
               <button
-                onClick={() => setQuantity(quantity + 1)}
+                onClick={() => setQuantity(Math.min(maxQuantity, quantity + 1))}
                 aria-label={`${tc("add")} ${getLocalizedString(item.name, locale)}`}
+                disabled={quantity >= maxQuantity}
                 className="flex size-11 items-center justify-center rounded-r-full text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <Plus aria-hidden className="size-4" />
               </button>
             </div>
 
-            <Button variant="default" size="lg" className="h-12 flex-1 text-caption font-semibold" onClick={handleAdd}>
+            <Button
+              variant="default"
+              size="lg"
+              className="h-12 flex-1 text-caption font-semibold"
+              onClick={handleAdd}
+              disabled={!canAdd || quantity > maxQuantity}
+            >
               {t("addToOrder")} · {formatPrice(totalPrice)}
             </Button>
           </div>
+          {maxQuantity === 0 && (
+            <p className="mt-2 text-caption text-destructive" role="status">
+              {t("cartLimit")}
+            </p>
+          )}
         </div>
       </DialogContent>
     </Dialog>

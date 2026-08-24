@@ -6,6 +6,32 @@ import { createServerClient } from "@supabase/ssr";
 
 const intlMiddleware = createMiddleware(routing);
 
+function secureOrderStatusResponse(response: NextResponse) {
+  const developmentScriptPolicy =
+    process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : "";
+  response.headers.set(
+    "Content-Security-Policy",
+    [
+      "default-src 'self'",
+      `script-src 'self' 'unsafe-inline'${developmentScriptPolicy}`,
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob:",
+      "font-src 'self'",
+      "connect-src 'self'",
+      "frame-src 'none'",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "frame-ancestors 'none'",
+    ].join("; "),
+  );
+  response.headers.set("Cache-Control", "private, no-store, max-age=0");
+  response.headers.set("Referrer-Policy", "no-referrer");
+  response.headers.set("X-Content-Type-Options", "nosniff");
+  response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
+  return response;
+}
+
 export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -58,7 +84,10 @@ export default async function proxy(request: NextRequest) {
     return response;
   }
 
-  return intlMiddleware(request);
+  const response = intlMiddleware(request);
+  return /^\/(en|fr)\/order\/status\/?$/.test(pathname)
+    ? secureOrderStatusResponse(response)
+    : response;
 }
 
 export const config = {

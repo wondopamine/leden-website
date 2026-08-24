@@ -2,6 +2,10 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 export type CartItemModifier = {
+  /** Missing only on a pre-hardening persisted cart. */
+  modifierId?: string;
+  /** Missing only on a pre-hardening persisted cart. */
+  optionId?: string;
   name: string;
   option: string;
   priceAdjustment: number;
@@ -19,20 +23,11 @@ export type CartItem = {
   image?: string;
 };
 
-type CustomerInfo = {
-  name: string;
-  phone: string;
-};
-
 type CartState = {
   items: CartItem[];
-  customerInfo: CustomerInfo;
-  pickupTime: string | null;
   addItem: (item: Omit<CartItem, "id">) => void;
   removeItem: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
-  setCustomerInfo: (info: Partial<CustomerInfo>) => void;
-  setPickupTime: (time: string | null) => void;
   clearCart: () => void;
   getSubtotal: () => number;
   getTax: () => { gst: number; qst: number; total: number };
@@ -46,8 +41,6 @@ export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
       items: [],
-      customerInfo: { name: "", phone: "" },
-      pickupTime: null,
 
       addItem: (item) => {
         const id = `${item.menuItemId}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -74,20 +67,7 @@ export const useCartStore = create<CartState>()(
         }));
       },
 
-      setCustomerInfo: (info) => {
-        set((state) => ({
-          customerInfo: { ...state.customerInfo, ...info },
-        }));
-      },
-
-      setPickupTime: (time) => set({ pickupTime: time }),
-
-      clearCart: () =>
-        set({
-          items: [],
-          customerInfo: { name: "", phone: "" },
-          pickupTime: null,
-        }),
+      clearCart: () => set({ items: [] }),
 
       getSubtotal: () => {
         return get().items.reduce((sum, item) => {
@@ -114,6 +94,25 @@ export const useCartStore = create<CartState>()(
     }),
     {
       name: "cafe-leden-cart",
+      version: 1,
+      partialize: (state) => ({ items: state.items }),
+      migrate: (persistedState) => migratePersistedCart(persistedState),
     }
   )
 );
+
+export function migratePersistedCart(
+  persistedState: unknown,
+): Pick<CartState, "items"> {
+  if (
+    typeof persistedState !== "object" ||
+    persistedState === null ||
+    !("items" in persistedState) ||
+    !Array.isArray((persistedState as { items?: unknown }).items)
+  ) {
+    return { items: [] };
+  }
+  return {
+    items: (persistedState as { items: CartItem[] }).items,
+  };
+}

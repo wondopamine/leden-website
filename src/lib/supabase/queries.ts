@@ -37,37 +37,34 @@ export async function getMenuItems(): Promise<MenuItem[]> {
 
   if (itemsError) throw itemsError;
 
-  return (items ?? []).map((row) => ({
-    _id: row.id,
-    name: { en: row.name_en, fr: row.name_fr },
-    description: { en: row.description_en, fr: row.description_fr },
-    price: Number(row.price),
-    category: {
-      _id: row.category.id,
-      name: { en: row.category.name_en, fr: row.category.name_fr },
-      slug: row.category.slug,
-    },
-    imageUrl: row.image_url ?? undefined,
-    available: row.status !== "hidden",
-    status: (row.status as "available" | "sold_out" | "hidden") || "available",
-    modifiers: (row.modifiers ?? [])
+  return (items ?? []).map((row) => {
+    const modifiers: MenuItem["modifiers"] = (row.modifiers ?? [])
       .sort(
         (a: { sort_order: number }, b: { sort_order: number }) =>
           a.sort_order - b.sort_order
       )
       .map(
         (mod: {
+          id: string;
           name_en: string;
           name_fr: string;
+          min_selections: number;
+          max_selections: number;
           options: {
+            id: string;
             name_en: string;
             name_fr: string;
             price_adjustment: number;
             sort_order: number;
+            available: boolean;
           }[];
         }) => ({
+          _id: mod.id,
           name: { en: mod.name_en, fr: mod.name_fr },
+          minSelections: mod.min_selections === 0 ? 0 : 1,
+          maxSelections: 1,
           options: (mod.options ?? [])
+            .filter((option) => option.available !== false)
             .sort(
               (
                 a: { sort_order: number },
@@ -76,17 +73,42 @@ export async function getMenuItems(): Promise<MenuItem[]> {
             )
             .map(
               (opt: {
+                id: string;
                 name_en: string;
                 name_fr: string;
                 price_adjustment: number;
               }) => ({
+                _id: opt.id,
                 name: { en: opt.name_en, fr: opt.name_fr },
                 priceAdjustment: Number(opt.price_adjustment),
               })
             ),
         })
-      ),
-  }));
+      );
+    const hasEmptyModifier = modifiers.some(
+      (modifier) => modifier.options.length === 0,
+    );
+    const status =
+      hasEmptyModifier && row.status === "available"
+        ? "sold_out"
+        : ((row.status as "available" | "sold_out" | "hidden") ||
+          "available");
+    return {
+      _id: row.id,
+      name: { en: row.name_en, fr: row.name_fr },
+      description: { en: row.description_en, fr: row.description_fr },
+      price: Number(row.price),
+      category: {
+        _id: row.category.id,
+        name: { en: row.category.name_en, fr: row.category.name_fr },
+        slug: row.category.slug,
+      },
+      imageUrl: row.image_url ?? undefined,
+      available: status !== "hidden",
+      status,
+      modifiers,
+    };
+  });
 }
 
 export async function getCafeInfo(): Promise<CafeInfo> {

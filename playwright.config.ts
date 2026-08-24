@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const port = 3100;
+const port = Number(process.env.PLAYWRIGHT_PORT ?? 3100);
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -22,7 +22,12 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `npm run build && npm run start -- --port ${port}`,
+    command: `npx next build --webpack && npm run start -- --port ${port}`,
+    env: {
+      ...process.env,
+      NEXT_PUBLIC_ORDER_CHALLENGE_TEST_TOKEN: "intercepted-e2e-challenge",
+      PLAYWRIGHT_STOREFRONT_PREVIEW: "1",
+    },
     url: `http://localhost:${port}/en`,
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
