@@ -1,10 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import {
-  updateOrderStatus,
-  type OrderStatus,
-} from "@/app/admin/(dashboard)/actions";
+import { useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { updateOrderStatus } from "@/app/admin/(dashboard)/actions";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -32,6 +30,11 @@ import { ORDER_STATUS } from "@/components/admin/status";
 import { cn } from "@/lib/utils";
 import { ChevronRight, Phone, Clock, MoreVertical, X } from "lucide-react";
 import { toast } from "sonner";
+import type {
+  AdminOrder,
+  AdminOrderStatus,
+} from "@/lib/orders/admin-realtime";
+import { reconcileAfterAdminMutation } from "@/lib/orders/admin-realtime";
 
 type OrderItem = {
   id: string;
@@ -41,46 +44,86 @@ type OrderItem = {
   modifiers: { name: string; option: string; priceAdjustment: number }[];
 };
 
-export type Order = {
-  id: string;
-  order_number: string;
-  customer_name: string;
-  customer_phone: string;
-  pickup_time: string | null;
-  status: OrderStatus;
-  subtotal: number;
-  tax_gst: number;
-  tax_qst: number;
-  total: number;
-  created_at: string;
+export type Order = Omit<
+  AdminOrder,
+  "order_items" | "status_version" | "promised_pickup_at" | "updated_at"
+> & {
   order_items: OrderItem[];
+  status_version?: number | null;
+  promised_pickup_at?: string | null;
+  updated_at?: string | null;
 };
 
-export function OrderCard({ order }: { order: Order }) {
+type Props = {
+  order: Order;
+  transitionsDisabled?: boolean;
+  onReconcile?: () => Promise<unknown> | void;
+  action?: typeof updateOrderStatus;
+};
+
+export function OrderCard({
+  order,
+  transitionsDisabled = false,
+  onReconcile,
+  action = updateOrderStatus,
+}: Props) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [cancelOpen, setCancelOpen] = useState(false);
+  const submittingRef = useRef(false);
+  const [terminalAction, setTerminalAction] = useState<
+    "picked_up" | "cancelled" | null
+  >(null);
   const meta = ORDER_STATUS[order.status];
   const StatusIcon = meta.icon;
   const isTerminal = order.status === "picked_up" || order.status === "cancelled";
 
-  function handleStatusChange(newStatus: OrderStatus) {
+  function handleStatusChange(newStatus: AdminOrderStatus) {
+    if (submittingRef.current || transitionsDisabled) return;
+    submittingRef.current = true;
     startTransition(async () => {
       try {
-        await updateOrderStatus(order.id, newStatus);
-        setCancelOpen(false);
-        toast.success(
-          `Order ${order.order_number} → ${ORDER_STATUS[newStatus].label}`
-        );
+        const result = await action({
+          orderId: order.id,
+          expectedStatus: order.status,
+          expectedVersion: order.status_version ?? 0,
+          newStatus,
+        });
+        if (result.ok) {
+          toast.success(
+            `Order ${order.order_number} → ${ORDER_STATUS[result.order.status].label}`,
+          );
+        } else if (result.code === "ORDER_CONFLICT") {
+          toast.error(`Order ${order.order_number} changed on another device`, {
+            description: result.current
+              ? `Current status: ${ORDER_STATUS[result.current.status].label}. The board is refreshing.`
+              : "The board is refreshing before another action is allowed.",
+          });
+        } else {
+          toast.error(`Order ${order.order_number} was not updated`, {
+            description:
+              result.code === "INVALID_TRANSITION"
+                ? "This order can no longer take that action. The board is refreshing."
+                : "Check your connection, refresh the board, then try again.",
+          });
+        }
+        setTerminalAction(null);
       } catch {
         toast.error(`Order ${order.order_number} was not updated`, {
-          description: "Check your connection, then try the action again.",
+          description: "Check your connection, refresh the board, then try again.",
         });
+      } finally {
+        await reconcileAfterAdminMutation(onReconcile, () => router.refresh()).catch(
+          () => undefined,
+        );
+        submittingRef.current = false;
       }
     });
   }
 
-  const pickupDisplay = order.pickup_time
-    ? new Date(order.pickup_time).toLocaleTimeString("en-CA", {
+  const pickupTimestamp = order.promised_pickup_at ?? order.pickup_time;
+  const pickupDisplay = pickupTimestamp
+    ? new Date(pickupTimestamp).toLocaleTimeString("en-CA", {
+        timeZone: "America/Toronto",
         hour: "2-digit",
         minute: "2-digit",
       })
@@ -119,7 +162,7 @@ export function OrderCard({ order }: { order: Order }) {
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      disabled={isPending}
+                      disabled={isPending || transitionsDisabled}
                       aria-busy={isPending}
                       aria-label="Order actions"
                     />
@@ -129,7 +172,7 @@ export function OrderCard({ order }: { order: Order }) {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem
-                    onClick={() => setCancelOpen(true)}
+                    onClick={() => setTerminalAction("cancelled")}
                     className="text-destructive"
                   >
                     <X className="mr-2 size-4" />
@@ -199,9 +242,18 @@ export function OrderCard({ order }: { order: Order }) {
             <Button
               variant="default"
               size="sm"
-              onClick={() => handleStatusChange(meta.next!)}
-              disabled={isPending}
+              onClick={() =>
+                meta.next === "picked_up"
+                  ? setTerminalAction("picked_up")
+                  : handleStatusChange(meta.next!)
+              }
+              disabled={isPending || transitionsDisabled}
               aria-busy={isPending}
+              title={
+                transitionsDisabled
+                  ? "Refresh the board before changing an order."
+                  : undefined
+              }
             >
               {meta.nextLabel}
               <ChevronRight aria-hidden="true" className="ml-1 size-4" />
@@ -210,13 +262,17 @@ export function OrderCard({ order }: { order: Order }) {
         </div>
       </CardContent>
 
-      <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
+      <Dialog
+        open={terminalAction === "cancelled"}
+        onOpenChange={(open) => setTerminalAction(open ? "cancelled" : null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="font-sans">Cancel order {order.order_number}?</DialogTitle>
             <DialogDescription>
-              This marks {order.customer_name}&apos;s order as cancelled. The
-              cancellation cannot be undone from this screen.
+              Call {order.customer_name} at {order.customer_phone} before you
+              confirm. This marks the order as cancelled and cannot be undone
+              from this screen.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -227,10 +283,40 @@ export function OrderCard({ order }: { order: Order }) {
               variant="destructive"
               size="default"
               onClick={() => handleStatusChange("cancelled")}
-              disabled={isPending}
+              disabled={isPending || transitionsDisabled}
               aria-busy={isPending}
             >
               {isPending ? "Cancelling…" : "Cancel order"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={terminalAction === "picked_up"}
+        onOpenChange={(open) => setTerminalAction(open ? "picked_up" : null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-sans">
+              Mark order {order.order_number} picked up?
+            </DialogTitle>
+            <DialogDescription>
+              Confirm only after the order has been handed to the customer. This
+              terminal action cannot be undone from this screen.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline" size="default" />}>
+              Keep ready
+            </DialogClose>
+            <Button
+              size="default"
+              onClick={() => handleStatusChange("picked_up")}
+              disabled={isPending || transitionsDisabled}
+              aria-busy={isPending}
+            >
+              {isPending ? "Confirming…" : "Confirm picked up"}
             </Button>
           </DialogFooter>
         </DialogContent>

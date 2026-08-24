@@ -23,11 +23,14 @@ type ModifierOption = {
   name_en: string;
   name_fr: string;
   price_adjustment: number;
+  available?: boolean;
 };
 
 type Modifier = {
   name_en: string;
   name_fr: string;
+  min_selections?: 0 | 1;
+  max_selections?: 1;
   options: ModifierOption[];
 };
 
@@ -40,6 +43,7 @@ type MenuItemData = {
   price: number;
   category_id: string;
   available: boolean;
+  status?: "available" | "sold_out" | "hidden";
   image_url?: string | null;
   modifiers: Modifier[];
 };
@@ -74,7 +78,10 @@ export function MenuItemForm({
     price: initialData?.price?.toString() ?? "",
     category_id: initialData?.category_id ?? "",
   });
-  const [available, setAvailable] = useState(initialData?.available ?? true);
+  const [status, setStatus] = useState<"available" | "sold_out" | "hidden">(
+    initialData?.status ?? (initialData?.available === false ? "hidden" : "available"),
+  );
+  const available = status !== "hidden";
   const [imageUrl, setImageUrl] = useState<string | null>(
     initialData?.image_url ?? null
   );
@@ -151,7 +158,20 @@ export function MenuItemForm({
     markDirty();
     setModifiers([
       ...modifiers,
-      { name_en: "", name_fr: "", options: [{ name_en: "", name_fr: "", price_adjustment: 0 }] },
+      {
+        name_en: "",
+        name_fr: "",
+        min_selections: 1,
+        max_selections: 1,
+        options: [
+          {
+            name_en: "",
+            name_fr: "",
+            price_adjustment: 0,
+            available: true,
+          },
+        ],
+      },
     ]);
   }
 
@@ -167,10 +187,26 @@ export function MenuItemForm({
     setModifiers(updated);
   }
 
+  function updateModifierRequirement(idx: number, required: boolean) {
+    markDirty();
+    const updated = [...modifiers];
+    updated[idx] = {
+      ...updated[idx],
+      min_selections: required ? 1 : 0,
+      max_selections: 1,
+    };
+    setModifiers(updated);
+  }
+
   function addOption(modIdx: number) {
     markDirty();
     const updated = [...modifiers];
-    updated[modIdx].options.push({ name_en: "", name_fr: "", price_adjustment: 0 });
+    updated[modIdx].options.push({
+      name_en: "",
+      name_fr: "",
+      price_adjustment: 0,
+      available: true,
+    });
     setModifiers(updated);
   }
 
@@ -191,7 +227,12 @@ export function MenuItemForm({
   ) {
     markDirty();
     const updated = [...modifiers];
-    (updated[modIdx].options[optIdx] as Record<string, string | number>)[field] = value;
+    (
+      updated[modIdx].options[optIdx] as Record<
+        string,
+        string | number | boolean | undefined
+      >
+    )[field] = value;
     setModifiers(updated);
   }
 
@@ -242,7 +283,7 @@ export function MenuItemForm({
       {initialData?.id && (
         <input type="hidden" name="id" value={initialData.id} />
       )}
-      <input type="hidden" name="available" value={available.toString()} />
+      <input type="hidden" name="status" value={status} />
       <input type="hidden" name="image_url" value={imageUrl ?? ""} />
       <input
         type="hidden"
@@ -417,7 +458,7 @@ export function MenuItemForm({
               id="available"
               checked={available}
               onCheckedChange={(checked) => {
-                setAvailable(checked);
+                setStatus(checked ? "available" : "hidden");
                 markDirty();
               }}
             />
@@ -485,6 +526,24 @@ export function MenuItemForm({
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
+              </div>
+
+              <div className="flex min-h-11 items-center gap-2 rounded-lg bg-muted/50 px-3 py-2">
+                <Switch
+                  id={`modifier-${modIdx}-required`}
+                  checked={(mod.min_selections ?? 1) === 1}
+                  onCheckedChange={(required) =>
+                    updateModifierRequirement(modIdx, required)
+                  }
+                />
+                <Label
+                  htmlFor={`modifier-${modIdx}-required`}
+                  className="font-normal"
+                >
+                  {(mod.min_selections ?? 1) === 1
+                    ? "Customer must choose one option"
+                    : "Customer may skip this modifier"}
+                </Label>
               </div>
 
               <div className="space-y-3 border-l-2 border-border pl-3 sm:pl-4">

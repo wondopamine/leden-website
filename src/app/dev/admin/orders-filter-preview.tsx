@@ -46,9 +46,12 @@ export function OrdersFilterPreview() {
   );
 
   const latestNavigation = navigationRecords.at(-1) ?? null;
+  const markHydrated = useCallback((node: HTMLDivElement | null) => {
+    node?.setAttribute("data-preview-hydrated", "true");
+  }, []);
 
   return (
-    <div className="space-y-3">
+    <div ref={markHydrated} className="space-y-3">
       <OrdersFilter
         currentDate={filters.date}
         currentStatus={filters.status}

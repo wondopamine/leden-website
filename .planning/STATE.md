@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Order lifecycle hardening active — U1-U5 complete; U6 admin reconciliation next
-last_updated: "2026-08-24T16:30:00+08:00"
+status: Order lifecycle hardening active — U1-U6 complete; U7 real local lifecycle proof next
+last_updated: "2026-08-24T16:54:07+08:00"
 progress:
   total_phases: 5
   completed_phases: 1
@@ -23,7 +23,7 @@ progress:
 
 **Milestone:** Comprehensive refactor — same features, rebuilt on a coherent design system + consolidated data layer + major visual lift.
 
-**Current focus:** Order Lifecycle Hardening — U6 admin reconciliation after U5 added identity-safe checkout, ambiguous-response recovery, and private bilingual customer tracking.
+**Current focus:** Order Lifecycle Hardening — U7 aggregate real local lifecycle proof after U6 made the admin board authorized, canonically reconciled, conflict-safe, and operational without Realtime.
 
 ## Current Position
 
@@ -144,10 +144,15 @@ Next: Phase 02 — Data Layer Consolidation + Image Pipeline + RLS Hardening
 - U5 uses a fresh Turnstile challenge for each bounded submission, consumes private tracking secrets from URL fragments into session-scoped state, removes them from URL/history/referrers, and fails closed for malformed, unknown, or revoked status responses.
 - Customer status polling is visibility-aware, monotonic by order version, explicitly stale-safe, and terminal-state bounded. English/French locale switching, reload, Back/Forward, and copied private links preserve the privacy boundary.
 - U5 browser verification now waits for the language control's real expanded state, avoiding pre-hydration clicks under parallel production-build load without weakening the accessibility assertions.
+- U6 centralizes live, history, and detail reads in one staff-authorized server-only layer. The live board keeps every active order across Toronto midnight plus bounded current-day terminal rows, and dependency failures remain distinct from a valid empty queue.
+- U6 treats Realtime as a refresh hint only. Canonical no-store reconciliation is monotonic and request-sequenced, uses 30-second healthy and 15-second degraded polling, labels Live/Reconnecting/Polling/Stale, and locks transitions after 45 seconds without a successful refresh.
+- Staff transitions now use expected status/version compare-and-set RPC results, reconcile after every outcome, and require contextual confirmation for cancellation and picked-up terminal actions. The ordering gate is confirmation-protected on both the live board and Settings.
+- Menu create/edit now uses atomic graph RPCs and preserves sold-out state, optional modifier cardinality, and unavailable options. The new create RPC landed in the still-local, unapplied expand migration and was reproved from a clean reset.
+- Admin previews inject local ordering and transition actions so design/browser dogfooding cannot mutate a live target. Primary integration review also made malformed actions fail safely, suppressed late failed-refresh regressions, and fixed operational timestamps to the café timezone.
 
 ### Open Todos
 
-- Execute U6-U8 in dependency order from the reviewed order-lifecycle plan.
+- Execute U7-U8 in dependency order from the reviewed order-lifecycle plan.
 - Resume the legacy Phase 2 roadmap only where it does not conflict with the active lifecycle-hardening units.
 
 ### Blockers
@@ -162,9 +167,9 @@ Next: Phase 02 — Data Layer Consolidation + Image Pipeline + RLS Hardening
 
 ## Session Continuity
 
-**Last session:** U5 completed. Correctness and security reviews passed; 133 unit tests, typecheck, lint, the webpack production build, DX token/type/accessibility/contrast checks, and all 24 intercepted Chromium scenarios passed. The hydration-sensitive language-menu assertion also passed three repeated isolated runs. The default Turbopack build remains environment-blocked by its internal PostCSS worker port binding, with no code diagnostic.
+**Last session:** U6 completed. Correctness and security reviews converged clean after fixes; a clean local reset passed 220 pgTAP assertions and generated database types matched. All 163 unit tests, TypeScript, lint, the webpack production build, DX token/accessibility/contrast checks, and 8 admin Chromium scenarios passed; one authenticated mutation scenario remains intentionally gated for U7's explicit real local harness. The default Turbopack build remains environment-blocked by its internal PostCSS worker port binding, with no code diagnostic.
 
-**Next session entry point:** Execute U6 authorized admin order listing, mutation conflict recovery, realtime-as-hint reconciliation, freshness health, and stale-safe transitions. Do not touch a hosted target until U7's owner-approved sentinel bootstrap and full target handshake are available.
+**Next session entry point:** Execute U7's aggregate clean-reset real local lifecycle: customer create/recovery, authorized admin delivery and CAS transitions, customer monotonic tracking, degraded polling, exact events, privacy, and cleanup. Stop before hosted sentinel bootstrap until the owner approves a specific non-production project and authority.
 
 **Files of record:**
 

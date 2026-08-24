@@ -40,4 +40,7 @@ export async function updateCafeInfo(input: CafeInfoUpdate) {
   if (error) throw new Error("Unable to update café settings.");
 
   revalidatePath("/admin/settings");
+  revalidatePath("/");
+  revalidatePath("/en/order");
+  revalidatePath("/fr/order");
 }

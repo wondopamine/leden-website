@@ -209,6 +209,9 @@ test.describe("explicit non-production admin preview", () => {
       "orders-filter-navigation",
     );
 
+    await expect(filterSection.locator("[data-preview-hydrated]"))
+      .toHaveAttribute("data-preview-hydrated", "true");
+
     await expect(navigationCount).toHaveText("0");
     await search.fill("a");
     await page.waitForTimeout(350);
@@ -253,6 +256,8 @@ test.describe("explicit non-production admin preview", () => {
     const settingsSection = page
       .getByRole("heading", { level: 2, name: "Settings form" })
       .locator("xpath=ancestor::section");
+    await expect(settingsSection.locator("[data-preview-hydrated]"))
+      .toHaveAttribute("data-preview-hydrated", "true");
     const address = settingsSection.getByLabel("Address");
     await address.fill("Submitted preview address");
     await settingsSection.getByRole("button", { name: "Save settings" }).click();
@@ -313,6 +318,205 @@ test.describe("explicit non-production admin preview", () => {
       .click();
     expect(menuPrompt).toContain("Discard your unsaved changes");
     await expect(page).toHaveURL(/\/dev\/admin$/);
+  });
+
+  test("the admin board reconciles canonically, degrades honestly, and protects terminal actions", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 760 });
+    await page.addInitScript(() => {
+      const realNow = Date.now.bind(Date);
+      let offset = 0;
+      Object.defineProperty(window, "__advanceAdminClock", {
+        configurable: false,
+        value: (milliseconds: number) => {
+          offset += milliseconds;
+        },
+      });
+      Date.now = () => realNow() + offset;
+    });
+    await page.routeWebSocket(/\/realtime\/v1\/websocket/i, async (socket) => {
+      await socket.close({ code: 1012, reason: "deterministic realtime loss" });
+    });
+
+    const baseOrder = {
+      id: "d2000000-0000-4000-8000-000000000001",
+      order_number: "A-201",
+      customer_name: "Synthetic Staff Test",
+      customer_phone: "514 555 0101",
+      pickup_time: null,
+      promised_pickup_at: "2026-08-24T16:00:00.000Z",
+      status: "ready",
+      status_version: 2,
+      subtotal: 5,
+      tax_gst: 0.25,
+      tax_qst: 0.5,
+      total: 5.75,
+      created_at: "2026-08-24T15:00:00.000Z",
+      updated_at: "2026-08-24T15:30:00.000Z",
+      order_items: [
+        {
+          id: "e2000000-0000-4000-8000-000000000001",
+          menu_item_name: "Test latte",
+          price: 5,
+          quantity: 1,
+          modifiers: [],
+        },
+      ],
+    };
+    let orders = [baseOrder];
+    let orderingEnabled = true;
+    await page.route("**/api/admin/orders", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        headers: {
+          "cache-control": "private, no-store, max-age=0",
+          "referrer-policy": "no-referrer",
+        },
+        body: JSON.stringify({
+          orders,
+          orderingEnabled,
+          localDate: "2026-08-24",
+          refreshedAt: new Date().toISOString(),
+        }),
+      });
+    });
+    const unexpectedMutations: string[] = [];
+    page.on("request", (request) => {
+      if (!["GET", "HEAD", "OPTIONS"].includes(request.method())) {
+        unexpectedMutations.push(`${request.method()} ${request.url()}`);
+      }
+    });
+
+    await page.goto("/dev/admin?ordersNetwork=1", { waitUntil: "domcontentloaded" });
+    const board = page
+      .getByRole("heading", { level: 2, name: "KDS board (OrdersDashboard)" })
+      .locator("xpath=ancestor::section");
+    const previewTransitionCount = board.getByTestId("preview-transition-count");
+    await expect(previewTransitionCount).toHaveText("0");
+    await expect(board.getByRole("heading", { level: 3, name: "A-201" })).toBeVisible();
+    await expect(board.getByText("Test latte", { exact: false })).toBeVisible();
+    await expect(board.getByTestId("admin-connection-state")).toHaveAttribute(
+      "data-state",
+      "polling",
+    );
+
+    orders = [
+      { ...baseOrder, status: "new", status_version: 1 },
+      {
+        ...baseOrder,
+        id: "d2000000-0000-4000-8000-000000000002",
+        order_number: "A-202",
+        status: "new",
+        status_version: 0,
+        promised_pickup_at: "2026-08-24T15:45:00.000Z",
+        order_items: [
+          {
+            ...baseOrder.order_items[0],
+            id: "e2000000-0000-4000-8000-000000000002",
+            menu_item_name: "Complete inserted line",
+          },
+        ],
+      },
+    ];
+    await board.getByRole("button", { name: "Refresh", exact: true }).click();
+    await expect(board.getByRole("heading", { level: 3, name: "A-202" })).toHaveCount(1);
+    await expect(board.getByText("Complete inserted line", { exact: false })).toBeVisible();
+    await expect(board.getByRole("heading", { level: 3, name: "A-201" })).toBeVisible();
+    await expect(board.getByText("Ready", { exact: true }).first()).toBeVisible();
+
+    await page.evaluate((milliseconds) => {
+      (
+        window as typeof window & {
+          __advanceAdminClock: (value: number) => void;
+        }
+      ).__advanceAdminClock(milliseconds);
+    }, 46_000);
+    await expect(board.getByTestId("admin-connection-state")).toHaveAttribute(
+      "data-state",
+      "stale",
+    );
+    await expect(board.getByRole("button", { name: "Mark picked up" })).toBeDisabled();
+
+    await board.getByRole("button", { name: "Refresh", exact: true }).click();
+    await expect(board.getByTestId("admin-connection-state")).toHaveAttribute(
+      "data-state",
+      "polling",
+    );
+    await expect(board.getByRole("button", { name: "Mark picked up" })).toBeEnabled();
+    await board.getByRole("button", { name: "Mark picked up" }).click();
+    await expect(
+      page.getByRole("heading", { name: "Mark order A-201 picked up?" }),
+    ).toBeVisible();
+    await expect(page.getByText(/terminal action cannot be undone/i)).toBeVisible();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Confirm picked up" })
+      .click();
+    await expect(previewTransitionCount).toHaveText("1");
+    await expect(page.getByRole("dialog")).toBeHidden();
+
+    const a202Card = board
+      .getByRole("heading", { level: 3, name: "A-202" })
+      .locator("xpath=ancestor::div[@data-slot='card']");
+    await a202Card.getByRole("button", { name: "Start preparing" }).click();
+    await expect(previewTransitionCount).toHaveText("2");
+    await a202Card.getByRole("button", { name: "Order actions" }).click();
+    await page.getByRole("menuitem", { name: "Cancel order" }).click();
+    await expect(page.getByRole("heading", { name: "Cancel order A-202?" })).toBeVisible();
+    await expect(page.getByText(/Call Synthetic Staff Test at 514 555 0101/i)).toBeVisible();
+    await page.getByRole("button", { name: "Keep order" }).click();
+
+    await board.getByRole("button", { name: "Pause online orders" }).click();
+    await expect(page.getByRole("heading", { name: "Pause online ordering?" })).toBeVisible();
+    await expect(page.getByText(/declined in English and French/i)).toBeVisible();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Pause online orders" })
+      .click();
+    await expect(board.getByText("Online ordering is paused.")).toBeVisible();
+
+    const settingsSection = page
+      .getByRole("heading", { level: 2, name: "Settings form" })
+      .locator("xpath=ancestor::section");
+    await settingsSection.getByRole("button", { name: "Pause online orders" }).click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Pause online orders" })
+      .click();
+    await expect(
+      settingsSection.getByText("Paused. Existing accepted orders are unaffected."),
+    ).toBeVisible();
+
+    orderingEnabled = false;
+    orders = [];
+    await board.getByRole("button", { name: "Refresh", exact: true }).click();
+    await expect(board.getByText("Online ordering is paused.")).toBeVisible();
+    await expect(board.getByText("No new orders", { exact: true })).toBeVisible();
+    await expect(board.getByRole("alert")).toHaveCount(0);
+    expect(unexpectedMutations).toEqual([]);
+
+    const dimensions = await page.evaluate(() => ({
+      clientWidth: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+    }));
+    expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1);
+  });
+
+  test("an initial order-boundary failure keeps the ordering gate unknown", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 760 });
+    await page.goto("/dev/admin?ordersError=1", { waitUntil: "domcontentloaded" });
+    const board = page
+      .getByRole("heading", { level: 2, name: "KDS board (OrdersDashboard)" })
+      .locator("xpath=ancestor::section");
+
+    await expect(board.getByRole("alert")).toContainText("Orders unavailable");
+    await expect(board.getByText("Ordering state unavailable")).toBeVisible();
+    await expect(board.getByRole("button", { name: /online orders/i })).toHaveCount(0);
+    await expect(board.getByText("Online ordering is paused.")).toHaveCount(0);
   });
 });
 

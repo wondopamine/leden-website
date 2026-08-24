@@ -46,18 +46,22 @@ export default async function EditMenuItemPage({ params }: Props) {
     price: Number(item.price),
     category_id: item.category_id,
     available: item.available,
+    status: item.status as "available" | "sold_out" | "hidden",
     image_url: item.image_url as string | null,
     modifiers: (item.modifiers ?? [])
       .sort((a: { sort_order: number }, b: { sort_order: number }) => a.sort_order - b.sort_order)
-      .map((mod: { name_en: string; name_fr: string; options: { name_en: string; name_fr: string; price_adjustment: number; sort_order: number }[] }) => ({
+      .map((mod: { name_en: string; name_fr: string; min_selections: number; max_selections: number; options: { name_en: string; name_fr: string; price_adjustment: number; sort_order: number; available: boolean }[] }) => ({
         name_en: mod.name_en,
         name_fr: mod.name_fr,
+        min_selections: mod.min_selections === 0 ? 0 as const : 1 as const,
+        max_selections: 1 as const,
         options: (mod.options ?? [])
           .sort((a: { sort_order: number }, b: { sort_order: number }) => a.sort_order - b.sort_order)
-          .map((opt: { name_en: string; name_fr: string; price_adjustment: number }) => ({
+          .map((opt: { name_en: string; name_fr: string; price_adjustment: number; available: boolean }) => ({
             name_en: opt.name_en,
             name_fr: opt.name_fr,
             price_adjustment: Number(opt.price_adjustment),
+            available: opt.available,
           })),
       })),
   };

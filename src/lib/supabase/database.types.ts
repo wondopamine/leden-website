@@ -466,6 +466,10 @@ export type Database = {
         }
         Returns: Json
       }
+      create_menu_item_graph_v1: {
+        Args: { p_item: Json; p_menu_item_id: string; p_modifiers: Json }
+        Returns: string
+      }
       create_order_v1: {
         Args: {
           p_customer_name: string

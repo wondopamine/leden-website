@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useUnsavedChanges } from "@/lib/use-unsaved-changes";
+import { OnlineOrderingControl } from "@/components/admin/orders-dashboard";
 
 type HourEntry = {
   day: string;
@@ -28,16 +29,19 @@ type CafeInfoData = {
   announcement_fr: string | null;
   pickup_lead_time: number;
   max_advance_order_days: number;
+  ordering_enabled: boolean;
 };
 
 type Props = {
   initialData: CafeInfoData | null;
   action?: typeof updateCafeInfo;
+  orderingAction?: React.ComponentProps<typeof OnlineOrderingControl>["action"];
 };
 
 export function SettingsForm({
   initialData,
   action = updateCafeInfo,
+  orderingAction,
 }: Props) {
   const [isPending, startTransition] = useTransition();
   const [hours, setHours] = useState<HourEntry[]>(
@@ -144,6 +148,11 @@ export function SettingsForm({
       aria-busy={isPending}
       className="max-w-2xl space-y-4"
     >
+      <OnlineOrderingControl
+        enabled={initialData.ordering_enabled}
+        action={orderingAction}
+      />
+
       {/* Hours */}
       <Card>
         <CardHeader>

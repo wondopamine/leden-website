@@ -1040,8 +1040,14 @@ begin
     or pg_catalog.jsonb_typeof(p_modifiers) <> 'array'
     or pg_catalog.jsonb_array_length(p_modifiers) > 20
     or (p_item ->> 'status') not in ('available', 'sold_out', 'hidden')
+    or coalesce(pg_catalog.length(pg_catalog.btrim(p_item ->> 'name_en')), 0) not between 1 and 100
+    or coalesce(pg_catalog.length(pg_catalog.btrim(p_item ->> 'name_fr')), 0) not between 1 and 100
+    or pg_catalog.length(coalesce(p_item ->> 'description_en', '')) > 2000
+    or pg_catalog.length(coalesce(p_item ->> 'description_fr', '')) > 2000
+    or pg_catalog.length(coalesce(p_item ->> 'image_url', '')) > 2048
     or not ((p_item ->> 'price') ~ '^[0-9]+(?:\.[0-9]{1,2})?$')
     or (p_item ->> 'price')::numeric < 0
+    or (p_item ->> 'price')::numeric > 10000
   then
     raise exception using errcode = 'P0001', message = 'OLH_MENU_GRAPH_INVALID';
   end if;
@@ -1117,6 +1123,55 @@ begin
 end;
 $$;
 
+create or replace function public.create_menu_item_graph_v1(
+  p_menu_item_id uuid,
+  p_item jsonb,
+  p_modifiers jsonb
+)
+returns uuid
+language plpgsql
+volatile
+security definer
+set search_path = ''
+as $$
+declare
+  actor uuid := auth.uid();
+begin
+  if actor is null or not exists (
+    select 1 from public.admin_users where user_id = actor
+  ) then
+    raise exception using errcode = 'P0001', message = 'OLH_ADMIN_FORBIDDEN';
+  end if;
+  if p_menu_item_id is null or pg_catalog.jsonb_typeof(p_item) <> 'object' then
+    raise exception using errcode = 'P0001', message = 'OLH_MENU_GRAPH_INVALID';
+  end if;
+
+  insert into public.menu_items (
+    id, category_id, name_en, name_fr, description_en, description_fr,
+    price, status, available, image_url, sort_order
+  ) values (
+    p_menu_item_id,
+    (p_item ->> 'category_id')::uuid,
+    p_item ->> 'name_en',
+    p_item ->> 'name_fr',
+    coalesce(p_item ->> 'description_en', ''),
+    coalesce(p_item ->> 'description_fr', ''),
+    (p_item ->> 'price')::numeric,
+    'hidden',
+    false,
+    nullif(p_item ->> 'image_url', ''),
+    coalesce((p_item ->> 'sort_order')::integer, 0)
+  );
+
+  perform public.save_menu_item_graph_v1(
+    p_menu_item_id,
+    p_item,
+    p_modifiers
+  );
+  return p_menu_item_id;
+end;
+$$;
+
 -- Preserve the old service-key two-insert shape for legacy/null-contract rows,
 -- but prevent it from mutating v1 truth. U8 removes the remaining legacy shape.
 revoke update on table public.orders from service_role;
@@ -1165,6 +1220,11 @@ revoke all on function public.save_menu_item_graph_v1(uuid,jsonb,jsonb) from pub
 revoke all on function public.save_menu_item_graph_v1(uuid,jsonb,jsonb) from anon;
 revoke all on function public.save_menu_item_graph_v1(uuid,jsonb,jsonb) from service_role;
 grant execute on function public.save_menu_item_graph_v1(uuid,jsonb,jsonb) to authenticated;
+
+revoke all on function public.create_menu_item_graph_v1(uuid,jsonb,jsonb) from public;
+revoke all on function public.create_menu_item_graph_v1(uuid,jsonb,jsonb) from anon;
+revoke all on function public.create_menu_item_graph_v1(uuid,jsonb,jsonb) from service_role;
+grant execute on function public.create_menu_item_graph_v1(uuid,jsonb,jsonb) to authenticated;
 
 revoke all on function private.order_day_name(timestamp without time zone) from public, anon, authenticated, service_role;
 grant execute on function private.order_day_name(timestamp without time zone) to service_role;

@@ -1,4 +1,4 @@
-import type { OrderStatus } from "@/app/admin/(dashboard)/actions";
+import type { AdminOrderStatus } from "@/lib/orders/admin-realtime";
 import {
   BellRing,
   CheckCircle2,
@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 export type MenuStatus = "available" | "sold_out" | "hidden";
+export type OrderStatus = AdminOrderStatus;
 
 type OrderStatusMeta = {
   label: string;

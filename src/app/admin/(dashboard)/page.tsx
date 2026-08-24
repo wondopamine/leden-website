@@ -1,6 +1,10 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
-import { createClient } from "@/lib/supabase/server";
+import {
+  AdminOrdersError,
+  getTorontoDayBounds,
+  listAdminOrders,
+} from "@/lib/orders/admin.server";
 import { OrdersDashboard } from "@/components/admin/orders-dashboard";
 import { AnalyticsDashboard } from "@/components/admin/analytics-dashboard";
 import { AdminPageHeader } from "@/components/admin/page-header";
@@ -8,38 +12,40 @@ import { StatStrip } from "@/components/admin/stat-strip";
 
 export const metadata: Metadata = {
   title: "Live orders",
-  description: "Monitor and advance today's Café Le Den pickup orders.",
+  description: "Monitor and advance Café Le Den pickup orders.",
 };
 
 export default async function AdminDashboardPage() {
-  const supabase = await createClient();
+  let initialError = false;
+  let snapshot;
+  try {
+    snapshot = await listAdminOrders();
+  } catch (error) {
+    if (!(error instanceof AdminOrdersError)) throw error;
+    initialError = true;
+    const now = new Date();
+    snapshot = {
+      orders: [],
+      orderingEnabled: false,
+      localDate: getTorontoDayBounds(now).localDate,
+      refreshedAt: now.toISOString(),
+    };
+  }
 
-  // Get today's date range in local timezone
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-
-  const { data: orders } = await supabase
-    .from("orders")
-    .select("*, order_items(*)")
-    .gte("created_at", today.toISOString())
-    .lt("created_at", tomorrow.toISOString())
-    .order("created_at", { ascending: false });
-
-  const todayOrders = orders ?? [];
-  const totalRevenue = todayOrders
+  const visibleOrders = snapshot.orders;
+  const totalRevenue = visibleOrders
     .filter((o) => o.status !== "cancelled")
     .reduce((sum, o) => sum + Number(o.total), 0);
-  const activeOrders = todayOrders.filter(
+  const activeOrders = visibleOrders.filter(
     (o) => o.status === "new" || o.status === "preparing" || o.status === "ready"
   ).length;
-  const readyOrders = todayOrders.filter((o) => o.status === "ready").length;
-  const completedOrders = todayOrders.filter(
+  const readyOrders = visibleOrders.filter((o) => o.status === "ready").length;
+  const completedOrders = visibleOrders.filter(
     (o) => o.status === "picked_up"
   ).length;
 
-  const dateLabel = today.toLocaleDateString("en-CA", {
+  const dateLabel = new Date(`${snapshot.localDate}T12:00:00Z`).toLocaleDateString("en-CA", {
+    timeZone: "America/Toronto",
     weekday: "long",
     year: "numeric",
     month: "long",
@@ -47,7 +53,7 @@ export default async function AdminDashboardPage() {
   });
 
   const tiles = [
-    { label: "Orders", value: String(todayOrders.length) },
+    { label: "Visible orders", value: String(visibleOrders.length) },
     { label: "Submitted value", value: `$${totalRevenue.toFixed(2)}` },
     { label: "Active", value: String(activeOrders) },
     { label: "Ready", value: String(readyOrders) },
@@ -62,7 +68,12 @@ export default async function AdminDashboardPage() {
       <StatStrip tiles={tiles} />
 
       {/* Live KDS board */}
-      <OrdersDashboard initialOrders={todayOrders} />
+      <OrdersDashboard
+        initialOrders={visibleOrders}
+        initialRefreshedAt={initialError ? null : snapshot.refreshedAt}
+        initialOrderingEnabled={initialError ? null : snapshot.orderingEnabled}
+        initialError={initialError}
+      />
 
       {/* Order analysis — loads independently */}
       <Suspense

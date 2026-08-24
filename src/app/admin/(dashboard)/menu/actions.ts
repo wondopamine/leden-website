@@ -1,150 +1,221 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { requireStaff } from "@/lib/supabase/admin.server";
 import { redirect } from "next/navigation";
+import {
+  createMenuItemGraphWithClient,
+  saveMenuItemGraphWithClient,
+  type AdminMenuItemGraph,
+  type AdminMenuModifierGraph,
+} from "@/lib/orders/admin.server";
+import { requireStaff } from "@/lib/supabase/admin.server";
 
-function friendlyError(msg: string): string {
-  if (msg.includes("unique") || msg.includes("duplicate")) return "An item with this name already exists.";
-  if (msg.includes("foreign key") || msg.includes("fk_")) return "The selected category no longer exists.";
-  if (msg.includes("not-null")) return "Please fill in all required fields.";
-  return "Something went wrong. Please try again.";
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const MONEY_PATTERN = /^\d+(?:\.\d{1,2})?$/;
+
+function menuSaveError(): Error {
+  return new Error(
+    "Menu item was not saved. Review the fields and try again.",
+  );
+}
+
+function requiredText(formData: FormData, name: string, maxLength: number) {
+  const value = formData.get(name);
+  if (typeof value !== "string") throw menuSaveError();
+  const normalized = value.trim();
+  if (normalized.length < 1 || normalized.length > maxLength) {
+    throw menuSaveError();
+  }
+  return normalized;
+}
+
+function optionalText(formData: FormData, name: string, maxLength: number) {
+  const value = formData.get(name);
+  if (typeof value !== "string" || value.length > maxLength) {
+    throw menuSaveError();
+  }
+  return value.trim();
+}
+
+function money(value: unknown): string {
+  const serialized =
+    typeof value === "number" && Number.isFinite(value) ? String(value) : value;
+  if (
+    typeof serialized !== "string" ||
+    !MONEY_PATTERN.test(serialized) ||
+    Number(serialized) < 0 ||
+    Number(serialized) > 10_000
+  ) {
+    throw menuSaveError();
+  }
+  return serialized;
+}
+
+function parseModifiers(value: FormDataEntryValue | null): AdminMenuModifierGraph[] {
+  if (typeof value !== "string" || value.length > 100_000) {
+    throw menuSaveError();
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value || "[]");
+  } catch {
+    throw menuSaveError();
+  }
+  if (!Array.isArray(parsed) || parsed.length > 20) throw menuSaveError();
+  return parsed.map((group): AdminMenuModifierGraph => {
+    if (
+      typeof group !== "object" ||
+      group === null ||
+      Array.isArray(group)
+    ) {
+      throw menuSaveError();
+    }
+    const record = group as Record<string, unknown>;
+    if (
+      typeof record.name_en !== "string" ||
+      record.name_en.trim().length < 1 ||
+      record.name_en.trim().length > 100 ||
+      typeof record.name_fr !== "string" ||
+      record.name_fr.trim().length < 1 ||
+      record.name_fr.trim().length > 100 ||
+      !Array.isArray(record.options) ||
+      record.options.length < 1 ||
+      record.options.length > 20 ||
+      (record.min_selections !== undefined &&
+        record.min_selections !== 0 &&
+        record.min_selections !== 1) ||
+      (record.max_selections !== undefined && record.max_selections !== 1)
+    ) {
+      throw menuSaveError();
+    }
+    return {
+      name_en: record.name_en.trim(),
+      name_fr: record.name_fr.trim(),
+      min_selections: record.min_selections === 0 ? 0 : 1,
+      max_selections: 1,
+      options: record.options.map((option) => {
+        if (
+          typeof option !== "object" ||
+          option === null ||
+          Array.isArray(option)
+        ) {
+          throw menuSaveError();
+        }
+        const choice = option as Record<string, unknown>;
+        if (
+          typeof choice.name_en !== "string" ||
+          choice.name_en.trim().length < 1 ||
+          choice.name_en.trim().length > 100 ||
+          typeof choice.name_fr !== "string" ||
+          choice.name_fr.trim().length < 1 ||
+          choice.name_fr.trim().length > 100
+        ) {
+          throw menuSaveError();
+        }
+        return {
+          name_en: choice.name_en.trim(),
+          name_fr: choice.name_fr.trim(),
+          price_adjustment: money(choice.price_adjustment),
+          available: choice.available !== false,
+        };
+      }),
+    };
+  });
+}
+
+function parseMenuGraph(formData: FormData) {
+  const categoryId = requiredText(formData, "category_id", 36);
+  if (!UUID_PATTERN.test(categoryId)) throw menuSaveError();
+  const imageUrl = optionalText(formData, "image_url", 2_048) || null;
+  const status = formData.get("status");
+  if (status !== "available" && status !== "sold_out" && status !== "hidden") {
+    throw menuSaveError();
+  }
+  const item: AdminMenuItemGraph = {
+    category_id: categoryId,
+    name_en: requiredText(formData, "name_en", 100),
+    name_fr: requiredText(formData, "name_fr", 100),
+    description_en: optionalText(formData, "description_en", 2_000),
+    description_fr: optionalText(formData, "description_fr", 2_000),
+    price: money(formData.get("price")),
+    status,
+    image_url: imageUrl,
+  };
+  return {
+    item,
+    modifiers: parseModifiers(formData.get("modifiers_json")),
+  };
+}
+
+function revalidateMenu() {
+  revalidatePath("/admin/menu");
+  revalidatePath("/");
+  revalidatePath("/en/order");
+  revalidatePath("/fr/order");
 }
 
 export async function createMenuItem(formData: FormData) {
   const { supabase } = await requireStaff();
-
-  const categoryId = formData.get("category_id") as string;
-  const imageUrl = (formData.get("image_url") as string) || null;
-  const { data: item, error } = await supabase
-    .from("menu_items")
-    .insert({
-      name_en: formData.get("name_en") as string,
-      name_fr: formData.get("name_fr") as string,
-      description_en: (formData.get("description_en") as string) || "",
-      description_fr: (formData.get("description_fr") as string) || "",
-      price: parseFloat(formData.get("price") as string),
-      category_id: categoryId,
-      available: formData.get("available") === "true",
-      status: formData.get("available") === "true" ? "available" : "hidden",
-      image_url: imageUrl,
-    })
-    .select("id")
-    .single();
-
-  if (error) throw new Error(friendlyError(error.message));
-
-  const modifiersJson = formData.get("modifiers_json") as string;
-  if (modifiersJson && item) {
-    await saveModifiers(supabase, item.id, JSON.parse(modifiersJson));
+  const graph = parseMenuGraph(formData);
+  const id = randomUUID();
+  try {
+    await createMenuItemGraphWithClient(
+      supabase,
+      id,
+      graph.item,
+      graph.modifiers,
+    );
+  } catch {
+    throw menuSaveError();
   }
 
-  revalidatePath("/admin/menu");
+  revalidateMenu();
   redirect("/admin/menu");
 }
 
 export async function updateMenuItem(formData: FormData) {
   const { supabase } = await requireStaff();
-
-  const id = formData.get("id") as string;
-  const imageUrl = (formData.get("image_url") as string) || null;
-
-  const { error } = await supabase
-    .from("menu_items")
-    .update({
-      name_en: formData.get("name_en") as string,
-      name_fr: formData.get("name_fr") as string,
-      description_en: (formData.get("description_en") as string) || "",
-      description_fr: (formData.get("description_fr") as string) || "",
-      price: parseFloat(formData.get("price") as string),
-      category_id: formData.get("category_id") as string,
-      available: formData.get("available") === "true",
-      status: formData.get("available") === "true" ? "available" : "hidden",
-      image_url: imageUrl,
-    })
-    .eq("id", id);
-
-  if (error) throw new Error(friendlyError(error.message));
-
-  await supabase.from("modifiers").delete().eq("menu_item_id", id);
-  const modifiersJson = formData.get("modifiers_json") as string;
-  if (modifiersJson) {
-    await saveModifiers(supabase, id, JSON.parse(modifiersJson));
+  const id = requiredText(formData, "id", 36);
+  if (!UUID_PATTERN.test(id)) throw menuSaveError();
+  const graph = parseMenuGraph(formData);
+  try {
+    await saveMenuItemGraphWithClient(
+      supabase,
+      id,
+      graph.item,
+      graph.modifiers,
+    );
+  } catch {
+    throw menuSaveError();
   }
-
-  revalidatePath("/admin/menu");
+  revalidateMenu();
 }
 
 export async function deleteMenuItem(id: string) {
   const { supabase } = await requireStaff();
-
+  if (!UUID_PATTERN.test(id)) throw menuSaveError();
   const { error } = await supabase.from("menu_items").delete().eq("id", id);
-  if (error) throw new Error(friendlyError(error.message));
-
-  revalidatePath("/admin/menu");
+  if (error) throw menuSaveError();
+  revalidateMenu();
 }
 
 export async function updateMenuItemStatus(
   id: string,
-  status: "available" | "sold_out" | "hidden"
+  status: "available" | "sold_out" | "hidden",
 ) {
   const { supabase } = await requireStaff();
-
+  if (
+    !UUID_PATTERN.test(id) ||
+    !["available", "sold_out", "hidden"].includes(status)
+  ) {
+    throw menuSaveError();
+  }
   const { error } = await supabase
     .from("menu_items")
     .update({ status, available: status !== "hidden" })
     .eq("id", id);
-
-  if (error) throw new Error(friendlyError(error.message));
-
-  revalidatePath("/admin/menu");
-}
-
-type ModifierInput = {
-  name_en: string;
-  name_fr: string;
-  options: {
-    name_en: string;
-    name_fr: string;
-    price_adjustment: number;
-  }[];
-};
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function saveModifiers(supabase: any, menuItemId: string, modifiers: ModifierInput[]) {
-  for (let i = 0; i < modifiers.length; i++) {
-    const mod = modifiers[i];
-    const { data: modifier, error: modError } = await supabase
-      .from("modifiers")
-      .insert({
-        menu_item_id: menuItemId,
-        name_en: mod.name_en,
-        name_fr: mod.name_fr,
-        sort_order: i,
-      })
-      .select("id")
-      .single();
-
-    if (modError) {
-      console.error("Failed to save modifier:", modError);
-      throw new Error("Failed to save modifiers. Please try again.");
-    }
-
-    if (modifier && mod.options.length > 0) {
-      const { error: optError } = await supabase.from("modifier_options").insert(
-        mod.options.map((opt, j) => ({
-          modifier_id: modifier.id,
-          name_en: opt.name_en,
-          name_fr: opt.name_fr,
-          price_adjustment: opt.price_adjustment,
-          sort_order: j,
-        }))
-      );
-
-      if (optError) {
-        console.error("Failed to save modifier options:", optError);
-        throw new Error("Failed to save modifier options. Please try again.");
-      }
-    }
-  }
+  if (error) throw menuSaveError();
+  revalidateMenu();
 }

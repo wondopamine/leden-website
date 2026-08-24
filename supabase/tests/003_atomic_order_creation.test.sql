@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public, pg_catalog;
 
-select plan(77);
+select plan(83);
 
 select has_column('public', 'orders', 'lifecycle_contract_version', 'orders identify the lifecycle contract version');
 select has_column('public', 'orders', 'idempotency_key', 'orders retain the idempotency identity');
@@ -39,6 +39,30 @@ select has_function(
   'save_menu_item_graph_v1',
   array['uuid', 'jsonb', 'jsonb'],
   'transactional menu and modifier replacement has one RPC'
+);
+select has_function(
+  'public',
+  'create_menu_item_graph_v1',
+  array['uuid', 'jsonb', 'jsonb'],
+  'transactional menu creation has one RPC'
+);
+select ok(
+  has_function_privilege(
+    'authenticated',
+    'public.create_menu_item_graph_v1(uuid,jsonb,jsonb)',
+    'EXECUTE'
+  )
+  and not has_function_privilege(
+    'anon',
+    'public.create_menu_item_graph_v1(uuid,jsonb,jsonb)',
+    'EXECUTE'
+  )
+  and not has_function_privilege(
+    'service_role',
+    'public.create_menu_item_graph_v1(uuid,jsonb,jsonb)',
+    'EXECUTE'
+  ),
+  'only authenticated staff may invoke transactional menu creation'
 );
 
 select ok(
@@ -622,6 +646,46 @@ set local "request.jwt.claim.sub" = 'f9000000-0000-4000-8000-000000000001';
 set local role authenticated;
 select throws_ok(
   $$
+    select public.create_menu_item_graph_v1(
+      'd2000000-0000-4000-8000-000000000099',
+      '{"category_id":"d1000000-0000-4000-8000-000000000001","name_en":"Atomic create","name_fr":"Création atomique","description_en":"Synthetic","description_fr":"Synthétique","price":5.00,"status":"available","sort_order":9}'::jsonb,
+      '[{"name_en":"Empty","name_fr":"Vide","min_selections":1,"max_selections":1,"options":[]}]'::jsonb
+    )
+  $$,
+  'P0001', 'OLH_MENU_GRAPH_INVALID',
+  'an invalid menu create rolls back the item header with its graph'
+);
+reset role;
+select is_empty(
+  $$ select id from public.menu_items where id = 'd2000000-0000-4000-8000-000000000099' $$,
+  'failed transactional creation leaves no hidden orphan'
+);
+set local role authenticated;
+select lives_ok(
+  $$
+    select public.create_menu_item_graph_v1(
+      'd2000000-0000-4000-8000-000000000099',
+      '{"category_id":"d1000000-0000-4000-8000-000000000001","name_en":"Atomic create","name_fr":"Création atomique","description_en":"Synthetic","description_fr":"Synthétique","price":5.00,"status":"sold_out","sort_order":9}'::jsonb,
+      '[{"name_en":"Milk","name_fr":"Lait","min_selections":0,"max_selections":1,"options":[{"name_en":"Oat","name_fr":"Avoine","price_adjustment":0.75,"available":false}]}]'::jsonb
+    )
+  $$,
+  'a valid menu create publishes its complete graph atomically'
+);
+reset role;
+select results_eq(
+  $$
+    select item.status, modifier.min_selections, option.available
+    from public.menu_items as item
+    join public.modifiers as modifier on modifier.menu_item_id = item.id
+    join public.modifier_options as option on option.modifier_id = modifier.id
+    where item.id = 'd2000000-0000-4000-8000-000000000099'
+  $$,
+  $$ values ('sold_out'::text, 0::smallint, false) $$,
+  'atomic creation preserves status, cardinality, and option availability'
+);
+set local role authenticated;
+select throws_ok(
+  $$
     select public.save_menu_item_graph_v1(
       'd2000000-0000-4000-8000-000000000001',
       '{"category_id":"d1000000-0000-4000-8000-000000000001","name_en":"Lifecycle test latte","name_fr":"Latté de test du cycle","description_en":"Synthetic","description_fr":"Synthétique","price":5.00,"status":"available","sort_order":1}'::jsonb,
@@ -671,7 +735,8 @@ select ok(
     where namespace.nspname in ('public', 'private')
       and routine.proname in (
         'create_order_v1', 'create_order_v1_at', 'resolve_order_pickup_v1',
-        'save_menu_item_graph_v1', 'get_order_status_v1', 'recover_order_v1', 'recover_order_v1_at',
+        'save_menu_item_graph_v1', 'create_menu_item_graph_v1',
+        'get_order_status_v1', 'recover_order_v1', 'recover_order_v1_at',
         'consume_order_rate_limit_v1', 'consume_order_rate_limit_v1_at',
         'prune_order_rate_buckets_v1'
       )

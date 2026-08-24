@@ -20,7 +20,6 @@ import type * as React from "react";
 
 import { AdminSidebar } from "@/components/admin/sidebar";
 import { StatStrip } from "@/components/admin/stat-strip";
-import { OrdersDashboard } from "@/components/admin/orders-dashboard";
 import { OrderCard, type Order } from "@/components/admin/order-card";
 import { MenuItemRow } from "@/components/admin/menu-item-row";
 import { CategoriesManager } from "@/components/admin/categories-manager";
@@ -45,6 +44,7 @@ import { AnalyticsErrorPreview } from "./analytics-error-preview";
 import { OrdersFilterPreview } from "./orders-filter-preview";
 import {
   MenuItemSaveRacePreview,
+  OrdersDashboardPreview,
   SettingsSaveRacePreview,
 } from "./form-race-previews";
 
@@ -298,6 +298,7 @@ const sampleCafeInfo = {
   announcement_fr: "Patisseries de saison fraiches chaque matin.",
   pickup_lead_time: 15,
   max_advance_order_days: 3,
+  ordering_enabled: true,
 };
 
 // Dashboard stat strip tiles, matching (dashboard)/page.tsx.
@@ -330,13 +331,19 @@ const statTiles = [
 
 const headClass = "text-xs font-semibold text-muted-foreground";
 
-export default function DevAdminPreviewPage() {
+export default async function DevAdminPreviewPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ ordersError?: string; ordersNetwork?: string }>;
+}) {
   if (
     process.env.NODE_ENV !== "development" &&
     process.env.PLAYWRIGHT_ADMIN_PREVIEW !== "1"
   ) {
     notFound();
   }
+  const { ordersError, ordersNetwork } = await searchParams;
+  const ordersHaveInitialError = ordersError === "1";
 
   return (
     <div className="min-h-screen bg-background lg:flex">
@@ -366,7 +373,15 @@ export default function DevAdminPreviewPage() {
             title="KDS board (OrdersDashboard)"
             note="Live board: New / Preparing / Ready columns plus a quiet terminal strip. Realtime subscribe is guarded, so it renders fine without Supabase env."
           >
-            <OrdersDashboard initialOrders={sampleOrders} />
+            <OrdersDashboardPreview
+              initialOrders={ordersHaveInitialError ? [] : sampleOrders}
+              initialRefreshedAt={
+                ordersHaveInitialError ? null : new Date().toISOString()
+              }
+              initialOrderingEnabled={ordersHaveInitialError ? null : true}
+              initialError={ordersHaveInitialError}
+              networkEnabled={ordersNetwork === "1"}
+            />
           </Section>
 
           <Section

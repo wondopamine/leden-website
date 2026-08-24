@@ -1,8 +1,10 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { createClient } from "@/lib/supabase/server";
-import { type Order } from "@/components/admin/order-card";
-import type { OrderStatus } from "../actions";
+import {
+  getTorontoDayBounds,
+  listAdminOrderHistory,
+} from "@/lib/orders/admin.server";
+import type { AdminOrderStatus } from "@/lib/orders/admin-realtime";
 import { OrdersFilter } from "@/components/admin/orders-filter";
 import { AdminPageHeader } from "@/components/admin/page-header";
 import { ORDER_STATUS } from "@/components/admin/status";
@@ -31,32 +33,22 @@ export const metadata: Metadata = {
 
 export default async function OrdersPage({ searchParams }: Props) {
   const { date, status, q } = await searchParams;
-  const supabase = await createClient();
-
-  // Default to today
-  const selectedDate = date || new Date().toISOString().split("T")[0];
-  const dayStart = new Date(selectedDate + "T00:00:00");
-  const dayEnd = new Date(selectedDate + "T23:59:59.999");
-
-  let query = supabase
-    .from("orders")
-    .select("*, order_items(*)")
-    .gte("created_at", dayStart.toISOString())
-    .lte("created_at", dayEnd.toISOString())
-    .order("created_at", { ascending: false });
-
-  if (status && status !== "all") {
-    query = query.eq("status", status as OrderStatus);
-  }
-
-  if (q) {
-    query = query.or(
-      `order_number.ilike.%${q}%,customer_name.ilike.%${q}%`
-    );
-  }
-
-  const { data: orders } = await query;
-  const allOrders = (orders ?? []) as Order[];
+  const selectedDate = date || getTorontoDayBounds().localDate;
+  const validStatuses: AdminOrderStatus[] = [
+    "new",
+    "preparing",
+    "ready",
+    "picked_up",
+    "cancelled",
+  ];
+  const selectedStatus = validStatuses.includes(status as AdminOrderStatus)
+    ? (status as AdminOrderStatus)
+    : undefined;
+  const allOrders = await listAdminOrderHistory({
+    localDate: selectedDate,
+    status: selectedStatus,
+    query: q,
+  });
 
   const headClass = "text-xs font-semibold text-muted-foreground";
 
@@ -129,6 +121,7 @@ export default async function OrdersPage({ searchParams }: Props) {
                       title={created.toLocaleString("en-CA")}
                     >
                       {created.toLocaleTimeString("en-CA", {
+                        timeZone: "America/Toronto",
                         hour: "2-digit",
                         minute: "2-digit",
                       })}

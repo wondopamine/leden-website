@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { requireStaff } from "@/lib/supabase/admin.server";
 import type { Metadata } from "next";
 import { SettingsForm } from "@/components/admin/settings-form";
 import { AdminPageHeader } from "@/components/admin/page-header";
@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 };
 
 export default async function SettingsPage() {
-  const supabase = await createClient();
+  const { supabase } = await requireStaff();
   const { data: cafeInfo } = await supabase
     .from("cafe_info")
     .select("*")
