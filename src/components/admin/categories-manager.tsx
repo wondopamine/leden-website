@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useCallback, useState, useTransition } from "react";
 import {
   saveCategory,
   deleteCategory,
@@ -8,7 +8,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2, Save } from "lucide-react";
+import { useUnsavedChanges } from "@/lib/use-unsaved-changes";
+import { Plus, Trash2, Save, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
 type Category = {
@@ -24,6 +25,7 @@ type Props = {
 };
 
 export function CategoriesManager({ initialCategories }: Props) {
+  const [savedCategories, setSavedCategories] = useState(initialCategories);
   const [categories, setCategories] = useState(initialCategories);
   const [editedIds, setEditedIds] = useState<Set<string>>(new Set());
   const [isPending, startTransition] = useTransition();
@@ -32,6 +34,18 @@ export function CategoriesManager({ initialCategories }: Props) {
     name_fr: "",
     slug: "",
   });
+  const hasNewCategoryDraft = Object.values(newCat).some((value) => value.trim());
+  const isDirty = editedIds.size > 0 || hasNewCategoryDraft;
+  const resetChanges = useCallback(() => {
+    setCategories(savedCategories);
+    setEditedIds(new Set());
+    setNewCat({ name_en: "", name_fr: "", slug: "" });
+  }, [savedCategories]);
+  const { confirmDiscard } = useUnsavedChanges(
+    isDirty,
+    resetChanges,
+    "Discard your unsaved category changes and leave this page?",
+  );
 
   function handleFieldChange(id: string, field: string, value: string | number) {
     setCategories(
@@ -52,6 +66,9 @@ export function CategoriesManager({ initialCategories }: Props) {
           slug: cat.slug,
           sort_order: cat.sort_order,
         });
+        setSavedCategories((current) =>
+          current.map((saved) => (saved.id === cat.id ? cat : saved)),
+        );
         setEditedIds((prev) => {
           const next = new Set(prev);
           next.delete(cat.id);
@@ -71,7 +88,15 @@ export function CategoriesManager({ initialCategories }: Props) {
     startTransition(async () => {
       try {
         await deleteCategory(id);
-        setCategories(categories.filter((c) => c.id !== id));
+        setCategories((current) => current.filter((category) => category.id !== id));
+        setSavedCategories((current) =>
+          current.filter((category) => category.id !== id),
+        );
+        setEditedIds((current) => {
+          const next = new Set(current);
+          next.delete(id);
+          return next;
+        });
         toast.success(`${name} deleted`);
       } catch {
         toast.error(`${name} was not deleted`, {
@@ -103,6 +128,19 @@ export function CategoriesManager({ initialCategories }: Props) {
 
   return (
     <div aria-busy={isPending} className="max-w-3xl space-y-3">
+      {isDirty && (
+        <div className="flex justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={confirmDiscard}
+            disabled={isPending}
+          >
+            <RotateCcw />
+            Discard unsaved changes
+          </Button>
+        </div>
+      )}
       {categories.map((cat) => (
         <section
           key={cat.id}

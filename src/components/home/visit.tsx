@@ -2,7 +2,7 @@ import { useTranslations } from "next-intl";
 import { MapPin, Phone, Navigation } from "lucide-react";
 import { FadeIn } from "@/components/fade-in";
 import { OpenStatusPill } from "@/components/brand/open-status";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { getOpenStatus, getCafeWeekday, formatTime, formatStatusLabel, type DayHours } from "@/lib/hours";
 import type { CafeInfo } from "@/lib/types";
 
@@ -75,34 +75,37 @@ export function Visit({ locale, info }: { locale: string; info: CafeInfo }) {
             </div>
             <div className="mt-8 flex flex-wrap gap-2.5">
               {telHref && (
-                <Button nativeButton={false} render={<a href={telHref} />} variant="outline" className="rounded-full">
+                <a
+                  href={telHref}
+                  className={buttonVariants({ variant: "outline", size: "default", className: "rounded-full" })}
+                >
                   <Phone aria-hidden className="size-4" /> {tc("callUs")}
-                </Button>
+                </a>
               )}
-              <Button
-                nativeButton={false}
-                render={<a href={mapsHref} target="_blank" rel="noopener noreferrer" />}
-                variant="outline"
-                className="rounded-full"
+              <a
+                href={mapsHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={buttonVariants({ variant: "outline", size: "default", className: "rounded-full" })}
               >
                 <Navigation aria-hidden className="size-4" /> {tc("directions")}
-              </Button>
-              <Button
-                nativeButton={false}
-                render={<a href="https://www.instagram.com/cafe.le.den/" target="_blank" rel="noopener noreferrer" />}
-                variant="outline"
-                className="rounded-full"
+              </a>
+              <a
+                href="https://www.instagram.com/cafe.le.den/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={buttonVariants({ variant: "outline", size: "default", className: "rounded-full" })}
               >
                 Instagram
-              </Button>
-              <Button
-                nativeButton={false}
-                render={<a href="https://www.facebook.com/cafeleden/" target="_blank" rel="noopener noreferrer" />}
-                variant="outline"
-                className="rounded-full"
+              </a>
+              <a
+                href="https://www.facebook.com/cafeleden/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={buttonVariants({ variant: "outline", size: "default", className: "rounded-full" })}
               >
                 Facebook
-              </Button>
+              </a>
             </div>
           </div>
         </FadeIn>

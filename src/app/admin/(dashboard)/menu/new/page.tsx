@@ -5,7 +5,7 @@ import { MenuItemForm } from "@/components/admin/menu-item-form";
 import { AdminPageHeader } from "@/components/admin/page-header";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 
 export const metadata: Metadata = {
   title: "New menu item",
@@ -21,16 +21,17 @@ export default async function NewMenuItemPage() {
 
   return (
     <div className="space-y-4">
-      <Button
-        variant="ghost"
-        size="sm"
-        nativeButton={false}
-        render={<Link href="/admin/menu" />}
-        className="-ml-2.5 text-muted-foreground"
+      <Link
+        href="/admin/menu"
+        className={buttonVariants({
+          variant: "ghost",
+          size: "sm",
+          className: "-ml-2.5 text-muted-foreground",
+        })}
       >
         <ArrowLeft className="h-4 w-4" />
         Back to menu
-      </Button>
+      </Link>
       <AdminPageHeader title="New menu item" />
       <MenuItemForm
         categories={categories ?? []}

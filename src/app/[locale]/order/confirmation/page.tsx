@@ -4,7 +4,7 @@ import { use } from "react";
 import { useTranslations } from "next-intl";
 import { Check } from "lucide-react";
 import { Link } from "@/i18n/navigation";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { Separator } from "@/components/ui/separator";
 import { Watermelon } from "@/components/brand/watermelon";
 import { createClient } from "@supabase/supabase-js";
@@ -83,7 +83,7 @@ async function ConfirmationContent({ orderNumber, locale }: { orderNumber: strin
       <SuccessHeader title={t("title")} subtitle={t("thankYou")} />
 
       <div className="mt-8 rounded-2xl border border-border bg-card p-5 sm:p-6">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] gap-4">
           <Field label={t("orderNumber")}>
             <span className="text-body font-bold tabular-nums text-foreground">{orderNumber}</span>
           </Field>
@@ -140,15 +140,16 @@ async function ConfirmationContent({ orderNumber, locale }: { orderNumber: strin
       </div>
 
       <div className="mt-8 text-center">
-        <Button
-          nativeButton={false}
-          render={<Link href="/menu" />}
-          variant="outline"
-          size="lg"
-          className="h-12 rounded-full px-8"
+        <Link
+          href="/menu"
+          className={buttonVariants({
+            variant: "outline",
+            size: "lg",
+            className: "h-12 rounded-full px-8",
+          })}
         >
           {t("backToMenu")}
-        </Button>
+        </Link>
       </div>
     </>
   );
@@ -178,15 +179,16 @@ function FallbackContent() {
     <>
       <SuccessHeader title={t("title")} subtitle={t("thankYou")} />
       <div className="mt-8 text-center">
-        <Button
-          nativeButton={false}
-          render={<Link href="/menu" />}
-          variant="outline"
-          size="lg"
-          className="h-12 rounded-full px-8"
+        <Link
+          href="/menu"
+          className={buttonVariants({
+            variant: "outline",
+            size: "lg",
+            className: "h-12 rounded-full px-8",
+          })}
         >
           {t("backToMenu")}
-        </Button>
+        </Link>
       </div>
     </>
   );

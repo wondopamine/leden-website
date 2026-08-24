@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { Badge } from "@/components/ui/badge";
 import { FadeIn } from "@/components/fade-in";
 import { getItemImageUrl } from "@/lib/menu-images";
@@ -24,15 +24,16 @@ export function Featured({ locale, items }: { locale: string; items: MenuItem[] 
             <h2 className="text-h1">{t("title")}</h2>
             <p className="mt-2 text-body text-muted-foreground">{t("subtitle")}</p>
           </div>
-          <Button
-            nativeButton={false}
-            render={<Link href="/menu" />}
-            variant="ghost"
-            size="default"
-            className="hidden rounded-full sm:inline-flex"
+          <Link
+            href="/menu"
+            className={buttonVariants({
+              variant: "ghost",
+              size: "default",
+              className: "hidden rounded-full sm:inline-flex",
+            })}
           >
             {tc("viewFullMenu")} <span aria-hidden>→</span>
-          </Button>
+          </Link>
         </div>
       </FadeIn>
 
@@ -82,15 +83,16 @@ export function Featured({ locale, items }: { locale: string; items: MenuItem[] 
       </ul>
 
       <div className="mt-8 sm:hidden">
-        <Button
-          nativeButton={false}
-          render={<Link href="/menu" />}
-          variant="outline"
-          size="lg"
-          className="h-12 w-full rounded-full"
+        <Link
+          href="/menu"
+          className={buttonVariants({
+            variant: "outline",
+            size: "lg",
+            className: "h-12 w-full rounded-full",
+          })}
         >
           {tc("viewFullMenu")} <span aria-hidden>→</span>
-        </Button>
+        </Link>
       </div>
     </section>
   );

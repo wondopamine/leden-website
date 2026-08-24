@@ -1,6 +1,6 @@
 {
   "generated_from": "DESIGN.md",
-  "generated_at": "2026-08-15T09:28:00Z",
+  "generated_at": "2026-08-23T23:43:13Z",
   "catalog_version": "0.1",
   "essence": "Café Le Den should feel warm, local, and appetite-led to customers, while staying calm and operational for café staff. When character and clarity compete, clarity wins without becoming generic.",
   "colour": {
@@ -20,7 +20,7 @@
       20,
       24,
       30,
-      36,
+      40,
       48,
       60
     ],
@@ -75,6 +75,13 @@
       "tier": "L1",
       "rule": "Display and headings use Fraunces at 500/600; body and UI use Inter at 400/500/600; no third UI typeface",
       "reason": "Fraunces carries Café Le Den’s established local, appetite-led character while Inter preserves interface clarity",
+      "approver": "Jeongwon Do"
+    },
+    {
+      "control": "SLP-10",
+      "tier": "L1",
+      "rule": "Menu-item customisation remains a focused Dialog within the browse-to-cart flow",
+      "reason": "the approved plan and benchmark contract explicitly preserve the item modal, modifier state, quantity, overlay focus trap, and focus return; the Dialog must contain only one item’s configuration and a single add-to-order action",
       "approver": "Jeongwon Do"
     }
   ]

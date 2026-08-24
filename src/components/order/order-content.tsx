@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Plus, Minus, X, Clock } from "lucide-react";
-import { useCartStore } from "@/lib/cart-store";
+import { toast } from "sonner";
+import { useCartStore, type CartItem } from "@/lib/cart-store";
 import { Link, useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
@@ -49,6 +50,7 @@ export function OrderContent({ locale, cafeInfo }: Props) {
   const tc = useTranslations("common");
   const router = useRouter();
   const items = useCartStore((s) => s.items);
+  const addItem = useCartStore((s) => s.addItem);
   const removeItem = useCartStore((s) => s.removeItem);
   const updateQuantity = useCartStore((s) => s.updateQuantity);
   const customerInfo = useCartStore((s) => s.customerInfo);
@@ -91,15 +93,16 @@ export function OrderContent({ locale, cafeInfo }: Props) {
               : "Browse our menu and add a few favourites."}
           </p>
         </div>
-        <Button
-          nativeButton={false}
-          render={<Link href="/menu" />}
-          variant="default"
-          size="lg"
-          className="h-12 rounded-full px-8"
+        <Link
+          href="/menu"
+          className={buttonVariants({
+            variant: "default",
+            size: "lg",
+            className: "h-12 rounded-full px-8",
+          })}
         >
           {tc("viewMenu")}
-        </Button>
+        </Link>
       </div>
     );
   }
@@ -113,6 +116,27 @@ export function OrderContent({ locale, cafeInfo }: Props) {
     : status.isToday
       ? formatTime(status.nextOpen, locale)
       : `${tc(`daysShort.${status.nextDay}`)} ${formatTime(status.nextOpen, locale)}`;
+
+  const handleRemoveItem = (item: CartItem) => {
+    const itemName = locale === "fr" ? item.nameFr : item.nameEn;
+    removeItem(item.id);
+    toast(t("removedItem", { item: itemName }), {
+      action: {
+        label: tc("undo"),
+        onClick: () =>
+          addItem({
+            menuItemId: item.menuItemId,
+            name: item.name,
+            nameEn: item.nameEn,
+            nameFr: item.nameFr,
+            price: item.price,
+            quantity: item.quantity,
+            modifiers: item.modifiers,
+            image: item.image,
+          }),
+      },
+    });
+  };
 
   const handleSubmitOrder = async () => {
     setAttempted(true);
@@ -148,23 +172,7 @@ export function OrderContent({ locale, cafeInfo }: Props) {
       });
 
       if (!res.ok) {
-        const data: unknown = await res.json().catch(() => null);
-        const code =
-          data && typeof data === "object" && "code" in data && typeof data.code === "string"
-            ? data.code
-            : "UNKNOWN";
-
-        if (["CAFE_CLOSED_TODAY", "CAFE_CLOSED_NOW", "PICKUP_TIME_INVALID"].includes(code)) {
-          setError({ message: t("errorHours"), showMenuLink: false });
-        } else if (["ITEM_REMOVED", "ITEM_UNAVAILABLE", "PRICE_CHANGED", "EMPTY_ORDER"].includes(code)) {
-          setError({ message: t("errorMenuChanged"), showMenuLink: true });
-        } else if (code === "SERVICE_UNAVAILABLE") {
-          setError({ message: t("errorService"), showMenuLink: false });
-        } else if (code === "ORDER_ITEMS_SAVE_FAILED") {
-          setError({ message: t("errorOrderDetails"), showMenuLink: false });
-        } else {
-          setError({ message: t("errorSubmitting"), showMenuLink: false });
-        }
+        setError({ message: t("errorSubmitting"), showMenuLink: false });
         return;
       }
 
@@ -196,9 +204,9 @@ export function OrderContent({ locale, cafeInfo }: Props) {
         </div>
       )}
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-[1.5fr_1fr] lg:items-start">
+      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-12 lg:items-start">
         {/* Left: items + pickup + info */}
-        <div className="space-y-6">
+        <div className="space-y-6 lg:col-span-7">
           {/* Cart items */}
           <div className={card}>
             <ul className="divide-y divide-border">
@@ -221,7 +229,11 @@ export function OrderContent({ locale, cafeInfo }: Props) {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                          onClick={() =>
+                            item.quantity === 1
+                              ? handleRemoveItem(item)
+                              : updateQuantity(item.id, item.quantity - 1)
+                          }
                           aria-label={`${tc("remove")} ${itemName}`}
                           className="rounded-l-full rounded-r-none text-foreground"
                         >
@@ -244,7 +256,7 @@ export function OrderContent({ locale, cafeInfo }: Props) {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => removeItem(item.id)}
+                        onClick={() => handleRemoveItem(item)}
                         aria-label={`${tc("remove")} ${itemName}`}
                         className="shrink-0 rounded-full text-muted-foreground hover:text-destructive"
                       >
@@ -295,7 +307,6 @@ export function OrderContent({ locale, cafeInfo }: Props) {
                   />
                   <p
                     id="name-requirement"
-                    role={nameInvalid ? "alert" : undefined}
                     className={`mt-1 text-caption ${nameInvalid ? "text-destructive" : "text-muted-foreground"}`}
                   >
                     {t("nameRequired")}
@@ -317,7 +328,6 @@ export function OrderContent({ locale, cafeInfo }: Props) {
                   />
                   <p
                     id="phone-requirement"
-                    role={phoneInvalid ? "alert" : undefined}
                     className={`mt-1 text-caption ${phoneInvalid ? "text-destructive" : "text-muted-foreground"}`}
                   >
                     {t("phoneRequired")}
@@ -329,7 +339,7 @@ export function OrderContent({ locale, cafeInfo }: Props) {
         </div>
 
         {/* Right: order summary (sticky on desktop) */}
-        <div className={`${card} p-5 lg:sticky lg:top-20`}>
+        <div className={`${card} p-5 lg:sticky lg:top-20 lg:col-span-5`}>
           <h2 className="font-display text-h3 text-forest-12">{tc("total")}</h2>
           <div className="mt-4 space-y-2 text-caption">
             <Row label={tc("subtotal")} value={formatPrice(subtotal)} />
@@ -346,8 +356,6 @@ export function OrderContent({ locale, cafeInfo }: Props) {
             <div
               id="submit-error"
               ref={errorSummaryRef}
-              role="alert"
-              aria-live="assertive"
               tabIndex={-1}
               className="mt-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-caption text-destructive outline-none focus-visible:ring-2 focus-visible:ring-destructive/40"
             >

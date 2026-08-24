@@ -129,7 +129,7 @@
   --text-display:                clamp(3rem, 8vw, 3.75rem);
   --text-display--line-height:   1.02;
   --text-display--font-weight:   500;
-  --text-h1:                     clamp(1.875rem, 5vw, 2.25rem);
+  --text-h1:                     clamp(1.875rem, 5vw, 2.5rem);
   --text-h1--line-height:        1.08;
   --text-h1--font-weight:        500;
   --text-h2:                     clamp(1.5rem, 3.5vw, 1.875rem);

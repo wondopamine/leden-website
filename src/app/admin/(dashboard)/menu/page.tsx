@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { Plus } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/page-header";
 import { MenuItemRow } from "@/components/admin/menu-item-row";
@@ -25,10 +25,10 @@ export default async function MenuPage() {
   return (
     <div className="space-y-4">
       <AdminPageHeader title="Menu" subtitle="Manage your menu items">
-        <Button variant="default" size="default" nativeButton={false} render={<Link href="/admin/menu/new" />}>
+        <Link href="/admin/menu/new" className={buttonVariants({ variant: "default", size: "default" })}>
           <Plus className="h-4 w-4" />
           Add item
-        </Button>
+        </Link>
       </AdminPageHeader>
 
       <div className="space-y-4">

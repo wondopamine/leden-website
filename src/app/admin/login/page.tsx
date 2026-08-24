@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,12 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -67,6 +72,7 @@ export default function AdminLoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="admin@cafeleden.com"
                 autoComplete="email"
+                disabled={!hydrated || loading}
                 required
               />
             </div>
@@ -78,6 +84,7 @@ export default function AdminLoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="current-password"
+                disabled={!hydrated || loading}
                 required
               />
             </div>
@@ -91,7 +98,7 @@ export default function AdminLoginPage() {
               variant="default"
               size="default"
               className="w-full"
-              disabled={loading}
+              disabled={!hydrated || loading}
               aria-busy={loading}
             >
               {loading ? "Signing in…" : "Sign in"}

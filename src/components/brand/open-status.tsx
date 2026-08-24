@@ -28,9 +28,6 @@ export function OpenStatusPill({
       )}
     >
       <span className="relative flex h-2 w-2 shrink-0">
-        {isOpen && (
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-forest-7 opacity-75" />
-        )}
         <span
           className={cn(
             "relative inline-flex h-2 w-2 rounded-full",

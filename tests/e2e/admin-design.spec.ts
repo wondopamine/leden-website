@@ -74,10 +74,13 @@ test("admin sign-in errors are announced from a safe mocked response", async ({
   });
   await page.goto("/admin/login", { waitUntil: "domcontentloaded" });
 
-  await page.getByLabel("Email").fill("preview@example.com");
-  await page.getByLabel("Password").fill("not-a-real-password");
-  await expect(page.getByLabel("Email")).toHaveValue("preview@example.com");
-  await expect(page.getByLabel("Password")).toHaveValue("not-a-real-password");
+  const email = page.getByLabel("Email");
+  const password = page.getByLabel("Password");
+  await expect(email).toBeEnabled();
+  await email.fill("preview@example.com");
+  await password.fill("not-a-real-password");
+  await expect(email).toHaveValue("preview@example.com");
+  await expect(password).toHaveValue("not-a-real-password");
   await page.getByRole("button", { name: "Sign in" }).click();
 
   await expect(page.locator("main p[role='alert']")).toContainText(
@@ -117,6 +120,20 @@ test.describe("explicit non-production admin preview", () => {
     ).toBeEnabled();
 
     await expect(page.locator('[data-slot="table-header"][data-sticky="true"]')).toBeVisible();
+
+    await page.getByLabel("Name (EN)", { exact: true }).last().fill("Unsaved drinks");
+    await page.getByLabel("Slug", { exact: true }).last().fill("unsaved-drinks");
+    const discardCategories = page.getByRole("button", {
+      name: "Discard unsaved changes",
+    });
+    await expect(discardCategories).toBeVisible();
+    page.once("dialog", async (dialog) => {
+      expect(dialog.message()).toContain("Discard your unsaved category changes");
+      await dialog.accept();
+    });
+    await discardCategories.click();
+    await expect(page.getByLabel("Name (EN)", { exact: true }).last()).toHaveValue("");
+    await expect(discardCategories).toBeHidden();
 
     await page.getByLabel("Address").fill("A safe, unsaved preview address");
     await expect(page.getByText("Unsaved changes", { exact: true })).toBeVisible();

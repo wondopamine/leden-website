@@ -18,102 +18,8 @@ type OrderBody = {
   total: number;
 };
 
-type OrderErrorCode =
-  | "EMPTY_ORDER"
-  | "NAME_REQUIRED"
-  | "PHONE_REQUIRED"
-  | "PHONE_INVALID"
-  | "SERVICE_UNAVAILABLE"
-  | "CAFE_CLOSED_TODAY"
-  | "CAFE_CLOSED_NOW"
-  | "PICKUP_TIME_INVALID"
-  | "ITEM_REMOVED"
-  | "ITEM_UNAVAILABLE"
-  | "PRICE_CHANGED"
-  | "ORDER_SAVE_FAILED"
-  | "ORDER_ITEMS_SAVE_FAILED"
-  | "UNKNOWN";
-
-type OrderIssue = {
-  code: OrderErrorCode;
-  hours?: { open: string; close: string };
-};
-
 const GST_RATE = 0.05;
 const QST_RATE = 0.09975;
-
-function errorResponse(
-  locale: string | undefined,
-  issue: OrderIssue,
-  status: number,
-) {
-  const isFrench = locale === "fr";
-  const hours = issue.hours ? `${issue.hours.open}–${issue.hours.close}` : "";
-  const messages: Record<OrderErrorCode, { en: string; fr: string }> = {
-    EMPTY_ORDER: {
-      en: "Your cart is empty. Add an item from the menu and try again.",
-      fr: "Votre panier est vide. Ajoutez un article du menu et réessayez.",
-    },
-    NAME_REQUIRED: {
-      en: "Enter your name so we can identify your pickup order.",
-      fr: "Indiquez votre nom afin que nous puissions identifier votre commande.",
-    },
-    PHONE_REQUIRED: {
-      en: "Enter a phone number so the cafe can contact you about your order.",
-      fr: "Indiquez un numéro de téléphone afin que le café puisse vous joindre au sujet de votre commande.",
-    },
-    PHONE_INVALID: {
-      en: "Enter a valid phone number, including the area code, and try again.",
-      fr: "Indiquez un numéro de téléphone valide, avec l’indicatif régional, puis réessayez.",
-    },
-    SERVICE_UNAVAILABLE: {
-      en: "Ordering is temporarily unavailable. Keep your cart and try again in a few minutes.",
-      fr: "Les commandes sont temporairement indisponibles. Conservez votre panier et réessayez dans quelques minutes.",
-    },
-    CAFE_CLOSED_TODAY: {
-      en: "The cafe is closed today. Keep your cart and return during business hours.",
-      fr: "Le café est fermé aujourd’hui. Conservez votre panier et revenez pendant les heures d’ouverture.",
-    },
-    CAFE_CLOSED_NOW: {
-      en: `Pickup is currently closed${hours ? `. Today’s hours are ${hours}` : ""}. Keep your cart and try again during business hours.`,
-      fr: `La cueillette est présentement fermée${hours ? `. Les heures aujourd’hui sont de ${hours}` : ""}. Conservez votre panier et réessayez pendant les heures d’ouverture.`,
-    },
-    PICKUP_TIME_INVALID: {
-      en: `Choose a pickup time${hours ? ` between ${hours}` : " during business hours"} and try again.`,
-      fr: `Choisissez une heure de cueillette${hours ? ` entre ${hours}` : " pendant les heures d’ouverture"}, puis réessayez.`,
-    },
-    ITEM_REMOVED: {
-      en: "An item is no longer on the menu. Review your cart and the menu before trying again.",
-      fr: "Un article n’est plus au menu. Vérifiez votre panier et le menu avant de réessayer.",
-    },
-    ITEM_UNAVAILABLE: {
-      en: "An item in your cart is unavailable. Review your cart and choose another item before trying again.",
-      fr: "Un article de votre panier est indisponible. Vérifiez votre panier et choisissez un autre article avant de réessayer.",
-    },
-    PRICE_CHANGED: {
-      en: "A menu price changed. Refresh the menu, review your cart, and try again.",
-      fr: "Un prix a changé. Actualisez le menu, vérifiez votre panier et réessayez.",
-    },
-    ORDER_SAVE_FAILED: {
-      en: "We couldn’t place the order. Keep your cart and try again.",
-      fr: "Nous n’avons pas pu passer la commande. Conservez votre panier et réessayez.",
-    },
-    ORDER_ITEMS_SAVE_FAILED: {
-      en: "We couldn’t finish saving the order details. Keep your cart and contact the cafe before trying again.",
-      fr: "Nous n’avons pas pu enregistrer tous les détails. Conservez votre panier et communiquez avec le café avant de réessayer.",
-    },
-    UNKNOWN: {
-      en: "We couldn’t place the order. Keep your cart and try again.",
-      fr: "Nous n’avons pas pu passer la commande. Conservez votre panier et réessayez.",
-    },
-  };
-  const message = messages[issue.code];
-
-  return NextResponse.json(
-    { code: issue.code, error: isFrench ? message.fr : message.en },
-    { status },
-  );
-}
 
 function getSupabase() {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
@@ -143,7 +49,7 @@ async function validateBusinessHours(supabase: any, pickupTime: string | null) {
   const today = hours.find((h) => h.day === dayName);
 
   if (!today || today.closed) {
-    return { code: "CAFE_CLOSED_TODAY" } satisfies OrderIssue;
+    return "The cafe is closed today. Please try again during business hours.";
   }
 
   const [openH, openM] = today.open.split(":").map(Number);
@@ -153,10 +59,7 @@ async function validateBusinessHours(supabase: any, pickupTime: string | null) {
   const closeMin = closeH * 60 + closeM;
 
   if (nowMin < openMin || nowMin >= closeMin) {
-    return {
-      code: "CAFE_CLOSED_NOW",
-      hours: { open: today.open, close: today.close },
-    } satisfies OrderIssue;
+    return `The cafe is currently closed. Hours today: ${today.open} - ${today.close}.`;
   }
 
   // Validate pickup time is within hours
@@ -164,10 +67,7 @@ async function validateBusinessHours(supabase: any, pickupTime: string | null) {
     const [pH, pM] = pickupTime.split(":").map(Number);
     const pickupMin = pH * 60 + pM;
     if (pickupMin < openMin || pickupMin >= closeMin) {
-      return {
-        code: "PICKUP_TIME_INVALID",
-        hours: { open: today.open, close: today.close },
-      } satisfies OrderIssue;
+      return `Pickup time must be between ${today.open} and ${today.close}.`;
     }
   }
 
@@ -194,14 +94,14 @@ async function validateItems(supabase: any, items: OrderItem[]) {
     const dbItem: DbItem | undefined = dbMap.get(item.menuItemId);
 
     if (!dbItem) {
-      return { code: "ITEM_REMOVED" } satisfies OrderIssue;
+      return `Item "${item.name}" is no longer on our menu.`;
     }
     if (dbItem.status !== "available") {
-      return { code: "ITEM_UNAVAILABLE" } satisfies OrderIssue;
+      return `"${dbItem.name_en}" is currently ${dbItem.status === "sold_out" ? "sold out" : "unavailable"}.`;
     }
     // Allow small floating point differences (< 1 cent)
     if (Math.abs(Number(dbItem.price) - item.price) > 0.01) {
-      return { code: "PRICE_CHANGED" } satisfies OrderIssue;
+      return `Price for "${dbItem.name_en}" has changed. Please refresh the menu and try again.`;
     }
   }
   return null;
@@ -213,42 +113,39 @@ function validatePhone(phone: string): boolean {
 }
 
 export async function POST(request: Request) {
-  let requestLocale: string | undefined;
-
   try {
     const body: OrderBody = await request.json();
     const { items, customerInfo, pickupTime, locale } = body;
-    requestLocale = locale;
 
     // Basic validation
     if (!items || items.length === 0) {
-      return errorResponse(locale, { code: "EMPTY_ORDER" }, 400);
+      return NextResponse.json({ error: "No items in order" }, { status: 400 });
     }
     if (!customerInfo?.name?.trim()) {
-      return errorResponse(locale, { code: "NAME_REQUIRED" }, 400);
+      return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
     if (!customerInfo?.phone?.trim()) {
-      return errorResponse(locale, { code: "PHONE_REQUIRED" }, 400);
+      return NextResponse.json({ error: "Phone number is required" }, { status: 400 });
     }
     if (!validatePhone(customerInfo.phone)) {
-      return errorResponse(locale, { code: "PHONE_INVALID" }, 400);
+      return NextResponse.json({ error: "Please enter a valid phone number" }, { status: 400 });
     }
 
     const supabase = getSupabase();
     if (!supabase) {
-      return errorResponse(locale, { code: "SERVICE_UNAVAILABLE" }, 503);
+      return NextResponse.json({ error: "Service unavailable" }, { status: 503 });
     }
 
     // Validate business hours
     const hoursError = await validateBusinessHours(supabase, pickupTime);
     if (hoursError) {
-      return errorResponse(locale, hoursError, 400);
+      return NextResponse.json({ error: hoursError }, { status: 400 });
     }
 
     // Validate items exist, are available, and prices match DB
     const itemsError = await validateItems(supabase, items);
     if (itemsError) {
-      return errorResponse(locale, itemsError, 400);
+      return NextResponse.json({ error: itemsError }, { status: 400 });
     }
 
     const orderNumber = `LD-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 5).toUpperCase()}`;
@@ -296,7 +193,10 @@ export async function POST(request: Request) {
 
     if (orderError) {
       console.error("Failed to save order:", orderError);
-      return errorResponse(locale, { code: "ORDER_SAVE_FAILED" }, 500);
+      return NextResponse.json(
+        { error: "Failed to save order" },
+        { status: 500 }
+      );
     }
 
     // Persist order items
@@ -315,7 +215,10 @@ export async function POST(request: Request) {
 
     if (orderItemsError) {
       console.error("Failed to save order items:", orderItemsError);
-      return errorResponse(locale, { code: "ORDER_ITEMS_SAVE_FAILED" }, 500);
+      return NextResponse.json(
+        { error: "Failed to save order details" },
+        { status: 500 }
+      );
     }
 
     // Send notification email via Resend
@@ -366,6 +269,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ orderNumber });
   } catch (error) {
     console.error("Order error:", error);
-    return errorResponse(requestLocale, { code: "UNKNOWN" }, 500);
+    return NextResponse.json(
+      { error: "Failed to submit order" },
+      { status: 500 }
+    );
   }
 }

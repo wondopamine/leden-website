@@ -6,6 +6,7 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { fetchCafeInfo } from "@/lib/data";
 import { AnnouncementBanner } from "@/components/layout/announcement-banner";
+import { Toaster } from "@/components/ui/sonner";
 
 type Props = {
   children: React.ReactNode;
@@ -46,6 +47,7 @@ export default async function LocaleLayout({ children, params }: Props) {
         {children}
       </main>
       <Footer locale={locale} info={cafeInfo} />
+      <Toaster position="bottom-center" />
     </NextIntlClientProvider>
   );
 }

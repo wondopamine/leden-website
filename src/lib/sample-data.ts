@@ -176,7 +176,7 @@ export const sampleMenuItems: MenuItem[] = [
     _id: "item-8",
     name: { en: "Hot & Sour Soup", fr: "Soupe aigre-piquante" },
     description: {
-      en: "Our famous homemade hot and sour soup — a customer favorite",
+      en: "Our famous homemade hot and sour soup — a customer favourite",
       fr: "Notre célèbre soupe aigre-piquante maison — un favori des clients",
     },
     price: 8.50,
@@ -189,7 +189,7 @@ export const sampleMenuItems: MenuItem[] = [
     _id: "item-9",
     name: { en: "Wonton Soup", fr: "Soupe wonton" },
     description: {
-      en: "Handmade wontons in a savory broth — comfort in a bowl",
+      en: "Handmade wontons in a savoury broth — comfort in a bowl",
       fr: "Wontons faits main dans un bouillon savoureux — réconfort dans un bol",
     },
     price: 9.50,

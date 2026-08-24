@@ -1,5 +1,6 @@
 "use client";
 
+import { useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,6 +24,7 @@ const statuses = [
 export function OrdersFilter({ currentDate, currentStatus, currentSearch }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [isPending, startTransition] = useTransition();
 
   function updateParams(key: string, value: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -31,11 +33,19 @@ export function OrdersFilter({ currentDate, currentStatus, currentSearch }: Prop
     } else {
       params.delete(key);
     }
-    router.push(`/admin/orders?${params.toString()}`);
+    startTransition(() => {
+      router.push(`/admin/orders?${params.toString()}`);
+    });
   }
 
   return (
-    <div className="grid gap-3 rounded-xl border border-border bg-card p-3 lg:grid-cols-[auto_minmax(12rem,1fr)_auto] lg:items-end">
+    <div
+      aria-busy={isPending}
+      className="grid gap-3 rounded-xl border border-border bg-card p-3 lg:grid-cols-[auto_minmax(12rem,1fr)_auto] lg:items-end"
+    >
+      <p className="sr-only" role="status" aria-live="polite">
+        {isPending ? "Updating orders…" : ""}
+      </p>
       <div className="space-y-1.5">
         <Label htmlFor="orders-date">Date</Label>
         <Input
@@ -43,6 +53,7 @@ export function OrdersFilter({ currentDate, currentStatus, currentSearch }: Prop
           type="date"
           value={currentDate}
           onChange={(e) => updateParams("date", e.target.value)}
+          disabled={isPending}
           className="w-full lg:w-auto"
         />
       </div>
@@ -59,6 +70,7 @@ export function OrdersFilter({ currentDate, currentStatus, currentSearch }: Prop
               updateParams("q", value);
             }
           }}
+          disabled={isPending}
           className="w-full"
         />
       </div>
@@ -78,6 +90,7 @@ export function OrdersFilter({ currentDate, currentStatus, currentSearch }: Prop
                 key={statusItem.value}
                 value={statusItem.value}
                 className="text-xs"
+                disabled={isPending}
               >
                 {statusItem.label}
               </TabsTrigger>

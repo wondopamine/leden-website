@@ -18,7 +18,7 @@ Café Le Den should feel warm, local, and appetite-led to customers, while stayi
 <!-- Cites: TYP-1 through TYP-5. -->
 - family: Fraunces 500/600 for display and headings; Inter 400/500/600 for body and UI
 - base: 16/24
-- scale: [12, 14, 16, 20, 24, 30, 36, 48, 60]
+- scale: [12, 14, 16, 20, 24, 30, 40, 48, 60]
 - casing: sentence case; preserve genuine acronyms such as EN, FR, GST, and QST
 - numerals: Inter tabular figures for prices, totals, timers, counts, and aligned operational data
 
@@ -75,3 +75,4 @@ Friendly, direct, and food-forward. Customer copy uses “we”, short sentences
 ## Overrides
 
 - TYP-1 (L1): Display and headings use Fraunces at 500/600; body and UI use Inter at 400/500/600; no third UI typeface — reason: Fraunces carries Café Le Den’s established local, appetite-led character while Inter preserves interface clarity; approver: Jeongwon Do
+- SLP-10 (L1): Menu-item customisation remains a focused Dialog within the browse-to-cart flow — reason: the approved plan and benchmark contract explicitly preserve the item modal, modifier state, quantity, overlay focus trap, and focus return; the Dialog must contain only one item’s configuration and a single add-to-order action; approver: Jeongwon Do

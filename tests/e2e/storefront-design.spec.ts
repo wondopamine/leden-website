@@ -24,6 +24,9 @@ const locales = [
     nameLabel: "Name",
     phoneLabel: "Phone",
     homeLabel: "Home",
+    removeLabel: "Remove",
+    undoLabel: "Undo",
+    removedMessage: (item: string) => `${item} removed from your order`,
   },
   {
     locale: "fr",
@@ -48,6 +51,9 @@ const locales = [
     nameLabel: "Nom",
     phoneLabel: "Téléphone",
     homeLabel: "Accueil",
+    removeLabel: "Retirer",
+    undoLabel: "Annuler",
+    removedMessage: (item: string) => `${item} a été retiré de votre commande`,
   },
 ] as const;
 
@@ -159,6 +165,9 @@ for (const {
   nameLabel,
   phoneLabel,
   homeLabel,
+  removeLabel,
+  undoLabel,
+  removedMessage,
 } of locales) {
   test(`${locale} menu controls and checkout errors keep their accessible contract`, async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 760 });
@@ -180,9 +189,10 @@ for (const {
 
     const sheetTrigger = page.getByRole("button", { name: "Menu", exact: true });
     await sheetTrigger.click();
-    await expect(page.getByRole("button", { name: homeLabel, exact: true })).toBeVisible();
+    const mobileSheet = page.getByRole("dialog");
+    await expect(mobileSheet.getByRole("link", { name: homeLabel, exact: true })).toBeVisible();
     await page.getByRole("button", { name: closeLabel }).click();
-    await expect(page.getByRole("button", { name: homeLabel, exact: true })).toBeHidden();
+    await expect(mobileSheet).toBeHidden();
 
     const categories = page.locator('main [role="group"] button');
     await expect(categories.first()).toHaveAttribute("aria-pressed", "true");
@@ -207,6 +217,14 @@ for (const {
     await expect(dialog).toBeHidden();
 
     await page.goto(`/${locale}/order`, { waitUntil: "domcontentloaded" });
+    await page
+      .getByRole("button", { name: `${removeLabel} ${itemName}` })
+      .last()
+      .click();
+    await expect(page.getByText(removedMessage(itemName ?? ""), { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: undoLabel, exact: true }).click();
+    await expect(page.getByText(itemName ?? "", { exact: true }).first()).toBeVisible();
+
     const placeOrderButton = page.getByRole("button", { name: placeOrder });
     await expect(placeOrderButton).toBeEnabled();
     await placeOrderButton.click();
@@ -215,10 +233,10 @@ for (const {
     const phoneInput = page.getByRole("textbox", { name: phoneLabel });
     await expect(nameInput).toHaveAttribute("aria-invalid", "true");
     await expect(nameInput).toHaveAttribute("aria-errormessage", "name-requirement");
-    await expect(page.locator("#name-requirement")).toHaveAttribute("role", "alert");
+    await expect(page.locator("#name-requirement")).not.toHaveAttribute("role", "alert");
     await expect(phoneInput).toHaveAttribute("aria-invalid", "true");
     await expect(phoneInput).toHaveAttribute("aria-errormessage", "phone-requirement");
-    await expect(page.locator("#phone-requirement")).toHaveAttribute("role", "alert");
+    await expect(page.locator("#phone-requirement")).not.toHaveAttribute("role", "alert");
     await expect(placeOrderButton).toHaveAttribute("aria-busy", "false");
 
     await nameInput.fill("Test customer");
@@ -229,7 +247,6 @@ for (const {
         status: 500,
         contentType: "application/json",
         body: JSON.stringify({
-          code: "ORDER_SAVE_FAILED",
           error: "SERVER TEXT MUST NOT BE RENDERED",
         }),
       });

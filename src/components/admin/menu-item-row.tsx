@@ -8,6 +8,7 @@ import {
   deleteMenuItem,
 } from "@/app/admin/(dashboard)/menu/actions";
 import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import {
   Select,
   SelectContent,
@@ -148,15 +149,13 @@ export function MenuItemRow({ item }: Props) {
           </SelectContent>
         </Select>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          nativeButton={false}
-          render={<Link href={`/admin/menu/${item.id}/edit`} />}
+        <Link
+          href={`/admin/menu/${item.id}/edit`}
           aria-label={`Edit ${item.name_en}`}
+          className={buttonVariants({ variant: "ghost", size: "icon" })}
         >
           <Pencil className="h-4 w-4" />
-        </Button>
+        </Link>
         <Button
           variant="ghost"
           size="icon"

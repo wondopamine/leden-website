@@ -23,6 +23,7 @@ import { StatStrip } from "@/components/admin/stat-strip";
 import { OrdersDashboard } from "@/components/admin/orders-dashboard";
 import { OrderCard, type Order } from "@/components/admin/order-card";
 import { MenuItemRow } from "@/components/admin/menu-item-row";
+import { CategoriesManager } from "@/components/admin/categories-manager";
 import { SettingsForm } from "@/components/admin/settings-form";
 import {
   ORDER_STATUS,
@@ -258,6 +259,23 @@ const sampleMenuItems: (MenuRowItem & { status: MenuStatus })[] = [
   },
 ];
 
+const sampleCategories = [
+  {
+    id: "c-1",
+    name_en: "Coffee",
+    name_fr: "Café",
+    slug: "coffee",
+    sort_order: 1,
+  },
+  {
+    id: "c-2",
+    name_en: "Pastries",
+    name_fr: "Pâtisseries",
+    slug: "pastries",
+    sort_order: 2,
+  },
+];
+
 // --- Sample cafe_info (SettingsForm initialData shape) -----------------------
 const sampleCafeInfo = {
   id: "cafe-1",
@@ -447,6 +465,13 @@ export default function DevAdminPreviewPage() {
                 </TableBody>
               </Table>
             </div>
+          </Section>
+
+          <Section
+            title="Category editor"
+            note="CategoriesManager with safe local drafts. This preview verifies explicit discard and navigation protection without calling a server action."
+          >
+            <CategoriesManager initialCategories={sampleCategories} />
           </Section>
 
           <Section

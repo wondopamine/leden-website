@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { ChevronDown, Globe, Menu, ShoppingBag, X } from "lucide-react";
 import { WordmarkHorizontal } from "@/components/brand/wordmark-horizontal";
 import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -61,16 +62,18 @@ export function Header() {
           {navItems.map((item) => {
             const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
             return (
-              <Button
+              <Link
                 key={item.href}
-                nativeButton={false}
-                render={<Link href={item.href} />}
-                variant="ghost"
+                href={item.href}
                 aria-current={active ? "page" : undefined}
-                className="px-4 aria-[current=page]:bg-muted aria-[current=page]:text-foreground"
+                className={buttonVariants({
+                  variant: "ghost",
+                  size: "default",
+                  className: "px-4 aria-[current=page]:bg-muted aria-[current=page]:text-foreground",
+                })}
               >
                 {item.label}
-              </Button>
+              </Link>
             );
           })}
 
@@ -110,16 +113,19 @@ export function Header() {
                 {navItems.map((item) => {
                   const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
                   return (
-                    <Button
+                    <Link
                       key={item.href}
-                      nativeButton={false}
-                      render={<Link href={item.href} onClick={() => setMobileOpen(false)} />}
-                      variant={active ? "secondary" : "ghost"}
+                      href={item.href}
+                      onClick={() => setMobileOpen(false)}
                       aria-current={active ? "page" : undefined}
-                      className="h-12 justify-start px-4 text-base"
+                      className={buttonVariants({
+                        variant: active ? "secondary" : "ghost",
+                        size: "default",
+                        className: "h-12 justify-start px-4 text-base",
+                      })}
                     >
                       {item.label}
-                    </Button>
+                    </Link>
                   );
                 })}
               </nav>
@@ -155,13 +161,10 @@ export function Header() {
 
 function CartButton({ itemCount, label }: { itemCount: number; label: string }) {
   return (
-    <Button
-      nativeButton={false}
-      render={<Link href="/order" />}
-      size="icon"
-      variant="ghost"
+    <Link
+      href="/order"
       aria-label={itemCount > 0 ? `${label} (${itemCount})` : label}
-      className="relative"
+      className={buttonVariants({ variant: "ghost", size: "icon", className: "relative" })}
     >
       <ShoppingBag aria-hidden className="size-5" />
       {itemCount > 0 && (
@@ -169,7 +172,7 @@ function CartButton({ itemCount, label }: { itemCount: number; label: string }) 
           {itemCount}
         </span>
       )}
-    </Button>
+    </Link>
   );
 }
 
