@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { requireStaff } from "@/lib/supabase/admin.server";
 
 export type OrderStatus =
   | "new"
@@ -14,18 +14,14 @@ export async function updateOrderStatus(
   orderId: string,
   newStatus: OrderStatus
 ) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
+  const { supabase } = await requireStaff();
 
   const { error } = await supabase
     .from("orders")
     .update({ status: newStatus })
     .eq("id", orderId);
 
-  if (error) throw new Error(error.message);
+  if (error) throw new Error("Unable to update order status.");
 
   revalidatePath("/admin");
   revalidatePath("/admin/orders");

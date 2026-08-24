@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Order lifecycle hardening active — U1 safe foundation complete; U2 staff allowlisting next
-last_updated: "2026-08-24T11:24:00+08:00"
+status: Order lifecycle hardening active — U1-U2 complete; U3 atomic order domain next
+last_updated: "2026-08-24T12:04:00+08:00"
 progress:
   total_phases: 5
   completed_phases: 1
@@ -23,7 +23,7 @@ progress:
 
 **Milestone:** Comprehensive refactor — same features, rebuilt on a coherent design system + consolidated data layer + major visual lift.
 
-**Current focus:** Order Lifecycle Hardening — U2 staff allowlisting after U1's production-denying local harness passed reset, seed, pgTAP, unit, type, lint, build, and production dependency audit gates.
+**Current focus:** Order Lifecycle Hardening — U3 atomic order domain after U2 replaced broad authenticated access with live staff allowlisting at PostgreSQL and every Next.js admin boundary.
 
 ## Current Position
 
@@ -130,6 +130,8 @@ Next: Phase 02 — Data Layer Consolidation + Image Pipeline + RLS Hardening
 - U1 establishes a pinned local Supabase stack, deterministic synthetic fixtures, a protected checksum-pinned environment sentinel, production-denying target validation, and exact per-run cleanup manifests.
 - No remote mutation is allowed during U1. Hosted work remains blocked until the U7 owner-approved sentinel bootstrap and the full independent staging handshake.
 - U7, not U1, owns the final aggregate local lifecycle verifier after database, unit, race, browser, and cleanup suites exist.
+- U2 adds one protected `admin_users` capability, revokes anonymous direct order writes, and treats Proxy only as an optimistic session refresh. The dashboard, every Server Action, and the upload handler independently reauthorize live membership.
+- Synthetic local staff is provisioned only through the Admin API behind the U1 target handshake, stored in ignored `0600` credential/manifest files, and removed by exact membership/user ID cleanup.
 
 ### Open Todos
 
@@ -148,9 +150,9 @@ Next: Phase 02 — Data Layer Consolidation + Image Pipeline + RLS Hardening
 
 ## Session Continuity
 
-**Last session:** U1 completed. The pinned local Supabase stack reset cleanly, deterministic synthetic seed and protected sentinel loaded, all 18 pgTAP assertions and 46 unit tests passed, and the production npm tree audited clean after mature dependency security updates.
+**Last session:** U2 completed. Migrations 001-005 reset cleanly; 57 pgTAP authorization assertions, 60 unit tests, the live membership-revocation browser scenario, lint, typecheck, and production build passed. Unlisted or revoked sessions now fail closed at RLS and each application boundary.
 
-**Next session entry point:** Execute U2 staff allowlisting. Do not touch a hosted target until U7's owner-approved sentinel bootstrap and full target handshake are available.
+**Next session entry point:** Execute U3 atomic creation, tracking, pricing, and transition domain. Do not touch a hosted target until U7's owner-approved sentinel bootstrap and full target handshake are available.
 
 **Files of record:**
 

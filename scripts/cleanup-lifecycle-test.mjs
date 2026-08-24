@@ -1,22 +1,30 @@
 #!/usr/bin/env node
 
-import { readFile } from "node:fs/promises";
+import { readFile, rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { createClient } from "@supabase/supabase-js";
 
-import {
+import * as targetSafety from "../tests/e2e/helpers/supabase-target.ts";
+
+const targetSafetyExports = targetSafety.default ?? targetSafety;
+const {
   assertSafeSupabaseMutationTarget,
   isValidLifecycleRunId,
   readEnvironmentSentinel,
-} from "../tests/e2e/helpers/supabase-target.ts";
+} = targetSafetyExports;
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PROJECT_REF_PATTERN = /^[a-z0-9]{20}$/;
 const MAX_IDS_PER_COLLECTION = 500;
-const RECORD_KEYS = ["orderItemIds", "orderIds"];
+const RECORD_KEYS = [
+  "staffMembershipUserIds",
+  "orderItemIds",
+  "orderIds",
+  "authUserIds",
+];
 
 function requireObject(value, label) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -74,6 +82,21 @@ export function resolveCleanupManifestPath(runId, workspaceRoot = process.cwd())
   return join(workspaceRoot, ".lifecycle-tests", "runs", `${runId}.json`);
 }
 
+export function resolveStaffCredentialsPath(
+  runId,
+  workspaceRoot = process.cwd()
+) {
+  if (!isValidLifecycleRunId(runId)) {
+    throw new Error("Cleanup run ID has an invalid shape.");
+  }
+  return join(
+    workspaceRoot,
+    ".lifecycle-tests",
+    "runs",
+    `${runId}.staff.json`
+  );
+}
+
 export function validateCleanupManifest(value, requestedRunId) {
   const manifest = requireObject(value, "Cleanup manifest");
   if (manifest.version !== 1) {
@@ -111,11 +134,27 @@ export function validateCleanupManifest(value, requestedRunId) {
     );
   }
 
+  const staffMembershipUserIds = validateUuidList(
+    records.staffMembershipUserIds ?? [],
+    "records.staffMembershipUserIds"
+  );
   const orderItemIds = validateUuidList(
     records.orderItemIds,
     "records.orderItemIds"
   );
   const orderIds = validateUuidList(records.orderIds, "records.orderIds");
+  const authUserIds = validateUuidList(
+    records.authUserIds ?? [],
+    "records.authUserIds"
+  );
+  if (
+    staffMembershipUserIds.length !== authUserIds.length ||
+    staffMembershipUserIds.some((id) => !authUserIds.includes(id))
+  ) {
+    throw new Error(
+      "Staff membership IDs must exactly match the Auth user IDs for cleanup."
+    );
+  }
 
   return {
     version: 1,
@@ -124,20 +163,37 @@ export function validateCleanupManifest(value, requestedRunId) {
       kind: target.kind,
       projectRef: target.projectRef,
     },
-    records: { orderItemIds, orderIds },
+    records: {
+      staffMembershipUserIds,
+      orderItemIds,
+      orderIds,
+      authUserIds,
+    },
   };
 }
 
 export function buildDeletionPlan(manifest) {
   const plan = [];
+  if (manifest.records.staffMembershipUserIds.length > 0) {
+    plan.push({
+      table: "admin_users",
+      idColumn: "user_id",
+      ids: [...manifest.records.staffMembershipUserIds],
+    });
+  }
   if (manifest.records.orderItemIds.length > 0) {
     plan.push({
       table: "order_items",
+      idColumn: "id",
       ids: [...manifest.records.orderItemIds],
     });
   }
   if (manifest.records.orderIds.length > 0) {
-    plan.push({ table: "orders", ids: [...manifest.records.orderIds] });
+    plan.push({
+      table: "orders",
+      idColumn: "id",
+      ids: [...manifest.records.orderIds],
+    });
   }
   return plan;
 }
@@ -155,7 +211,10 @@ export function assertExactDeletionResult(step, deletedRows, remainingRows) {
   const requestedIds = new Set(step.ids);
   if (
     deletedRows.some(
-      (row) => !row || typeof row.id !== "string" || !requestedIds.has(row.id)
+      (row) =>
+        !row ||
+        typeof row[step.idColumn] !== "string" ||
+        !requestedIds.has(row[step.idColumn])
     )
   ) {
     throw new Error(`Exact cleanup returned an unexpected ${step.table} identifier.`);
@@ -170,8 +229,8 @@ async function deleteAndVerifyExactIds(client, step) {
   const { data, error } = await client
     .from(step.table)
     .delete()
-    .in("id", step.ids)
-    .select("id");
+    .in(step.idColumn, step.ids)
+    .select(step.idColumn);
 
   if (error) {
     throw new Error(`Exact cleanup failed for ${step.table}.`);
@@ -179,13 +238,29 @@ async function deleteAndVerifyExactIds(client, step) {
 
   const { data: remaining, error: verifyError } = await client
     .from(step.table)
-    .select("id")
-    .in("id", step.ids);
+    .select(step.idColumn)
+    .in(step.idColumn, step.ids);
   if (verifyError) {
     throw new Error(`Exact cleanup verification failed for ${step.table}.`);
   }
 
   assertExactDeletionResult(step, data ?? [], remaining ?? []);
+}
+
+async function deleteAndVerifyAuthUsers(client, authUserIds) {
+  for (const userId of authUserIds) {
+    const { error: deleteError } = await client.auth.admin.deleteUser(userId);
+    if (deleteError && deleteError.status !== 404) {
+      throw new Error("Exact cleanup failed for a synthetic Auth user.");
+    }
+
+    const { data, error: verifyError } = await client.auth.admin.getUserById(
+      userId
+    );
+    if (data?.user || !verifyError || verifyError.status !== 404) {
+      throw new Error("Exact cleanup verification failed for a synthetic Auth user.");
+    }
+  }
 }
 
 async function loadManifest(runId) {
@@ -235,6 +310,7 @@ async function executeCleanup(manifest, plan) {
   for (const step of plan) {
     await deleteAndVerifyExactIds(client, step);
   }
+  await deleteAndVerifyAuthUsers(client, manifest.records.authUserIds);
 }
 
 async function main() {
@@ -253,6 +329,7 @@ async function main() {
             table: step.table,
             exactIdCount: step.ids.length,
           })),
+          authUserExactCount: manifest.records.authUserIds.length,
         },
         null,
         2
@@ -262,6 +339,7 @@ async function main() {
   }
 
   await executeCleanup(manifest, plan);
+  await rm(resolveStaffCredentialsPath(runId), { force: true });
   console.log(
     JSON.stringify({ mode: "executed", runId, exactCleanupVerified: true })
   );

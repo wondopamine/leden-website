@@ -42,7 +42,9 @@ jwt_expiry = 3600
 enable_signup = false
 
 [auth.email]
-enable_signup = false
+# The provider stays available for Admin-API-created synthetic staff. The global
+# auth.enable_signup flag above still blocks public self-registration.
+enable_signup = true
 double_confirm_changes = true
 enable_confirmations = false
 

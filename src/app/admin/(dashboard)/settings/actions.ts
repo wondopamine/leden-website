@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { requireStaff } from "@/lib/supabase/admin.server";
 
 type HourEntry = {
   day: string;
@@ -22,11 +22,7 @@ type CafeInfoUpdate = {
 };
 
 export async function updateCafeInfo(input: CafeInfoUpdate) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
+  const { supabase } = await requireStaff();
 
   const { error } = await supabase
     .from("cafe_info")
@@ -41,7 +37,7 @@ export async function updateCafeInfo(input: CafeInfoUpdate) {
     })
     .eq("id", input.id);
 
-  if (error) throw new Error(error.message);
+  if (error) throw new Error("Unable to update café settings.");
 
   revalidatePath("/admin/settings");
 }

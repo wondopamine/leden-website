@@ -1,15 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import {
+  AdminAuthorizationError,
+  requireStaff,
+} from "@/lib/supabase/admin.server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 
 export async function POST(request: NextRequest) {
-  // Verify authentication via session
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    await requireStaff();
+  } catch (error) {
+    if (error instanceof AdminAuthorizationError) {
+      return NextResponse.json(
+        {
+          error:
+            error.status === 401 ? "Authentication required" : "Access denied",
+        },
+        { status: error.status }
+      );
+    }
+    return NextResponse.json({ error: "Access denied" }, { status: 403 });
   }
 
   const formData = await request.formData();
@@ -46,7 +55,7 @@ export async function POST(request: NextRequest) {
     });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "Image upload failed" }, { status: 500 });
   }
 
   const { data: urlData } = adminClient.storage

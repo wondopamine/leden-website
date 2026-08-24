@@ -1,4 +1,10 @@
+import "server-only";
+
 import { redirect } from "next/navigation";
+import {
+  AdminAuthorizationError,
+  requireStaff,
+} from "./admin.server";
 import { createClient } from "./server";
 
 export async function getUser() {
@@ -9,10 +15,20 @@ export async function getUser() {
   return user;
 }
 
-export async function requireAuth() {
-  const user = await getUser();
-  if (!user) {
-    redirect("/admin/login");
+export async function requireAdminPage() {
+  try {
+    const { user } = await requireStaff();
+    return user;
+  } catch (error) {
+    if (error instanceof AdminAuthorizationError) {
+      redirect(
+        error.status === 401
+          ? "/admin/login"
+          : "/admin/login?error=access-denied"
+      );
+    }
+    throw error;
   }
-  return user;
 }
+
+export const requireAuth = requireAdminPage;

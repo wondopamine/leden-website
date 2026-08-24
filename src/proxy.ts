@@ -44,7 +44,9 @@ export default async function proxy(request: NextRequest) {
       }
     );
 
-    // Trigger session refresh — getUser() verifies the token server-side
+    // Session refresh and optimistic routing only. This is not staff
+    // authorization: the dashboard layout, every action, and every handler call
+    // the server-only allowlist authorizer again at their own boundary.
     const {
       data: { user },
     } = await supabase.auth.getUser();

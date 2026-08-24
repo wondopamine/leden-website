@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { requireStaff } from "@/lib/supabase/admin.server";
 import { redirect } from "next/navigation";
 
 function friendlyError(msg: string): string {
@@ -12,11 +12,7 @@ function friendlyError(msg: string): string {
 }
 
 export async function createMenuItem(formData: FormData) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
+  const { supabase } = await requireStaff();
 
   const categoryId = formData.get("category_id") as string;
   const imageUrl = (formData.get("image_url") as string) || null;
@@ -48,11 +44,7 @@ export async function createMenuItem(formData: FormData) {
 }
 
 export async function updateMenuItem(formData: FormData) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
+  const { supabase } = await requireStaff();
 
   const id = formData.get("id") as string;
   const imageUrl = (formData.get("image_url") as string) || null;
@@ -84,11 +76,7 @@ export async function updateMenuItem(formData: FormData) {
 }
 
 export async function deleteMenuItem(id: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
+  const { supabase } = await requireStaff();
 
   const { error } = await supabase.from("menu_items").delete().eq("id", id);
   if (error) throw new Error(friendlyError(error.message));
@@ -100,11 +88,7 @@ export async function updateMenuItemStatus(
   id: string,
   status: "available" | "sold_out" | "hidden"
 ) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
+  const { supabase } = await requireStaff();
 
   const { error } = await supabase
     .from("menu_items")

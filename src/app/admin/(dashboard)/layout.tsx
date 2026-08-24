@@ -1,4 +1,4 @@
-import { requireAuth } from "@/lib/supabase/auth";
+import { requireAdminPage } from "@/lib/supabase/auth";
 import { AdminSidebar } from "@/components/admin/sidebar";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -7,7 +7,7 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  await requireAuth();
+  await requireAdminPage();
 
   return (
     <div className="flex min-h-screen bg-background lg:h-screen">

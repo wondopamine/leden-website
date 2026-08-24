@@ -1,4 +1,17 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+
+import { createClient } from "@supabase/supabase-js";
 import { expect, test } from "@playwright/test";
+
+import {
+  assertSafeSupabaseMutationTarget,
+  readEnvironmentSentinel,
+} from "./helpers/supabase-target";
+
+// This file may consume an ephemeral synthetic staff password. Never retain
+// browser artifacts that could capture it.
+test.use({ trace: "off", screenshot: "off", video: "off" });
 
 test("admin login remains reachable without an authenticated session", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 760 });
@@ -304,16 +317,82 @@ test.describe("explicit non-production admin preview", () => {
 });
 
 test.describe("authenticated admin mutation safety", () => {
+  test.describe.configure({ mode: "serial" });
+
+  const runId = process.env.PLAYWRIGHT_LIFECYCLE_RUN_ID;
+  const supabaseUrl = process.env.PLAYWRIGHT_NON_PRODUCTION_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
   test.skip(
     process.env.PLAYWRIGHT_ALLOW_MUTATIONS !== "1" ||
-      !process.env.PLAYWRIGHT_NON_PRODUCTION_SUPABASE_URL,
-    "Requires an explicit seeded local/non-production Supabase target; production mutations are forbidden.",
+      !runId ||
+      !supabaseUrl ||
+      !serviceKey,
+    "Requires an exact synthetic staff fixture on the verified local target.",
   );
 
-  test("safe-target mutation suite is intentionally fixture-gated", async () => {
-    expect(process.env.PLAYWRIGHT_NON_PRODUCTION_SUPABASE_URL).toMatch(/^https?:\/\//);
-    expect(process.env.PLAYWRIGHT_NON_PRODUCTION_SUPABASE_URL).not.toBe(
-      process.env.PRODUCTION_SUPABASE_URL,
+  test("allowlisted staff enter admin, then live revocation blocks layout and upload handler", async ({
+    page,
+  }) => {
+    const credentialsPath = join(
+      process.cwd(),
+      ".lifecycle-tests",
+      "runs",
+      `${runId}.staff.json`,
     );
+    const credentials = JSON.parse(await readFile(credentialsPath, "utf8")) as {
+      version: number;
+      runId: string;
+      userId: string;
+      email: string;
+      password: string;
+    };
+    expect(credentials).toMatchObject({ version: 1, runId });
+
+    const adminClient = createClient(supabaseUrl!, serviceKey!, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+    const sentinel = await readEnvironmentSentinel(adminClient);
+    const target = assertSafeSupabaseMutationTarget({
+      supabaseUrl: supabaseUrl!,
+      mutationTarget: process.env.LIFECYCLE_MUTATION_TARGET,
+      sentinel,
+      cleanup: { available: true, runId: runId! },
+    });
+    expect(target).toMatchObject({ kind: "local", projectRef: null });
+
+    const { data: membership, error: membershipReadError } = await adminClient
+      .from("admin_users")
+      .select("user_id")
+      .eq("user_id", credentials.userId)
+      .single();
+    expect(membershipReadError).toBeNull();
+    expect(membership?.user_id).toBe(credentials.userId);
+
+    await page.goto("/admin/login", { waitUntil: "domcontentloaded" });
+    await page.getByLabel("Email").fill(credentials.email);
+    await page.getByLabel("Password").fill(credentials.password);
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await page.waitForURL((url) => url.pathname === "/admin");
+    await expect(page).not.toHaveURL(/\/admin\/login/);
+
+    const { data: revoked, error: revokeError } = await adminClient
+      .from("admin_users")
+      .delete()
+      .eq("user_id", credentials.userId)
+      .select("user_id");
+    expect(revokeError).toBeNull();
+    expect(revoked).toEqual([{ user_id: credentials.userId }]);
+
+    await page.goto("/admin/settings", { waitUntil: "domcontentloaded" });
+    await expect(page).toHaveURL(/\/admin\/login\?error=access-denied$/);
+
+    const uploadResponse = await page.request.post("/api/upload-menu-image", {
+      multipart: {},
+    });
+    expect(uploadResponse.status()).toBe(403);
+    await expect(uploadResponse.json()).resolves.toEqual({
+      error: "Access denied",
+    });
   });
 });

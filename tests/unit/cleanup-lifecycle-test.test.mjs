@@ -6,6 +6,7 @@ import {
   buildDeletionPlan,
   parseCleanupArgs,
   resolveCleanupManifestPath,
+  resolveStaffCredentialsPath,
   validateCleanupManifest,
 } from "../../scripts/cleanup-lifecycle-test.mjs";
 
@@ -17,8 +18,10 @@ function manifest(overrides = {}) {
     runId: RUN_ID,
     target: { kind: "local", projectRef: null },
     records: {
+      staffMembershipUserIds: [],
       orderItemIds: ["d4000000-0000-4000-8000-000000000001"],
       orderIds: ["d5000000-0000-4000-8000-000000000001"],
+      authUserIds: [],
     },
     ...overrides,
   };
@@ -48,13 +51,35 @@ describe("validateCleanupManifest", () => {
     expect(validateCleanupManifest(manifest(), RUN_ID)).toEqual(manifest());
   });
 
+  it("keeps version-one order-only manifests from U1 cleanup-compatible", () => {
+    const legacyManifest = {
+      version: 1,
+      runId: RUN_ID,
+      target: { kind: "local", projectRef: null },
+      records: {
+        orderItemIds: ["d4000000-0000-4000-8000-000000000001"],
+        orderIds: ["d5000000-0000-4000-8000-000000000001"],
+      },
+    };
+
+    expect(validateCleanupManifest(legacyManifest, RUN_ID)).toEqual({
+      ...legacyManifest,
+      records: {
+        staffMembershipUserIds: [],
+        ...legacyManifest.records,
+        authUserIds: [],
+      },
+    });
+  });
+
   it.each([
     ["wrong version", { version: 2 }],
     ["wrong run", { runId: "20260824T120001Z-aaaaaaaa" }],
     ["production target", { target: { kind: "production", projectRef: null } }],
-    ["unknown record collection", { records: { customerIds: ["d4000000-0000-4000-8000-000000000001"] } }],
-    ["wildcard ID", { records: { orderItemIds: ["*"], orderIds: [] } }],
-    ["duplicate ID", { records: { orderItemIds: [], orderIds: ["d5000000-0000-4000-8000-000000000001", "d5000000-0000-4000-8000-000000000001"] } }],
+    ["unknown record collection", { records: { staffMembershipUserIds: [], orderItemIds: [], orderIds: [], authUserIds: [], customerIds: ["d4000000-0000-4000-8000-000000000001"] } }],
+    ["wildcard ID", { records: { staffMembershipUserIds: [], orderItemIds: ["*"], orderIds: [], authUserIds: [] } }],
+    ["duplicate ID", { records: { staffMembershipUserIds: [], orderItemIds: [], orderIds: ["d5000000-0000-4000-8000-000000000001", "d5000000-0000-4000-8000-000000000001"], authUserIds: [] } }],
+    ["mismatched staff fixture IDs", { records: { staffMembershipUserIds: ["d5000000-0000-4000-8000-000000000001"], orderItemIds: [], orderIds: [], authUserIds: [] } }],
   ])("rejects %s", (_name, override) => {
     expect(() => validateCleanupManifest(manifest(override), RUN_ID)).toThrow();
   });
@@ -65,10 +90,12 @@ describe("buildDeletionPlan", () => {
     expect(buildDeletionPlan(validateCleanupManifest(manifest(), RUN_ID))).toEqual([
       {
         table: "order_items",
+        idColumn: "id",
         ids: ["d4000000-0000-4000-8000-000000000001"],
       },
       {
         table: "orders",
+        idColumn: "id",
         ids: ["d5000000-0000-4000-8000-000000000001"],
       },
     ]);
@@ -76,9 +103,32 @@ describe("buildDeletionPlan", () => {
 
   it("keeps explicit empty collections as no-op cleanup", () => {
     const emptyManifest = manifest({
-      records: { orderItemIds: [], orderIds: [] },
+      records: {
+        staffMembershipUserIds: [],
+        orderItemIds: [],
+        orderIds: [],
+        authUserIds: [],
+      },
     });
     expect(buildDeletionPlan(validateCleanupManifest(emptyManifest, RUN_ID))).toEqual([]);
+  });
+
+  it("revokes staff membership before deleting the exact Auth user", () => {
+    const userId = "d6000000-0000-4000-8000-000000000001";
+    const staffManifest = manifest({
+      records: {
+        staffMembershipUserIds: [userId],
+        orderItemIds: [],
+        orderIds: [],
+        authUserIds: [userId],
+      },
+    });
+
+    expect(
+      buildDeletionPlan(validateCleanupManifest(staffManifest, RUN_ID))
+    ).toEqual([
+      { table: "admin_users", idColumn: "user_id", ids: [userId] },
+    ]);
   });
 });
 
@@ -102,6 +152,7 @@ describe("assertCleanupTargetMatch", () => {
 describe("assertExactDeletionResult", () => {
   const step = {
     table: "orders",
+    idColumn: "id",
     ids: ["d5000000-0000-4000-8000-000000000001"],
   };
 
@@ -130,6 +181,12 @@ describe("resolveCleanupManifestPath", () => {
   it("uses the per-run untracked directory without globbing", () => {
     expect(resolveCleanupManifestPath(RUN_ID, "/repo")).toBe(
       `/repo/.lifecycle-tests/runs/${RUN_ID}.json`
+    );
+  });
+
+  it("keeps synthetic staff credentials beside the untracked recovery manifest", () => {
+    expect(resolveStaffCredentialsPath(RUN_ID, "/repo")).toBe(
+      `/repo/.lifecycle-tests/runs/${RUN_ID}.staff.json`
     );
   });
 });

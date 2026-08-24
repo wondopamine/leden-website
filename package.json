@@ -14,6 +14,7 @@
     "supabase:stop": "supabase stop",
     "supabase:reset:local": "supabase db reset --local",
     "supabase:test:db": "supabase test db --local",
+    "setup:lifecycle-staff": "tsx scripts/setup-lifecycle-staff.mjs",
     "cleanup:lifecycle-test": "tsx scripts/cleanup-lifecycle-test.mjs",
     "test:e2e": "playwright test",
     "test:e2e:gallery": "playwright test --config=playwright.gallery.config.ts"
