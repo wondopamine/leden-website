@@ -19,6 +19,9 @@
     "check:database-types": "node scripts/check-database-types.mjs",
     "setup:lifecycle-staff": "tsx scripts/setup-lifecycle-staff.mjs",
     "cleanup:lifecycle-test": "tsx scripts/cleanup-lifecycle-test.mjs",
+    "test:order-lifecycle:integration": "vitest run tests/integration/order-concurrency.test.ts",
+    "test:e2e:order-lifecycle": "playwright test tests/e2e/order-lifecycle.spec.ts tests/e2e/admin-design.spec.ts --grep 'real local|authenticated admin mutation safety'",
+    "verify:order-lifecycle:local": "node scripts/verify-order-lifecycle-local.mjs",
     "test:e2e": "playwright test",
     "test:e2e:gallery": "playwright test --config=playwright.gallery.config.ts"
   },

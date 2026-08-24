@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Order lifecycle hardening active — U1-U6 complete; U7 real local lifecycle proof next
-last_updated: "2026-08-24T16:54:07+08:00"
+status: Order lifecycle hardening active — U1-U7 local complete; hosted canary owner-gated
+last_updated: "2026-08-24T17:35:00+08:00"
 progress:
   total_phases: 5
   completed_phases: 1
@@ -23,7 +23,7 @@ progress:
 
 **Milestone:** Comprehensive refactor — same features, rebuilt on a coherent design system + consolidated data layer + major visual lift.
 
-**Current focus:** Order Lifecycle Hardening — U7 aggregate real local lifecycle proof after U6 made the admin board authorized, canonically reconciled, conflict-safe, and operational without Realtime.
+**Current focus:** Order Lifecycle Hardening — U7 local proof is complete. Hosted Supabase and actual staging-edge canaries remain explicitly owner-gated before U8 contract work.
 
 ## Current Position
 
@@ -149,15 +149,23 @@ Next: Phase 02 — Data Layer Consolidation + Image Pipeline + RLS Hardening
 - Staff transitions now use expected status/version compare-and-set RPC results, reconcile after every outcome, and require contextual confirmation for cancellation and picked-up terminal actions. The ordering gate is confirmation-protected on both the live board and Settings.
 - Menu create/edit now uses atomic graph RPCs and preserves sold-out state, optional modifier cardinality, and unavailable options. The new create RPC landed in the still-local, unapplied expand migration and was reproved from a clean reset.
 - Admin previews inject local ordering and transition actions so design/browser dogfooding cannot mutate a live target. Primary integration review also made malformed actions fail safely, suppressed late failed-refresh regressions, and fixed operational timestamps to the café timezone.
+- U7 now runs one clean-reset aggregate local proof across 220 pgTAP assertions, generated database type drift, 184 unit tests, four observed-lock races, real Auth/RLS/RPC integration, 27 preview browser regressions, profile-isolated production webpack builds, and 3 real lifecycle Playwright cases covering authorization denial plus EN picked-up and FR cancelled paths.
+- U7's EN browser path commits an order whose HTTP response is deliberately lost, recovers the same receipt, proves replay/conflict behavior, blocks Realtime, advances through every legal forward state, observes monotonic customer versions, and proves terminal polling stops. The FR path proves authorized confirmed cancellation and modifier-ownership rejection without a partial order.
+- U7 uses Cloudflare's official deterministic test token/secret only under exact local clean-reset markers. A local Node preload returns the documented action/hostname test response so the production action/hostname checks remain exercised without an external test dependency; production application code is unchanged.
+- U7 cleanup records attempts and tracking-secret digests before each request, journals staff intent before Auth mutation, recovers exact run-tagged identities after ambiguous Auth creation and abrupt post-allowlist interruption, deletes only the run-derived rate buckets, proves a foreign bucket survives, suppresses local credential output, and restores the deterministic café schedule in `finally`.
+- The local all-clock harness exposed PostgreSQL's `24:00` normalization. The pickup resolver now models `24:00` explicitly as the exclusive end of day, and pgTAP covers the real wrapper with that boundary while the committed seed retains its normal 07:30/08:00–15:00 schedule.
+- Hosted staging is deliberately not implemented by weakening the local harness. Its sentinel bootstrap, hosted adapter, backup/key owners, platform edge, and operator rehearsal are documented as separate approval gates in `docs/runbooks/`.
 
 ### Open Todos
 
-- Execute U7-U8 in dependency order from the reviewed order-lifecycle plan.
+- Obtain explicit owner decisions for the hosted staging project, production denylist ref, sentinel bootstrap, backup/key ownership, test staff, platform hostname, cleanup, and café rehearsal.
+- Add and review a separate hosted lifecycle adapter, run both hosted canary gates with exact cleanup, then execute U8 as its separate contract stack.
 - Resume the legacy Phase 2 roadmap only where it does not conflict with the active lifecycle-hardening units.
 
 ### Blockers
 
-- Hosted non-production proof requires an owner-confirmed free project, exact production denylist ref, and later U7 bootstrap authority. No hosted operation is authorized before U7.
+- Hosted non-production proof requires an owner-confirmed project, exact production denylist ref, checksum-pinned bootstrap authority, backup/key/test-staff owners, and a reviewed hosted adapter. No hosted operation is currently authorized.
+- U8 contract migrations remain blocked until the hosted application canary passes; actual staging edge/Turnstile and owner operational sign-off remain launch gates.
 
 ### Risks Surfaced During Roadmapping
 
@@ -167,9 +175,9 @@ Next: Phase 02 — Data Layer Consolidation + Image Pipeline + RLS Hardening
 
 ## Session Continuity
 
-**Last session:** U6 completed. Correctness and security reviews converged clean after fixes; a clean local reset passed 220 pgTAP assertions and generated database types matched. All 163 unit tests, TypeScript, lint, the webpack production build, DX token/accessibility/contrast checks, and 8 admin Chromium scenarios passed; one authenticated mutation scenario remains intentionally gated for U7's explicit real local harness. The default Turbopack build remains environment-blocked by its internal PostCSS worker port binding, with no code diagnostic.
+**Last session:** U7 local proof completed from a clean reset. The aggregate verifier passed 220 pgTAP assertions, database type drift, 184 unit tests, all four observed-lock races, ambiguous-Auth and abrupt-post-allowlist recovery probes, 2 real integration cases, 27 intercepted browser regressions (6 real-only skips), both profile-isolated webpack builds, 3 real lifecycle browser cases, the private-material output scan, lint, TypeScript, exact synthetic cleanup with foreign-bucket isolation, and café-runtime restoration. No hosted target was accessed or mutated.
 
-**Next session entry point:** Execute U7's aggregate clean-reset real local lifecycle: customer create/recovery, authorized admin delivery and CAS transitions, customer monotonic tracking, degraded polling, exact events, privacy, and cleanup. Stop before hosted sentinel bootstrap until the owner approves a specific non-production project and authority.
+**Next session entry point:** Review the U7 local changes and runbooks. Stop before any hosted action until the owner supplies every gate in `docs/runbooks/order-lifecycle-staging.md`. After a reviewed hosted adapter and successful hosted application canary, prepare U8 as a separate contract migration stack.
 
 **Files of record:**
 

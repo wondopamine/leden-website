@@ -587,16 +587,30 @@ test.describe("authenticated admin mutation safety", () => {
       .select("user_id");
     expect(revokeError).toBeNull();
     expect(revoked).toEqual([{ user_id: credentials.userId }]);
+    try {
+      await page.goto("/admin/settings", { waitUntil: "domcontentloaded" });
+      await expect(page).toHaveURL(/\/admin\/login\?error=access-denied$/);
 
-    await page.goto("/admin/settings", { waitUntil: "domcontentloaded" });
-    await expect(page).toHaveURL(/\/admin\/login\?error=access-denied$/);
+      const uploadResponse = await page.request.post("/api/upload-menu-image", {
+        multipart: {},
+      });
+      expect(uploadResponse.status()).toBe(403);
+      await expect(uploadResponse.json()).resolves.toEqual({
+        error: "Access denied",
+      });
+    } finally {
+      const { error: restoreError } = await adminClient
+        .from("admin_users")
+        .insert({ user_id: credentials.userId });
+      expect(restoreError).toBeNull();
+    }
 
-    const uploadResponse = await page.request.post("/api/upload-menu-image", {
-      multipart: {},
-    });
-    expect(uploadResponse.status()).toBe(403);
-    await expect(uploadResponse.json()).resolves.toEqual({
-      error: "Access denied",
-    });
+    const { data: restored, error: restoredReadError } = await adminClient
+      .from("admin_users")
+      .select("user_id")
+      .eq("user_id", credentials.userId)
+      .single();
+    expect(restoredReadError).toBeNull();
+    expect(restored?.user_id).toBe(credentials.userId);
   });
 });

@@ -7,6 +7,7 @@ import { pathToFileURL } from "node:url";
 import { createClient } from "@supabase/supabase-js";
 
 import * as targetSafety from "../tests/e2e/helpers/supabase-target.ts";
+import { deriveLifecycleRateKeyHex } from "../tests/e2e/helpers/lifecycle-identity.mjs";
 
 const targetSafetyExports = targetSafety.default ?? targetSafety;
 const {
@@ -24,6 +25,8 @@ const RECORD_KEYS = [
   "orderItemIds",
   "orderStatusEventIds",
   "orderIds",
+  "orderAttemptIds",
+  "trackingTokenDigests",
   "rateBucketIds",
   "authUserIds",
 ];
@@ -47,6 +50,26 @@ function validateUuidList(value, label) {
   }
   if (new Set(value).size !== value.length) {
     throw new Error(`${label} contains a duplicate identifier.`);
+  }
+  return value;
+}
+
+function validateSha256List(value, label) {
+  if (!Array.isArray(value)) {
+    throw new Error(`${label} must be an array of SHA-256 digests.`);
+  }
+  if (value.length > MAX_IDS_PER_COLLECTION) {
+    throw new Error(`${label} exceeds the per-run cleanup limit.`);
+  }
+  if (
+    value.some(
+      (digest) => typeof digest !== "string" || !/^[0-9a-f]{64}$/.test(digest),
+    )
+  ) {
+    throw new Error(`${label} contains an invalid SHA-256 digest.`);
+  }
+  if (new Set(value).size !== value.length) {
+    throw new Error(`${label} contains a duplicate digest.`);
   }
   return value;
 }
@@ -101,8 +124,8 @@ export function resolveStaffCredentialsPath(
 
 export function validateCleanupManifest(value, requestedRunId) {
   const manifest = requireObject(value, "Cleanup manifest");
-  if (manifest.version !== 1) {
-    throw new Error("Cleanup manifest version must be 1.");
+  if (manifest.version !== 1 && manifest.version !== 2) {
+    throw new Error("Cleanup manifest version must be 1 or 2.");
   }
   if (manifest.runId !== requestedRunId) {
     throw new Error("Cleanup manifest run ID does not match --run-id.");
@@ -149,6 +172,14 @@ export function validateCleanupManifest(value, requestedRunId) {
     "records.orderStatusEventIds"
   );
   const orderIds = validateUuidList(records.orderIds ?? [], "records.orderIds");
+  const orderAttemptIds = validateUuidList(
+    records.orderAttemptIds ?? [],
+    "records.orderAttemptIds"
+  );
+  const trackingTokenDigests = validateSha256List(
+    records.trackingTokenDigests ?? [],
+    "records.trackingTokenDigests",
+  );
   const rateBucketIds = validateUuidList(
     records.rateBucketIds ?? [],
     "records.rateBucketIds"
@@ -158,16 +189,15 @@ export function validateCleanupManifest(value, requestedRunId) {
     "records.authUserIds"
   );
   if (
-    staffMembershipUserIds.length !== authUserIds.length ||
     staffMembershipUserIds.some((id) => !authUserIds.includes(id))
   ) {
     throw new Error(
-      "Staff membership IDs must exactly match the Auth user IDs for cleanup."
+      "Every staff membership ID must also be an Auth user ID for cleanup."
     );
   }
 
   return {
-    version: 1,
+    version: manifest.version,
     runId: manifest.runId,
     target: {
       kind: target.kind,
@@ -178,8 +208,175 @@ export function validateCleanupManifest(value, requestedRunId) {
       orderItemIds,
       orderStatusEventIds,
       orderIds,
+      orderAttemptIds,
+      trackingTokenDigests,
       rateBucketIds,
       authUserIds,
+    },
+  };
+}
+
+export function mergeResolvedOrderIds(manifest, resolvedOrderIds) {
+  const orderIds = validateUuidList(
+    [...new Set([...manifest.records.orderIds, ...resolvedOrderIds])],
+    "resolved order IDs"
+  );
+  return {
+    ...manifest,
+    records: { ...manifest.records, orderIds },
+  };
+}
+
+export function mergeResolvedAuthArtifacts(
+  manifest,
+  resolvedAuthUserIds,
+  resolvedStaffMembershipUserIds,
+) {
+  const authUserIds = validateUuidList(
+    [...new Set([...manifest.records.authUserIds, ...resolvedAuthUserIds])],
+    "resolved Auth user IDs",
+  );
+  const staffMembershipUserIds = validateUuidList(
+    [
+      ...new Set([
+        ...manifest.records.staffMembershipUserIds,
+        ...resolvedStaffMembershipUserIds,
+      ]),
+    ],
+    "resolved staff membership user IDs",
+  );
+  if (staffMembershipUserIds.some((id) => !authUserIds.includes(id))) {
+    throw new Error("Resolved staff membership is missing its Auth user.");
+  }
+  return {
+    ...manifest,
+    records: {
+      ...manifest.records,
+      authUserIds,
+      staffMembershipUserIds,
+    },
+  };
+}
+
+async function resolveOrderIdsFromAttempts(client, manifest) {
+  if (manifest.records.orderAttemptIds.length === 0) return [];
+  const { data, error } = await client
+    .from("orders")
+    .select("id, idempotency_key")
+    .in("idempotency_key", manifest.records.orderAttemptIds);
+  if (error || !Array.isArray(data)) {
+    throw new Error("Exact cleanup could not resolve recorded order attempts.");
+  }
+  const expectedAttempts = new Set(manifest.records.orderAttemptIds);
+  if (
+    data.some(
+      (row) =>
+        !row ||
+        typeof row.id !== "string" ||
+        typeof row.idempotency_key !== "string" ||
+        !expectedAttempts.has(row.idempotency_key)
+    )
+  ) {
+    throw new Error("Exact cleanup resolved an unexpected order attempt.");
+  }
+  return data.map((row) => row.id);
+}
+
+async function resolveAuthUserIdsFromRun(client, runId) {
+  const resolved = [];
+  const perPage = 100;
+  for (let page = 1; page <= 100; page += 1) {
+    const { data, error } = await client.auth.admin.listUsers({ page, perPage });
+    if (error || !Array.isArray(data?.users)) {
+      throw new Error("Exact cleanup could not resolve run-tagged Auth users.");
+    }
+    for (const user of data.users) {
+      const metadata = user.user_metadata;
+      if (
+        metadata &&
+        metadata.lifecycle_run_id === runId &&
+        metadata.synthetic === true
+      ) {
+        resolved.push(user.id);
+      }
+    }
+    if (data.users.length < perPage) return resolved;
+  }
+  throw new Error("Exact cleanup exceeded the Auth pagination safety limit.");
+}
+
+async function resolveInterruptedArtifacts(client, manifest) {
+  const resolvedOrderIds = await resolveOrderIdsFromAttempts(client, manifest);
+  let resolved = mergeResolvedOrderIds(manifest, resolvedOrderIds);
+  if (resolved.version !== 2) return resolved;
+
+  const resolvedAuthUserIds = await resolveAuthUserIdsFromRun(
+    client,
+    resolved.runId,
+  );
+  const { data: memberships, error: membershipError } =
+    resolvedAuthUserIds.length > 0
+      ? await client
+          .from("admin_users")
+          .select("user_id")
+          .in("user_id", resolvedAuthUserIds)
+      : { data: [], error: null };
+  if (membershipError || !Array.isArray(memberships)) {
+    throw new Error("Exact cleanup could not resolve run-tagged staff membership.");
+  }
+  resolved = mergeResolvedAuthArtifacts(
+    resolved,
+    resolvedAuthUserIds,
+    memberships.map((row) => row.user_id),
+  );
+
+  const orderIds = resolved.records.orderIds;
+  const rateKeyHex = deriveLifecycleRateKeyHex(
+    resolved.runId,
+    process.env.ORDER_ABUSE_HMAC_VERSION ?? "",
+    process.env.ORDER_ABUSE_HMAC_KEY_V1 ?? "",
+  );
+  const [itemsResult, eventsResult, bucketsResult] = await Promise.all([
+    orderIds.length
+      ? client.from("order_items").select("id").in("order_id", orderIds)
+      : Promise.resolve({ data: [], error: null }),
+    orderIds.length
+      ? client
+          .from("order_status_events")
+          .select("id")
+          .in("order_id", orderIds)
+      : Promise.resolve({ data: [], error: null }),
+    client
+      .from("order_rate_buckets")
+      .select("id")
+      .eq("key_hash", `\\x${rateKeyHex}`)
+      .in("purpose", ["create", "status", "recovery"]),
+  ]);
+  if (itemsResult.error || eventsResult.error || bucketsResult.error) {
+    throw new Error("Interrupted lifecycle artifacts could not be resolved exactly.");
+  }
+  return {
+    ...resolved,
+    records: {
+      ...resolved.records,
+      orderItemIds: [
+        ...new Set([
+          ...resolved.records.orderItemIds,
+          ...(itemsResult.data ?? []).map((row) => row.id),
+        ]),
+      ],
+      orderStatusEventIds: [
+        ...new Set([
+          ...resolved.records.orderStatusEventIds,
+          ...(eventsResult.data ?? []).map((row) => row.id),
+        ]),
+      ],
+      rateBucketIds: [
+        ...new Set([
+          ...resolved.records.rateBucketIds,
+          ...(bucketsResult.data ?? []).map((row) => row.id),
+        ]),
+      ],
     },
   };
 }
@@ -285,10 +482,12 @@ async function cleanupAndVerifyLifecycleOrders(client, step) {
       "cleanup_lifecycle_test_order_v1",
       { p_order_id: orderId }
     );
-    if (error || data !== orderId) {
+    if (error || (data !== orderId && data !== null)) {
       throw new Error("Exact lifecycle order cleanup failed.");
     }
-    deletedRows.push({ [step.idColumn]: data });
+    if (data !== null) {
+      deletedRows.push({ [step.idColumn]: data });
+    }
   }
 
   const { data: remaining, error: verifyError } = await client
@@ -346,7 +545,7 @@ async function loadManifest(runId) {
   return validateCleanupManifest(parsed, runId);
 }
 
-async function executeCleanup(manifest, plan, cascadeVerificationPlan) {
+async function executeCleanup(manifest) {
   const supabaseUrl =
     process.env.PLAYWRIGHT_NON_PRODUCTION_SUPABASE_URL ??
     process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -371,6 +570,10 @@ async function executeCleanup(manifest, plan, cascadeVerificationPlan) {
   });
   assertCleanupTargetMatch(manifest, target);
 
+  const resolvedManifest = await resolveInterruptedArtifacts(client, manifest);
+  const plan = buildDeletionPlan(resolvedManifest);
+  const cascadeVerificationPlan = buildCascadeVerificationPlan(resolvedManifest);
+
   for (const step of plan) {
     if (step.table === "orders") {
       await cleanupAndVerifyLifecycleOrders(client, step);
@@ -381,7 +584,7 @@ async function executeCleanup(manifest, plan, cascadeVerificationPlan) {
   for (const step of cascadeVerificationPlan) {
     await verifyExactIdsAbsent(client, step);
   }
-  await deleteAndVerifyAuthUsers(client, manifest.records.authUserIds);
+  await deleteAndVerifyAuthUsers(client, resolvedManifest.records.authUserIds);
 }
 
 async function main() {
@@ -414,7 +617,7 @@ async function main() {
     return;
   }
 
-  await executeCleanup(manifest, plan, cascadeVerificationPlan);
+  await executeCleanup(manifest);
   await rm(resolveStaffCredentialsPath(runId), { force: true });
   console.log(
     JSON.stringify({ mode: "executed", runId, exactCleanupVerified: true })

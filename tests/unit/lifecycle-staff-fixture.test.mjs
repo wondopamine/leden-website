@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildPendingStaffCleanupManifest,
   buildStaffCleanupManifest,
   buildSyntheticStaffCredentials,
   parseStaffSetupArgs,
@@ -41,9 +42,27 @@ describe("buildSyntheticStaffCredentials", () => {
 });
 
 describe("buildStaffCleanupManifest", () => {
+  it("journals an empty exact cleanup intent before the first external mutation", () => {
+    expect(buildPendingStaffCleanupManifest(RUN_ID)).toEqual({
+      version: 2,
+      runId: RUN_ID,
+      target: { kind: "local", projectRef: null },
+      records: {
+        staffMembershipUserIds: [],
+        orderItemIds: [],
+        orderStatusEventIds: [],
+        orderIds: [],
+        orderAttemptIds: [],
+        trackingTokenDigests: [],
+        rateBucketIds: [],
+        authUserIds: [],
+      },
+    });
+  });
+
   it("records the exact generated Auth UUID twice for membership-first cleanup", () => {
     expect(buildStaffCleanupManifest(RUN_ID, USER_ID)).toEqual({
-      version: 1,
+      version: 2,
       runId: RUN_ID,
       target: { kind: "local", projectRef: null },
       records: {
@@ -51,6 +70,8 @@ describe("buildStaffCleanupManifest", () => {
         orderItemIds: [],
         orderStatusEventIds: [],
         orderIds: [],
+        orderAttemptIds: [],
+        trackingTokenDigests: [],
         rateBucketIds: [],
         authUserIds: [USER_ID],
       },

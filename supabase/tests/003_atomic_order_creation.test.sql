@@ -188,13 +188,13 @@ create temporary table original_cafe_runtime as
 select hours, pickup_lead_time from public.cafe_info;
 update public.cafe_info
 set hours = '[
-  {"day":"Monday","open":"00:00","close":"23:59","closed":false},
-  {"day":"Tuesday","open":"00:00","close":"23:59","closed":false},
-  {"day":"Wednesday","open":"00:00","close":"23:59","closed":false},
-  {"day":"Thursday","open":"00:00","close":"23:59","closed":false},
-  {"day":"Friday","open":"00:00","close":"23:59","closed":false},
-  {"day":"Saturday","open":"00:00","close":"23:59","closed":false},
-  {"day":"Sunday","open":"00:00","close":"23:59","closed":false}
+  {"day":"Monday","open":"00:00","close":"24:00","closed":false},
+  {"day":"Tuesday","open":"00:00","close":"24:00","closed":false},
+  {"day":"Wednesday","open":"00:00","close":"24:00","closed":false},
+  {"day":"Thursday","open":"00:00","close":"24:00","closed":false},
+  {"day":"Friday","open":"00:00","close":"24:00","closed":false},
+  {"day":"Saturday","open":"00:00","close":"24:00","closed":false},
+  {"day":"Sunday","open":"00:00","close":"24:00","closed":false}
 ]'::jsonb,
 pickup_lead_time = 0;
 set local role service_role;

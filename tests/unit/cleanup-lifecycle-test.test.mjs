@@ -5,6 +5,8 @@ import {
   assertExactDeletionResult,
   buildCascadeVerificationPlan,
   buildDeletionPlan,
+  mergeResolvedAuthArtifacts,
+  mergeResolvedOrderIds,
   parseCleanupArgs,
   resolveCleanupManifestPath,
   resolveStaffCredentialsPath,
@@ -15,7 +17,7 @@ const RUN_ID = "20260824T120000Z-8d71d2cb";
 
 function manifest(overrides = {}) {
   return {
-    version: 1,
+    version: 2,
     runId: RUN_ID,
     target: { kind: "local", projectRef: null },
     records: {
@@ -23,6 +25,8 @@ function manifest(overrides = {}) {
       orderItemIds: ["d4000000-0000-4000-8000-000000000001"],
       orderStatusEventIds: ["d4000000-0000-4000-8000-000000000002"],
       orderIds: ["d5000000-0000-4000-8000-000000000001"],
+      orderAttemptIds: ["d7000000-0000-4000-8000-000000000001"],
+      trackingTokenDigests: ["a".repeat(64)],
       rateBucketIds: ["d4000000-0000-4000-8000-000000000003"],
       authUserIds: [],
     },
@@ -70,6 +74,8 @@ describe("validateCleanupManifest", () => {
       records: {
         staffMembershipUserIds: [],
         orderStatusEventIds: [],
+        orderAttemptIds: [],
+        trackingTokenDigests: [],
         rateBucketIds: [],
         ...legacyManifest.records,
         authUserIds: [],
@@ -78,13 +84,14 @@ describe("validateCleanupManifest", () => {
   });
 
   it.each([
-    ["wrong version", { version: 2 }],
+    ["wrong version", { version: 3 }],
     ["wrong run", { runId: "20260824T120001Z-aaaaaaaa" }],
     ["production target", { target: { kind: "production", projectRef: null } }],
-    ["unknown record collection", { records: { staffMembershipUserIds: [], orderItemIds: [], orderStatusEventIds: [], orderIds: [], rateBucketIds: [], authUserIds: [], customerIds: ["d4000000-0000-4000-8000-000000000001"] } }],
-    ["wildcard ID", { records: { staffMembershipUserIds: [], orderItemIds: ["*"], orderStatusEventIds: [], orderIds: [], rateBucketIds: [], authUserIds: [] } }],
-    ["duplicate ID", { records: { staffMembershipUserIds: [], orderItemIds: [], orderStatusEventIds: [], orderIds: ["d5000000-0000-4000-8000-000000000001", "d5000000-0000-4000-8000-000000000001"], rateBucketIds: [], authUserIds: [] } }],
-    ["mismatched staff fixture IDs", { records: { staffMembershipUserIds: ["d5000000-0000-4000-8000-000000000001"], orderItemIds: [], orderStatusEventIds: [], orderIds: [], rateBucketIds: [], authUserIds: [] } }],
+    ["unknown record collection", { records: { staffMembershipUserIds: [], orderItemIds: [], orderStatusEventIds: [], orderIds: [], orderAttemptIds: [], rateBucketIds: [], authUserIds: [], customerIds: ["d4000000-0000-4000-8000-000000000001"] } }],
+    ["wildcard ID", { records: { staffMembershipUserIds: [], orderItemIds: ["*"], orderStatusEventIds: [], orderIds: [], orderAttemptIds: [], rateBucketIds: [], authUserIds: [] } }],
+    ["duplicate ID", { records: { staffMembershipUserIds: [], orderItemIds: [], orderStatusEventIds: [], orderIds: ["d5000000-0000-4000-8000-000000000001", "d5000000-0000-4000-8000-000000000001"], orderAttemptIds: [], rateBucketIds: [], authUserIds: [] } }],
+    ["invalid tracking digest", { records: { staffMembershipUserIds: [], orderItemIds: [], orderStatusEventIds: [], orderIds: [], orderAttemptIds: [], trackingTokenDigests: ["not-a-digest"], rateBucketIds: [], authUserIds: [] } }],
+    ["staff fixture absent from auth cleanup", { records: { staffMembershipUserIds: ["d5000000-0000-4000-8000-000000000001"], orderItemIds: [], orderStatusEventIds: [], orderIds: [], orderAttemptIds: [], rateBucketIds: [], authUserIds: [] } }],
   ])("rejects %s", (_name, override) => {
     expect(() => validateCleanupManifest(manifest(override), RUN_ID)).toThrow();
   });
@@ -127,6 +134,7 @@ describe("buildDeletionPlan", () => {
         orderItemIds: [],
         orderStatusEventIds: [],
         orderIds: [],
+        orderAttemptIds: [],
         rateBucketIds: [],
         authUserIds: [],
       },
@@ -141,6 +149,7 @@ describe("buildDeletionPlan", () => {
         staffMembershipUserIds: [userId],
         orderItemIds: [],
         orderIds: [],
+        orderAttemptIds: [],
         authUserIds: [userId],
       },
     });
@@ -150,6 +159,53 @@ describe("buildDeletionPlan", () => {
     ).toEqual([
       { table: "admin_users", idColumn: "user_id", ids: [userId] },
     ]);
+  });
+
+  it("permits an exact unlisted Auth fixture without inventing staff membership", () => {
+    const userId = "d6000000-0000-4000-8000-000000000002";
+    const unlistedManifest = manifest({
+      records: {
+        staffMembershipUserIds: [],
+        orderItemIds: [],
+        orderStatusEventIds: [],
+        orderIds: [],
+        orderAttemptIds: [],
+        rateBucketIds: [],
+        authUserIds: [userId],
+      },
+    });
+    expect(validateCleanupManifest(unlistedManifest, RUN_ID)).toEqual(
+      {
+        ...unlistedManifest,
+        records: {
+          ...unlistedManifest.records,
+          trackingTokenDigests: [],
+        },
+      },
+    );
+  });
+
+  it("merges orders resolved from pre-recorded attempts for interrupted cleanup", () => {
+    const resolvedId = "d5000000-0000-4000-8000-000000000002";
+    expect(
+      mergeResolvedOrderIds(validateCleanupManifest(manifest(), RUN_ID), [
+        resolvedId,
+      ]).records.orderIds,
+    ).toEqual([
+      "d5000000-0000-4000-8000-000000000001",
+      resolvedId,
+    ]);
+  });
+
+  it("merges an exact run-tagged unlisted Auth fixture after interruption", () => {
+    const userId = "d6000000-0000-4000-8000-000000000002";
+    const resolved = mergeResolvedAuthArtifacts(
+      validateCleanupManifest(manifest(), RUN_ID),
+      [userId],
+      [],
+    );
+    expect(resolved.records.authUserIds).toContain(userId);
+    expect(resolved.records.staffMembershipUserIds).not.toContain(userId);
   });
 });
 

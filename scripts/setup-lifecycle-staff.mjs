@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { randomBytes } from "node:crypto";
-import { access, mkdir, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -62,7 +62,7 @@ export function buildSyntheticStaffCredentials(runId, password) {
 
 export function buildStaffCleanupManifest(runId, userId) {
   return {
-    version: 1,
+    version: 2,
     runId,
     target: { kind: "local", projectRef: null },
     records: {
@@ -70,10 +70,42 @@ export function buildStaffCleanupManifest(runId, userId) {
       orderItemIds: [],
       orderStatusEventIds: [],
       orderIds: [],
+      orderAttemptIds: [],
+      trackingTokenDigests: [],
       rateBucketIds: [],
       authUserIds: [userId],
     },
   };
+}
+
+export function buildPendingStaffCleanupManifest(runId) {
+  if (!isValidLifecycleRunId(runId)) {
+    throw new Error("Staff fixture run ID has an invalid shape.");
+  }
+  return {
+    version: 2,
+    runId,
+    target: { kind: "local", projectRef: null },
+    records: {
+      staffMembershipUserIds: [],
+      orderItemIds: [],
+      orderStatusEventIds: [],
+      orderIds: [],
+      orderAttemptIds: [],
+      trackingTokenDigests: [],
+      rateBucketIds: [],
+      authUserIds: [],
+    },
+  };
+}
+
+async function replaceJsonFile(path, value) {
+  const temporary = `${path}.${process.pid}.${randomBytes(6).toString("hex")}.tmp`;
+  await writeFile(temporary, `${JSON.stringify(value, null, 2)}\n`, {
+    flag: "wx",
+    mode: 0o600,
+  });
+  await rename(temporary, path);
 }
 
 async function verifyLocalTarget(runId, client, supabaseUrl) {
@@ -129,9 +161,13 @@ async function executeStaffSetup(runId) {
   }
 
   let userId;
-  let manifestWritten = false;
   let credentialsWritten = false;
   try {
+    await writeFile(
+      manifestPath,
+      `${JSON.stringify(buildPendingStaffCleanupManifest(runId), null, 2)}\n`,
+      { flag: "wx", mode: 0o600 },
+    );
     const { data, error: createError } = await client.auth.admin.createUser({
       email: credentials.email,
       password: credentials.password,
@@ -142,6 +178,16 @@ async function executeStaffSetup(runId) {
       throw new Error("Synthetic Auth user could not be created.");
     }
     userId = data.user.id;
+    if (
+      process.env.PLAYWRIGHT_LIFECYCLE_SETUP_FAULT ===
+        "after-auth-ambiguous" &&
+      process.env.PLAYWRIGHT_REAL_LIFECYCLE === "1" &&
+      process.env.PLAYWRIGHT_LIFECYCLE_CLEAN_RESET === "1" &&
+      process.env.LIFECYCLE_MUTATION_TARGET === "local"
+    ) {
+      userId = undefined;
+      throw new Error("Synthetic ambiguous Auth-create response fault.");
+    }
 
     const { error: membershipError } = await client
       .from("admin_users")
@@ -149,13 +195,19 @@ async function executeStaffSetup(runId) {
     if (membershipError) {
       throw new Error("Synthetic staff membership could not be created.");
     }
+    if (
+      process.env.PLAYWRIGHT_LIFECYCLE_SETUP_FAULT ===
+        "after-membership-abrupt" &&
+      process.env.PLAYWRIGHT_REAL_LIFECYCLE === "1" &&
+      process.env.PLAYWRIGHT_LIFECYCLE_CLEAN_RESET === "1" &&
+      process.env.LIFECYCLE_MUTATION_TARGET === "local"
+    ) {
+      process.kill(process.pid, "SIGKILL");
+      await new Promise(() => undefined);
+    }
 
     const manifest = buildStaffCleanupManifest(runId, userId);
-    await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, {
-      flag: "wx",
-      mode: 0o600,
-    });
-    manifestWritten = true;
+    await replaceJsonFile(manifestPath, manifest);
     await writeFile(
       credentialsPath,
       `${JSON.stringify(
@@ -170,9 +222,6 @@ async function executeStaffSetup(runId) {
     if (userId) {
       await client.from("admin_users").delete().eq("user_id", userId);
       await client.auth.admin.deleteUser(userId);
-    }
-    if (manifestWritten) {
-      await rm(manifestPath, { force: true });
     }
     if (credentialsWritten) {
       await rm(credentialsPath, { force: true });

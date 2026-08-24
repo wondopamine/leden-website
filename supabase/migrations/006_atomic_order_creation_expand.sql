@@ -92,7 +92,7 @@ as $$
             'Friday', 'Saturday', 'Sunday'
           )
           and (entry.value ->> 'open') ~ '^(?:[01][0-9]|2[0-3]):[0-5][0-9]$'
-          and (entry.value ->> 'close') ~ '^(?:[01][0-9]|2[0-3]):[0-5][0-9]$'
+          and (entry.value ->> 'close') ~ '^(?:(?:[01][0-9]|2[0-3]):[0-5][0-9]|24:00)$'
           and pg_catalog.jsonb_typeof(entry.value -> 'closed') = 'boolean'
           and (
             (entry.value ->> 'closed')::boolean
@@ -345,6 +345,7 @@ declare
   today_hours jsonb;
   open_at time;
   close_at time;
+  closes_at_end_of_day boolean;
 begin
   perform private.lock_cafe_configuration_v1();
   select count(*) into config_count from public.cafe_info;
@@ -373,9 +374,15 @@ begin
     raise exception using errcode = 'P0001', message = 'OLH_CAFE_CLOSED';
   end if;
   open_at := (today_hours ->> 'open')::time;
-  close_at := (today_hours ->> 'close')::time;
+  closes_at_end_of_day := today_hours ->> 'close' = '24:00';
+  close_at := case
+    when closes_at_end_of_day then null
+    else (today_hours ->> 'close')::time
+  end;
 
-  if local_clock::time < open_at or local_clock::time >= close_at then
+  if local_clock::time < open_at
+    or (not closes_at_end_of_day and local_clock::time >= close_at)
+  then
     raise exception using errcode = 'P0001', message = 'OLH_CAFE_CLOSED';
   end if;
 
@@ -405,7 +412,7 @@ begin
 
   if promised_local::date <> local_clock::date
     or promised_local::time < open_at
-    or promised_local::time >= close_at
+    or (not closes_at_end_of_day and promised_local::time >= close_at)
   then
     raise exception using errcode = 'P0001', message = 'OLH_PICKUP_INVALID';
   end if;
