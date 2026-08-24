@@ -1,0 +1,73 @@
+{
+  "reviewer": "data-migrations",
+  "findings": [
+    {
+      "title": "Hosted migrations leave ordering configuration unusable",
+      "severity": "P1",
+      "file": "supabase/migrations/006_atomic_order_creation_expand.sql",
+      "line": 361,
+      "why_it_matters": "A hosted target produced by applying migrations 001-007 cannot accept a v1 order after staff resumes ordering: the canonical existing café row has max_advance_order_days = 3, while the new pickup resolver rejects every value other than 0. The local seed rewrites this to 0 and therefore masks the hosted migration state, and the admin field currently coerces an entered zero back to 3. Backfilling the approved same-day value in the migration path and preserving zero in the settings form makes the hosted canary and eventual cutover usable without an undocumented manual SQL edit.",
+      "autofix_class": "gated_auto",
+      "owner": "review-fixer",
+      "requires_verification": true,
+      "suggested_fix": "Add an explicit reviewed migration/backfill that sets the existing singleton cafe_info.max_advance_order_days to the approved same-day value 0 before v1 ordering can be enabled, change the settings input to distinguish zero from NaN, and test migrations 001-007 without running supabase/seed.sql before the first create.",
+      "confidence": 100,
+      "evidence": [
+        "supabase/migrations/002_seed_data.sql:93-107 creates the canonical pre-expand cafe_info row with max_advance_order_days = 3.",
+        "supabase/migrations/006_atomic_order_creation_expand.sql:360-365 raises OLH_CONFIGURATION_UNAVAILABLE whenever max_advance_order_days is not exactly 0, but the migration does not backfill that existing column.",
+        "supabase/seed.sql:277-280 changes max_advance_order_days to 0 only in the local seed path configured by supabase/config.toml:18-20; the hosted runbook applies committed migrations rather than this seed.",
+        "src/components/admin/settings-form.tsx:299-307 advertises min=0 but uses parseInt(value) || 3, so an operator cannot persist zero through the UI."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "Modifier backfill makes paid add-ons mandatory",
+      "severity": "P1",
+      "file": "supabase/migrations/006_atomic_order_creation_expand.sql",
+      "line": 59,
+      "why_it_matters": "Every existing modifier group is backfilled as required, including the committed Avocado Toast Add-on whose paid choices are explicitly optional. On a hosted migration the local correction seed does not run, so the storefront marks that group required and automatically selects the first paid option, changing the authoritative order total unless an operator discovers and repairs the data manually. An owner-reviewed per-group cardinality backfill prevents the migration from silently changing customer selections and prices.",
+      "autofix_class": "manual",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "suggested_fix": "Do not use one semantic default for all existing groups. Stage nullable/unknown cardinality or an explicit fail-closed marker, apply an owner-reviewed mapping for every real modifier group (including min_selections = 0 for the known Add-on), then add the NOT NULL/default contract and a raw hosted-migration regression test.",
+      "confidence": 100,
+      "evidence": [
+        "supabase/migrations/006_atomic_order_creation_expand.sql:58-65 adds min_selections and max_selections as NOT NULL DEFAULT 1 to every pre-existing modifier.",
+        "supabase/migrations/002_seed_data.sql:86-91 defines the existing Add-on group with paid $2 and $4 choices, while src/lib/sample-data.ts:264-272 explicitly classifies Add-on as minSelections = 0.",
+        "supabase/seed.sql:239-243 explicitly repairs that known Add-on to min_selections = 0 and says production cardinalities remain an owner gate, but this seed is local/non-production setup rather than a hosted migration.",
+        "src/components/menu/menu-content.tsx:236-249 automatically selects the first option whenever minSelections = 1 and includes its price in the unit total; lines 340-345 present the migrated group as required.",
+        "docs/plans/2026-08-24-001-feat-order-lifecycle-hardening-plan.md:360 and 385-386 require owner-decided cardinalities and specifically say current Add-on fixtures must never force a paid selection."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "Legacy menu edits bypass checkout serialization",
+      "severity": "P2",
+      "file": "supabase/migrations/005_order_lifecycle_expand.sql",
+      "line": 192,
+      "why_it_matters": "During an expand deployment, an old application instance can publish a menu-item update, delete its modifier graph, and rebuild groups/options through separate committed requests while the new checkout is running. Checkout locks only the parent menu row, so after the old parent update commits it can observe the transient empty or partially rebuilt child graph and accept a mixture such as a new item price with no newly required modifier. The rollout needs either an atomic compatibility writer or an explicit pause/drain boundary before v1 checkout overlaps legacy graph writes.",
+      "autofix_class": "manual",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "suggested_fix": "Choose a rollout-safe boundary: deploy a legacy-compatible atomic menu-graph adapter before enabling v1 checkout, or pause ordering/menu editing and drain old instances before revoking direct modifier writes. Add a two-connection test that runs the old multi-request menu edit shape against create_order_v1 and proves checkout sees only a coherent old or new graph.",
+      "confidence": 75,
+      "evidence": [
+        "supabase/migrations/005_order_lifecycle_expand.sql:184-197 preserves authenticated direct insert/update/delete grants on menu_items, modifiers, and modifier_options for expand compatibility.",
+        "The base application at 17e7623, src/app/admin/(dashboard)/menu/actions.ts:60-80, commits the menu_items update first, then deletes modifiers and recreates each modifier/options set through separate Supabase requests.",
+        "supabase/migrations/006_atomic_order_creation_expand.sql:314-326 and 674-725 lock only public.menu_items before reading modifiers and modifier_options; legacy child writes do not acquire that parent-row lock after the first request commits.",
+        "scripts/test-order-lifecycle-races.mjs:246-272 proves serialization only for the new save_menu_item_graph_v1 RPC, not for the explicitly preserved legacy multi-request writer.",
+        "docs/plans/2026-08-24-001-feat-order-lifecycle-hardening-plan.md:361-362 and 387-388 require checkout and menu-graph replacement to resolve to coherent old/new states without a half-replaced graph."
+      ],
+      "pre_existing": false
+    }
+  ],
+  "residual_risks": [
+    "Migration 006 creates unique indexes on existing orders and order_items inside the migration transaction rather than concurrently. The single-cafe scope may keep this acceptable, but hosted row counts and observed lock duration remain unknown until the read-only target audit and paused canary window.",
+    "The hosted runbook asks for an allowlisted synthetic staff user before migration 005 creates admin_users. The future hosted adapter must sequence Auth-user creation, migration 005, exact membership insertion, and verification explicitly; otherwise the canary starts with no usable staff identity."
+  ],
+  "testing_gaps": [
+    "All pgTAP lifecycle tests run after the local seed normalizes max_advance_order_days and the known optional Add-on, so there is no migration-only test of the raw hosted state produced by migrations 001-007.",
+    "Concurrency proof covers the new atomic save_menu_item_graph_v1 writer but not the old multi-request menu/modifier action that the expand grants intentionally preserve.",
+    "No hosted rehearsal has measured migration lock duration, verified the post-005 allowlist provisioning sequence, or demonstrated forward recovery after a later expand migration fails."
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "run_id": "20260824-105712-olh",
+  "branch": "codex/harden-order-lifecycle-expand",
+  "head_sha": "9ae9ffcee39cb67865e7c2bb0699ab4a23216ea4",
+  "review_fix_sha": "530fb76",
+  "residual_handoff_sha": "bcba99020c94af62587249ddc7cf6539d3a188f7",
+  "verdict": "Not ready",
+  "completed_at": "2026-08-24T11:45:07Z"
+}

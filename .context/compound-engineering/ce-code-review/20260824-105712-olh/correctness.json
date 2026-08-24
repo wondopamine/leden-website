@@ -1,0 +1,71 @@
+{
+  "reviewer": "correctness",
+  "findings": [
+    {
+      "title": "Ordering pause leaves customer checkout enabled",
+      "severity": "P1",
+      "file": "src/components/order/order-content.tsx",
+      "line": 206,
+      "why_it_matters": "Customers can still enter checkout, complete the challenge, and press Place order while staff have paused online ordering; only the create request then returns a generic service error. The storefront derives `cafeOpen` solely from hours, while the public `CafeInfo` projection omits `ordering_enabled`, so the emergency capacity gate never reaches customer availability as U6 promises. Carrying the authoritative flag through the public café projection and combining it with hours restores the immediate pause behavior.",
+      "autofix_class": "gated_auto",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "suggested_fix": "Add an `orderingEnabled` field to `CafeInfo` and `getCafeInfo()`, derive checkout availability from both hours and that flag, and show a dedicated bilingual paused state before challenge/submission.",
+      "confidence": 100,
+      "evidence": [
+        "src/components/order/order-content.tsx:206-208 computes cafeOpen only from getOpenStatus(cafeInfo.hours), and lines 864-869 use only that value to gate submission.",
+        "src/lib/supabase/queries.ts:114-134 selects the cafe_info row but returns hours/contact/lead-time fields without data.ordering_enabled; src/lib/types.ts:96-108 has no field for the gate.",
+        "src/lib/orders/admin.server.ts:538-557 updates cafe_info.ordering_enabled, proving the staff control writes an authoritative value that the storefront projection drops.",
+        "docs/plans/2026-08-24-001-feat-order-lifecycle-hardening-plan.md:568 explicitly requires pausing to propagate immediately to storefront availability."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "Closing-time checkout offers impossible ASAP promise",
+      "severity": "P2",
+      "file": "src/components/order/order-content.tsx",
+      "line": 206,
+      "why_it_matters": "During the final lead-time interval before closing, the page remains orderable and keeps ASAP available even though the authoritative RPC cannot promise pickup before close. For example, at 14:50 with a 15:00 close and 15-minute lead time, the customer completes checkout and verification only to receive `PICKUP_INVALID`. A checkout-specific availability calculation that includes lead time prevents advertising an option the server must reject.",
+      "autofix_class": "safe_auto",
+      "owner": "review-fixer",
+      "requires_verification": true,
+      "suggested_fix": "Compute whether an ASAP promise fits before today's close using Montréal-local time and pickupLeadTime, disable ASAP/submission when it does not, and add a boundary test for the final lead-time interval.",
+      "confidence": 100,
+      "evidence": [
+        "src/components/order/order-content.tsx:95-119 applies pickupLeadTime only while building scheduled slots, while lines 206-208 treat every hours-open instant as checkout-open.",
+        "supabase/migrations/006_atomic_order_creation_expand.sql:389-417 adds pickup_lead_time to ASAP and mechanically rejects a promised time at or after close.",
+        "The base route only checked the current clock against hours for ASAP, so the new authoritative promise constraint makes this previously accepted UI path newly fail at the server boundary."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "Sample fixtures remain live ordering fallback",
+      "severity": "P1",
+      "file": "src/lib/sample-data.ts",
+      "line": 267,
+      "why_it_matters": "When an authoritative menu read fails, customers are shown fabricated products and prices that can now be added to the hardened cart, rather than an honest unavailable state. `fetchMenuItems()` still swallows configured Supabase failures and returns samples, while this diff changes sample item, modifier, and option identifiers into UUID-shaped values accepted by the client identity contract; a later create can only reject them as changed or unknown menu data. Restricting fixtures to explicit preview/development mode prevents a dependency failure from masquerading as a live café menu.",
+      "autofix_class": "gated_auto",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "suggested_fix": "Permit sample fallbacks only behind an explicit preview/development marker; in configured environments propagate authoritative read failures to localized unavailable UI and disable ordering.",
+      "confidence": 100,
+      "evidence": [
+        "src/lib/data.ts:27-35 catches every configured Supabase menu error and returns sampleMenuItems; lines 38-46 similarly substitute sample hours/address/phone.",
+        "src/lib/sample-data.ts:257-283 newly assigns UUID-shaped item, modifier, and option identifiers, making fixture products satisfy the hardened client identity shape.",
+        "src/app/[locale]/menu/page.tsx:38-44 renders fetchMenuItems() directly into the live MenuContent, whose items are addable to the cart.",
+        "docs/plans/2026-08-24-001-feat-order-lifecycle-hardening-plan.md:65 forbids silently promoting sample menu, hours, price, address, or phone data to production authority and requires live ordering to fail honestly."
+      ],
+      "pre_existing": false
+    }
+  ],
+  "residual_risks": [
+    "Hosted Supabase Auth/RLS/RPC/Realtime behavior, the real staging hostname and Turnstile edge, backup/key ownership, and U8 contract revocations remain intentionally unverified and owner-gated; the local proof must not be treated as launch authorization.",
+    "The local Turnstile proof uses the documented deterministic test credential plus a local Siteverify preload, so it cannot establish actual Cloudflare network, hostname, or widget behavior until the separately approved hosted canary."
+  ],
+  "testing_gaps": [
+    "The real lifecycle Playwright tests sign staff into a second page in the same BrowserContext as the customer page, so the customer path inherits staff authentication; use isolated contexts to prove true guest checkout and tracking behavior.",
+    "No end-to-end test pauses ordering through the staff control, reloads the storefront, and asserts that challenge/submission are unavailable with bilingual pause recovery.",
+    "No boundary test covers the last pickupLeadTime minutes before closing, when the café is hours-open but no valid ASAP promise remains.",
+    "No configured-backend failure test proves that menu/content query errors render an unavailable state without sample products, prices, address, or phone."
+  ]
+}

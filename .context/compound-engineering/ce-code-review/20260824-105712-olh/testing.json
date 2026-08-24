@@ -1,0 +1,70 @@
+{
+  "reviewer": "testing",
+  "findings": [
+    {
+      "title": "Pause and resume lack real lifecycle proof",
+      "severity": "P1",
+      "file": "tests/e2e/order-lifecycle.spec.ts",
+      "line": 259,
+      "why_it_matters": "Staff can run the local U7 proof without ever proving that the operational pause reaches the customer surface, preserves an already accepted order, or that resume restores acceptance. The current real lifecycle suite only submits while ordering is enabled, while the admin preview mutates an in-memory stub; this leaves the explicit U6 capacity-control contract unprotected and would allow a storefront that still appears open while Postgres rejects checkout to pass the gate.",
+      "autofix_class": "safe_auto",
+      "owner": "review-fixer",
+      "requires_verification": true,
+      "suggested_fix": "Extend the real serial lifecycle with an allowlisted admin pause/resume scenario: keep one accepted order operable, assert new EN and FR checkout receive the localized paused recovery with no persisted order, then resume and prove a fresh order is accepted. Assert the customer page itself reflects the authoritative gate, not only the API rejection.",
+      "confidence": 75,
+      "evidence": [
+        "docs/plans/2026-08-24-001-feat-order-lifecycle-hardening-plan.md:592 explicitly requires pause rejection with bilingual recovery, preservation of accepted orders, and resume without a deploy.",
+        "tests/e2e/order-lifecycle.spec.ts:259-539 contains only enabled-order EN/FR terminal flows and never changes or asserts ordering_enabled.",
+        "tests/e2e/admin-design.spec.ts:471-495 covers pause only in the intercepted dev preview by changing a local orderingEnabled stub; it never visits the customer surface or verifies a real database mutation.",
+        "src/lib/supabase/queries.ts:124-134 and src/lib/types.ts:100-108 omit ordering_enabled from CafeInfo, demonstrating the missing cross-surface test would exercise a behavior not covered by existing storefront assertions."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "RLS read assertions accept request failures",
+      "severity": "P2",
+      "file": "tests/integration/order-concurrency.test.ts",
+      "line": 152,
+      "why_it_matters": "The real Auth/RLS integration suite can claim that anonymous and unlisted users receive an empty protected table even when either query failed because `null ?? []` satisfies the assertion. A broken client, transport outage, or unexpected permission error would therefore pass these checks without proving the intended successful RLS-filtered response.",
+      "autofix_class": "safe_auto",
+      "owner": "review-fixer",
+      "requires_verification": true,
+      "suggested_fix": "Assert anonymousRead.error and unlistedRead.error are null before asserting their data equals an empty array; keep the separate write/RPC denial assertions for rejected mutations.",
+      "confidence": 75,
+      "evidence": [
+        "tests/integration/order-concurrency.test.ts:151-152 asserts only expect(anonymousRead.data ?? []).toEqual([]) and never inspects anonymousRead.error.",
+        "tests/integration/order-concurrency.test.ts:182-183 repeats the same nullable-data assertion for the signed-in unlisted user without checking unlistedRead.error.",
+        "tests/integration/order-concurrency.test.ts:192-198 shows the same suite already uses the stronger pattern for staff by asserting staffRead.error is null before checking returned data."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "Aggregate failure cleanup is not fault-tested",
+      "severity": "P2",
+      "file": "scripts/verify-order-lifecycle-local.mjs",
+      "line": 500,
+      "why_it_matters": "A failure after staff and order fixtures exist can take the verifier through several cleanup, foreign-control, and café-runtime restoration branches that no test executes. If that orchestration regresses, the aggregate can fail while leaving synthetic Auth users, orders, rate buckets, or modified hours behind even though U7 explicitly promises deterministic cleanup after failure.",
+      "autofix_class": "safe_auto",
+      "owner": "review-fixer",
+      "requires_verification": true,
+      "suggested_fix": "Add a deterministic post-fixture fault stage to the aggregate verifier and an integration test that expects a nonzero result while proving all manifest-recorded orders/items/events/Auth users/rate buckets are absent, the unrelated rate-bucket control survived until its own cleanup, and baseline café runtime was restored.",
+      "confidence": 75,
+      "evidence": [
+        "scripts/verify-order-lifecycle-local.mjs:498-555 contains the aggregate failure, exact cleanup, foreign-control cleanup, and runtime restoration branches.",
+        "scripts/verify-order-lifecycle-local.mjs:418-429 fault-injects only staff setup before the main lifecycle run; there is no injected failure after customer/admin artifacts are created.",
+        "tests/unit/cleanup-lifecycle-test.test.mjs:37-269 tests manifest and deletion-plan helpers but never invokes verify-order-lifecycle-local.mjs or its finally orchestration.",
+        "docs/plans/2026-08-24-001-feat-order-lifecycle-hardening-plan.md:653 requires every synthetic artifact to be removed or reset deterministically even after failure."
+      ],
+      "pre_existing": false
+    }
+  ],
+  "residual_risks": [
+    "The hosted non-production U7 canary, real staging hostname/edge Turnstile proof, and operator rehearsal remain unexecuted by explicit owner gate; local proof cannot substitute for hosted Auth, RLS, Realtime, deployment-window, or attended-board behavior.",
+    "U8 contract migrations and their post-contract denial/lifecycle proof remain correctly blocked until the owner-approved hosted canary passes."
+  ],
+  "testing_gaps": [
+    "No real cross-surface test currently covers the owner-controlled ordering pause and resume contract.",
+    "The aggregate cleanup proof covers successful teardown and staff-setup interruption, but not a failure after lifecycle data and rate buckets exist.",
+    "Hosted canary and U8 contract coverage are intentionally deferred behind owner approval."
+  ]
+}

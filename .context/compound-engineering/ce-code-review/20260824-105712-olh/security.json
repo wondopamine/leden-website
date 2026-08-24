@@ -1,0 +1,52 @@
+{
+  "reviewer": "security",
+  "findings": [
+    {
+      "title": "Expired rate buckets are never deleted",
+      "severity": "P1",
+      "file": "supabase/migrations/006_atomic_order_creation_expand.sql",
+      "line": 969,
+      "why_it_matters": "Every syntactically valid public status or recovery request creates or advances a persistent rate-window row before the tracking credential is looked up. PostgreSQL does not delete rows merely because `expires_at` has passed, and the provided prune RPC has no application caller, scheduler, or operator procedure, so ordinary traffic grows this table forever and distributed probes can accelerate storage exhaustion until the free database or ordering boundary degrades. A reviewed no-cost scheduled prune or bounded opportunistic deletion using the existing expiry index closes the unbounded-growth path.",
+      "autofix_class": "manual",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "suggested_fix": "Choose and implement a no-cost pruning mechanism (for example, a reviewed scheduled invocation of `prune_order_rate_buckets_v1` or bounded opportunistic expiry deletion), document its operational owner, and add a test proving expired rows are removed while active windows remain.",
+      "confidence": 100,
+      "evidence": [
+        "supabase/migrations/006_atomic_order_creation_expand.sql:969-976 inserts or increments one row for every purpose/key/window and only records an expires_at timestamp.",
+        "supabase/migrations/006_atomic_order_creation_expand.sql:1004-1018 defines prune_order_rate_buckets_v1, but repository-wide call-site search finds no invocation outside the migration/tests and no schedule or runbook step.",
+        "src/app/api/order/status/route.ts:27 and src/app/api/order/recover/route.ts:27 consume their public rate buckets before attempting the high-entropy credential lookup, so invalid-but-well-shaped probes still persist windows."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "Recovery receipt exposes an internal UUID",
+      "severity": "P2",
+      "file": "supabase/migrations/006_atomic_order_creation_expand.sql",
+      "line": 455,
+      "why_it_matters": "Every create and token-recovery response includes the database-generated `receipt_id` UUID even though the customer UI never uses it and the reviewed lifecycle contract says recovery responses contain no internal UUID. The value is also accepted into the public receipt type and persisted with the status session, widening identifier exposure without enabling any customer behavior. Removing it from the public receipt projection, validators, and fixtures restores the promised data-minimization boundary while leaving the database column available for internal idempotency evidence.",
+      "autofix_class": "gated_auto",
+      "owner": "review-fixer",
+      "requires_verification": true,
+      "suggested_fix": "Remove `receipt_id` from private.order_receipt_v1's JSON projection and from PublicOrderReceipt/repository/client validators and fixtures; add a public-DTO regression assertion that rejects receipt_id and other *_id fields not explicitly allowed.",
+      "confidence": 100,
+      "evidence": [
+        "docs/order-lifecycle-contract.md:38 states that customer status/recovery responses contain no internal UUID.",
+        "supabase/migrations/006_atomic_order_creation_expand.sql:454-491 emits receipt_id from the internal orders row in the shared receipt JSON returned by create and recovery.",
+        "src/lib/types.ts:47-60 and src/lib/orders/repository.server.ts:152-168 make receipt_id part of the public contract, while repository-wide usage shows no customer behavior consumes it.",
+        "tests/e2e/helpers/order-fixtures.ts:24-34 treats id/order_id as prohibited public DTO keys but omits receipt_id, so the current privacy assertion accepts this disclosure."
+      ],
+      "pre_existing": false
+    }
+  ],
+  "residual_risks": [
+    "Hosted edge proof remains owner-gated. Until the deployment prevents direct-origin bypass, enabling ORDER_TRUST_CLOUDFLARE_IDENTITY would make spoofed cf-connecting-ip values capable of weakening the intended per-client throttle.",
+    "The server DAL still accepts the legacy full service-role credential. Target-specific key ownership, rotation, old-key revocation, and removal of the legacy fallback remain explicit launch gates because compromise of that credential has a broad database/Auth blast radius.",
+    "Tracking expiry makes the bearer unavailable but does not purge order PII; the production retention and deletion policy remains owner-gated."
+  ],
+  "testing_gaps": [
+    "No local or operational test proves expired production rate windows are actually pruned; current tests prove only that the dormant prune function can delete them.",
+    "The captured lifecycle-output scan checks order attempts, tracking material, and customer PII but does not compare output against the synthetic staff email/password or the local privileged key.",
+    "The real staging hostname, Turnstile action/hostname pair, and non-spoofable client-identity path have not been exercised; this is correctly documented as an owner-gated hosted canary rather than local proof."
+  ]
+}

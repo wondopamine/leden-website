@@ -1,0 +1,71 @@
+{
+  "reviewer": "performance",
+  "findings": [
+    {
+      "title": "Expired rate buckets are never pruned",
+      "severity": "P1",
+      "file": "supabase/migrations/006_atomic_order_creation_expand.sql",
+      "line": 969,
+      "why_it_matters": "Every new client/purpose/window inserts another durable rate-bucket row, and expiry only records a timestamp; it does not remove the row. Customer status pages poll every 15 seconds, so normal traffic continuously adds minute-window rows while the table and its unique/expiry indexes grow without bound, eventually consuming free-tier storage and slowing the hot upsert path.",
+      "autofix_class": "gated_auto",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "suggested_fix": "Wire prune_order_rate_buckets_v1() to an explicit bounded maintenance mechanism for local and hosted environments (for example a reviewed scheduled database job), document its cadence, and verify expired rows are removed while live windows remain intact. Do not rely on expires_at as automatic TTL.",
+      "confidence": 100,
+      "evidence": [
+        "supabase/migrations/006_atomic_order_creation_expand.sql:969-976 inserts or updates one row keyed by purpose, client hash, window start, and window seconds for every active window.",
+        "supabase/migrations/006_atomic_order_creation_expand.sql:1004-1018 defines prune_order_rate_buckets_v1(), but repository-wide references are limited to its definition, grants, generated types, and pgTAP; no runtime or scheduled caller invokes it.",
+        "src/components/order/order-status.tsx:233-238 polls every 15 seconds while a nonterminal status page is visible, and src/app/api/order/status/route.ts:27 consumes the durable status bucket on every poll.",
+        "supabase/migrations/006_atomic_order_creation_expand.sql:255-266 creates both the unique bucket constraint and expiry index, so retained expired rows also accumulate index entries."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "Admin invalidations launch overlapping full refreshes",
+      "severity": "P2",
+      "file": "src/components/admin/orders-dashboard.tsx",
+      "line": 215,
+      "why_it_matters": "Normal startup and staff transitions can issue multiple concurrent full queue reconciliations even though only the newest response is applied. The sequence guard prevents stale UI state but does not cancel or coalesce the network and database work, so each redundant refresh still executes the complete orders-with-items query plus the café configuration query and amplifies Realtime bursts on every open staff board.",
+      "autofix_class": "gated_auto",
+      "owner": "review-fixer",
+      "requires_verification": true,
+      "suggested_fix": "Make canonical refresh single-flight with a pending-invalidation flag: while one request is active, record that another refresh is required, then run at most one trailing refresh after completion. Preserve the sequence/version checks and add a test proving a burst, including post-mutation plus Realtime, results in one active request and one optional trailing reconciliation without dropping the newest state.",
+      "confidence": 75,
+      "evidence": [
+        "src/components/admin/orders-dashboard.tsx:215-260 starts a new fetch on every refreshOrders call; requestSequenceRef only rejects older responses after their fetch and parsing work completes.",
+        "src/components/admin/orders-dashboard.tsx:304-322 calls refreshOrders both on SUBSCRIBED and immediately after installing the subscription, creating a duplicate startup reconciliation when subscription succeeds normally.",
+        "src/components/admin/orders-dashboard.tsx:297-302 refreshes on every order-table Realtime event, while src/components/admin/order-card.tsx:114-118 independently awaits another board reconciliation after the same staff mutation.",
+        "src/lib/orders/admin.server.ts:311-325 shows each refresh executes both the full canonical orders/items read and a café configuration read."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "Freshness timer re-renders the full board each second",
+      "severity": "P2",
+      "file": "src/components/admin/orders-dashboard.tsx",
+      "line": 169,
+      "why_it_matters": "The always-on staff board updates parent state every second, causing all KDS columns and non-memoized order cards—including item, modifier, menu, and dialog trees—to render continuously even when no order or connection state changed. Order age only changes once per minute and freshness needs one transition at the 45-second deadline, so the current timer spends CPU on roughly 86,400 full-tree renders per day per open board and can make the intended always-on tablet unnecessarily hot or sluggish.",
+      "autofix_class": "gated_auto",
+      "owner": "review-fixer",
+      "requires_verification": true,
+      "suggested_fix": "Replace the one-second parent-state interval with a timeout scheduled for the exact stale deadline and update minute-granularity order-age text separately at a minute cadence or in an isolated memoized child. Re-run the stale lockout and board interaction tests to preserve the 45-second safety contract.",
+      "confidence": 75,
+      "evidence": [
+        "src/components/admin/orders-dashboard.tsx:147 and 169-178 store now in the dashboard and update it every 1,000 ms solely to derive connectionState.",
+        "src/components/admin/orders-dashboard.tsx:363-371 and 482-507 repeatedly filter the order array and rebuild every KDS column and OrderCard subtree on each parent render.",
+        "src/components/admin/order-card.tsx:64-325 is not memoized and renders item/modifier lists plus two dialog trees for every order; its displayed age at lines 328-334 changes only at minute boundaries.",
+        "docs/plans/2026-08-24-001-feat-order-lifecycle-hardening-plan.md:562 requires the stale transition at 45 seconds, not continuous one-second full-board rendering."
+      ],
+      "pre_existing": false
+    }
+  ],
+  "residual_risks": [
+    "The canonical admin snapshot remains intentionally unpaginated because it is bounded to all active plus current-day terminal orders; owner-approved retention and hosted canary measurements should confirm that payload/query time remains acceptable for the single-café volume.",
+    "Hosted Supabase and deployed edge load behavior remains owner-gated, so local code inspection cannot establish actual latency, connection quotas, or free-tier headroom."
+  ],
+  "testing_gaps": [
+    "No soak or maintenance test proves expired durable rate buckets are pruned during sustained status polling.",
+    "No concurrency test counts active canonical refreshes when Realtime, subscribe, focus, polling, and post-mutation invalidations overlap.",
+    "No render-count or profiling assertion protects the always-on board from high-frequency full-tree renders."
+  ]
+}

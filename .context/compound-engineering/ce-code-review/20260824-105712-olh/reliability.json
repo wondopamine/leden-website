@@ -1,0 +1,93 @@
+{
+  "reviewer": "reliability",
+  "findings": [
+    {
+      "title": "Checkout can hang before ambiguity recovery",
+      "severity": "P1",
+      "file": "src/lib/orders/checkout-attempt.ts",
+      "line": 573,
+      "why_it_matters": "A slow connection that never completes can leave a customer on Submitting forever, with the attempt locked and no receipt or manual-recovery state. Because the create fetch never rejects, the catch that starts same-attempt recovery is never reached; the recovery request can independently hang in the same way. Bounding both waits lets a create timeout enter the existing ambiguity-safe recovery path while a recovery timeout resolves to still-uncertain rather than enabling a duplicate submission.",
+      "autofix_class": "gated_auto",
+      "owner": "review-fixer",
+      "requires_verification": true,
+      "suggested_fix": "Add separately bounded, abortable create and recovery requests. Treat create timeout as receipt ambiguity and immediately probe with the same attempt; treat recovery timeout as still-uncertain, preserving the attempt and manual fallback. Add deterministic tests with never-resolving fetches for both stages.",
+      "confidence": 100,
+      "evidence": [
+        "src/lib/orders/checkout-attempt.ts:573-577 awaits the create fetch without a signal or deadline; only rejection reaches the ambiguity recovery branch at lines 593-599.",
+        "src/lib/orders/checkout-attempt.ts:534-538 awaits the recovery fetch without a signal or deadline, so its catch and still-uncertain return cannot run while the promise remains pending.",
+        "src/components/order/order-content.tsx:395-397 locks submission and enters Submitting before awaiting runCheckoutSubmission at lines 438-453; the lock is not released while that promise is pending.",
+        "docs/plans/2026-08-24-001-feat-order-lifecycle-hardening-plan.md:513-519 requires explicit checking-receipt and still-uncertain recovery states after an uncertain response rather than an indefinitely pending create.",
+        "tests/unit/checkout-attempt.test.ts:210-312 covers rejected fetches but contains no never-resolving create or recovery request that proves the state machine has a bounded exit."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "Hung status poll blocks every later refresh",
+      "severity": "P1",
+      "file": "src/components/order/order-status.tsx",
+      "line": 185,
+      "why_it_matters": "A single status request that remains pending permanently disables all later customer polls and continues presenting the cached receipt as Fresh, so a ready, cancelled, or completed order may never reach the customer. The in-flight guard is released only in finally, and each 15-second interval returns early while that flag remains set. A per-poll deadline converts the hang into the component's existing stale state and permits the next visible poll to recover.",
+      "autofix_class": "gated_auto",
+      "owner": "review-fixer",
+      "requires_verification": true,
+      "suggested_fix": "Abort each status request before the 15-second poll interval, route timeout through the existing stale handling, and always release pollingRef. Add a deterministic browser/unit test whose first fetch never resolves and whose later fetch succeeds, asserting Stale appears before polling resumes and the newer version is applied.",
+      "confidence": 100,
+      "evidence": [
+        "src/components/order/order-status.tsx:179-191 sets pollingRef.current before an unbounded fetch and refuses every later poll while that flag is true.",
+        "src/components/order/order-status.tsx:223-230 marks stale and clears the guard only after fetch rejects or completes; a pending promise reaches neither catch nor finally.",
+        "src/components/order/order-status.tsx:233-238 schedules later polls every 15 seconds, but all of them return at line 180 after the first hung request.",
+        "src/components/order/order-status.tsx:161-163 initializes a cached receipt as ready, and lines 404-421 display Fresh until stale is explicitly set, so the pending request is mislabeled rather than visibly degraded.",
+        "docs/plans/2026-08-24-001-feat-order-lifecycle-hardening-plan.md:520 requires visible-only polling that retains last known state during transient failures and labels freshness/staleness."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "Supabase calls have no request deadline",
+      "severity": "P1",
+      "file": "src/lib/orders/repository.server.ts",
+      "line": 216,
+      "why_it_matters": "A slow or partitioned Supabase dependency can occupy every public order handler until the hosting platform kills it, delaying create, recovery, status, and rate-limit responses at once. The advertised 900 ms committed-replay wait is also not a real bound because any individual replay query can remain pending past its deadline. Enforcing abortable request deadlines at the Supabase transport or query boundary makes failure latency predictable while preserving special ambiguity handling for create operations.",
+      "autofix_class": "gated_auto",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "suggested_fix": "Introduce explicit abortable deadlines for privileged and staff Supabase HTTP calls, sized within the route/platform budget. Ensure create timeout maps to RECEIPT_UNCERTAIN and uses a bounded recovery probe, while read/rate/admin calls fail closed with their existing unavailable results. Prove waitForCommittedReplay and representative admin actions return within the chosen deadline against a hanging transport.",
+      "confidence": 100,
+      "evidence": [
+        "src/lib/orders/repository.server.ts:216-221 wraps dependency errors but supplies no deadline or cancellation to the operation.",
+        "src/lib/orders/repository.server.ts:227-356 sends rate-limit, replay, create, status, and recovery Supabase queries through dependencyCall without an abort signal.",
+        "src/lib/orders/repository.server.ts:284-300 computes a 900 ms replay deadline, but line 292 awaits findCommittedReplay without bounding that query, so the loop can exceed its own deadline indefinitely.",
+        "src/lib/supabase/privileged.server.ts:13-19 constructs the privileged Supabase client without a timeout-enforcing custom fetch, while src/lib/supabase/server.ts:7-27 likewise constructs the staff client without one.",
+        "src/lib/orders/abuse.server.ts:83-124 demonstrates that the adjacent external Turnstile call already uses AbortController and a 2-second deadline, but no equivalent exists for the database I/O."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "Hung admin refreshes accumulate without recovery",
+      "severity": "P2",
+      "file": "src/components/admin/orders-dashboard.tsx",
+      "line": 219,
+      "why_it_matters": "When the canonical admin endpoint stops responding, the board keeps launching interval, focus, Realtime, and post-mutation refreshes while the manual Refresh control remains busy. Sequence numbers prevent old responses from regressing UI state, but do not cancel the pending network work or ensure the newest request ever settles, so a dependency incident can accumulate requests and leave the operator without a bounded retry cycle. A single-flight deadline makes the board visibly stale, releases the control, and permits a controlled retry after recovery.",
+      "autofix_class": "gated_auto",
+      "owner": "review-fixer",
+      "requires_verification": true,
+      "suggested_fix": "Combine an abort deadline with single-flight refresh and one pending-invalidation flag. On timeout, clear isRefreshing, retain the last-known queue, surface refresh failure, and allow the next scheduled or manual canonical refresh; test a never-resolving request followed by service recovery.",
+      "confidence": 75,
+      "evidence": [
+        "src/components/admin/orders-dashboard.tsx:215-260 starts an unbounded fetch for every refreshOrders call and clears isRefreshing only after the newest request settles.",
+        "src/components/admin/orders-dashboard.tsx:297-322 can trigger refresh from Realtime events, subscription state, and startup, while lines 332-360 add visibility, focus, online, and interval triggers; there is no in-flight coalescing or cancellation.",
+        "src/components/admin/orders-dashboard.tsx:403-417 disables the operator's manual Refresh control whenever isRefreshing remains true.",
+        "src/components/admin/orders-dashboard.tsx:476-479 correctly locks transitions after freshness expires, but an unbounded request does not itself establish a bounded path back to a usable manual retry."
+      ],
+      "pre_existing": false
+    }
+  ],
+  "residual_risks": [
+    "Hosted Supabase, Auth, Realtime, and platform timeout behavior remains owner-gated under U7, so local inspection cannot establish the production deadline budget or whether hosting terminates stuck requests before application-level cleanup runs.",
+    "U8 deployment and migration windows remain explicitly owner-gated; a request-deadline fix still needs hosted canary proof across mixed-version create, recovery, status, and admin traffic before contract migrations proceed."
+  ],
+  "testing_gaps": [
+    "No production-path test uses a never-resolving browser fetch to prove checkout reaches ambiguity recovery or status polling becomes stale and later recovers within a declared bound.",
+    "No hanging Supabase transport test proves public Route Handlers or staff server actions return within a request deadline and preserve create ambiguity semantics.",
+    "No admin failure test proves a stuck canonical refresh is aborted, controls leave the busy state, and a later successful poll/manual refresh restores the board without accumulated requests."
+  ]
+}
