@@ -95,24 +95,99 @@ on conflict (id) do update set
   status = excluded.status,
   sort_order = excluded.sort_order;
 
+insert into public.menu_items (
+  id,
+  category_id,
+  name_en,
+  name_fr,
+  description_en,
+  description_fr,
+  price,
+  available,
+  status,
+  sort_order
+) values (
+  'd2000000-0000-4000-8000-000000000002',
+  'd1000000-0000-4000-8000-000000000001',
+  'Lifecycle test tea',
+  'Thé de test du cycle',
+  'Synthetic ownership fixture. Never production menu content.',
+  'Donnée synthétique de propriété. Jamais du contenu de production.',
+  0.10,
+  true,
+  'available',
+  2
+)
+on conflict (id) do update set
+  category_id = excluded.category_id,
+  name_en = excluded.name_en,
+  name_fr = excluded.name_fr,
+  description_en = excluded.description_en,
+  description_fr = excluded.description_fr,
+  price = excluded.price,
+  available = excluded.available,
+  status = excluded.status,
+  sort_order = excluded.sort_order;
+
 insert into public.modifiers (
   id,
   menu_item_id,
   name_en,
   name_fr,
-  sort_order
+  sort_order,
+  min_selections,
+  max_selections
 ) values (
   'd3000000-0000-4000-8000-000000000001',
   'd2000000-0000-4000-8000-000000000001',
   'Size',
   'Taille',
+  1,
+  1,
   1
 )
 on conflict (id) do update set
   menu_item_id = excluded.menu_item_id,
   name_en = excluded.name_en,
   name_fr = excluded.name_fr,
-  sort_order = excluded.sort_order;
+  sort_order = excluded.sort_order,
+  min_selections = excluded.min_selections,
+  max_selections = excluded.max_selections;
+
+insert into public.modifiers (
+  id,
+  menu_item_id,
+  name_en,
+  name_fr,
+  sort_order,
+  min_selections,
+  max_selections
+) values
+  (
+    'd3000000-0000-4000-8000-000000000002',
+    'd2000000-0000-4000-8000-000000000001',
+    'Add-on',
+    'Supplément',
+    2,
+    0,
+    1
+  ),
+  (
+    'd3000000-0000-4000-8000-000000000003',
+    'd2000000-0000-4000-8000-000000000002',
+    'Temperature',
+    'Température',
+    1,
+    1,
+    1
+  )
+on conflict (id) do update set
+  menu_item_id = excluded.menu_item_id,
+  name_en = excluded.name_en,
+  name_fr = excluded.name_fr,
+  sort_order = excluded.sort_order,
+  min_selections = excluded.min_selections,
+  max_selections = excluded.max_selections;
 
 insert into public.modifier_options (
   id,
@@ -137,6 +212,22 @@ insert into public.modifier_options (
     'Grand',
     1.25,
     2
+  ),
+  (
+    'd4000000-0000-4000-8000-000000000003',
+    'd3000000-0000-4000-8000-000000000002',
+    'Extra shot',
+    'Dose supplémentaire',
+    0.50,
+    1
+  ),
+  (
+    'd4000000-0000-4000-8000-000000000004',
+    'd3000000-0000-4000-8000-000000000003',
+    'Hot',
+    'Chaud',
+    0.00,
+    1
   )
 on conflict (id) do update set
   modifier_id = excluded.modifier_id,
@@ -144,6 +235,12 @@ on conflict (id) do update set
   name_fr = excluded.name_fr,
   price_adjustment = excluded.price_adjustment,
   sort_order = excluded.sort_order;
+
+-- The committed sample catalog's Size/Milk groups remain required. Its Add-on
+-- group is explicitly optional; production cardinalities remain an owner gate.
+update public.modifiers
+set min_selections = 0, max_selections = 1
+where id = 'c9999999-9999-9999-9999-999999999999';
 
 do $$
 declare
@@ -178,7 +275,11 @@ begin
     announcement_en = 'Synthetic lifecycle environment',
     announcement_fr = 'Environnement synthétique du cycle',
     pickup_lead_time = 15,
-    max_advance_order_days = 0
+    max_advance_order_days = 0,
+    ordering_enabled = true,
+    timezone = 'America/Toronto',
+    gst_rate = 0.05,
+    qst_rate = 0.09975
   where id = 'd5000000-0000-4000-8000-000000000001';
 end;
 $$;

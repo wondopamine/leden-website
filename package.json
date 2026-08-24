@@ -14,6 +14,8 @@
     "supabase:stop": "supabase stop",
     "supabase:reset:local": "supabase db reset --local",
     "supabase:test:db": "supabase test db --local",
+    "test:order-lifecycle:races": "node scripts/test-order-lifecycle-races.mjs",
+    "check:database-types": "node scripts/check-database-types.mjs",
     "setup:lifecycle-staff": "tsx scripts/setup-lifecycle-staff.mjs",
     "cleanup:lifecycle-test": "tsx scripts/cleanup-lifecycle-test.mjs",
     "test:e2e": "playwright test",

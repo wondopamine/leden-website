@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   assertCleanupTargetMatch,
   assertExactDeletionResult,
+  buildCascadeVerificationPlan,
   buildDeletionPlan,
   parseCleanupArgs,
   resolveCleanupManifestPath,
@@ -20,7 +21,9 @@ function manifest(overrides = {}) {
     records: {
       staffMembershipUserIds: [],
       orderItemIds: ["d4000000-0000-4000-8000-000000000001"],
+      orderStatusEventIds: ["d4000000-0000-4000-8000-000000000002"],
       orderIds: ["d5000000-0000-4000-8000-000000000001"],
+      rateBucketIds: ["d4000000-0000-4000-8000-000000000003"],
       authUserIds: [],
     },
     ...overrides,
@@ -66,6 +69,8 @@ describe("validateCleanupManifest", () => {
       ...legacyManifest,
       records: {
         staffMembershipUserIds: [],
+        orderStatusEventIds: [],
+        rateBucketIds: [],
         ...legacyManifest.records,
         authUserIds: [],
       },
@@ -76,27 +81,41 @@ describe("validateCleanupManifest", () => {
     ["wrong version", { version: 2 }],
     ["wrong run", { runId: "20260824T120001Z-aaaaaaaa" }],
     ["production target", { target: { kind: "production", projectRef: null } }],
-    ["unknown record collection", { records: { staffMembershipUserIds: [], orderItemIds: [], orderIds: [], authUserIds: [], customerIds: ["d4000000-0000-4000-8000-000000000001"] } }],
-    ["wildcard ID", { records: { staffMembershipUserIds: [], orderItemIds: ["*"], orderIds: [], authUserIds: [] } }],
-    ["duplicate ID", { records: { staffMembershipUserIds: [], orderItemIds: [], orderIds: ["d5000000-0000-4000-8000-000000000001", "d5000000-0000-4000-8000-000000000001"], authUserIds: [] } }],
-    ["mismatched staff fixture IDs", { records: { staffMembershipUserIds: ["d5000000-0000-4000-8000-000000000001"], orderItemIds: [], orderIds: [], authUserIds: [] } }],
+    ["unknown record collection", { records: { staffMembershipUserIds: [], orderItemIds: [], orderStatusEventIds: [], orderIds: [], rateBucketIds: [], authUserIds: [], customerIds: ["d4000000-0000-4000-8000-000000000001"] } }],
+    ["wildcard ID", { records: { staffMembershipUserIds: [], orderItemIds: ["*"], orderStatusEventIds: [], orderIds: [], rateBucketIds: [], authUserIds: [] } }],
+    ["duplicate ID", { records: { staffMembershipUserIds: [], orderItemIds: [], orderStatusEventIds: [], orderIds: ["d5000000-0000-4000-8000-000000000001", "d5000000-0000-4000-8000-000000000001"], rateBucketIds: [], authUserIds: [] } }],
+    ["mismatched staff fixture IDs", { records: { staffMembershipUserIds: ["d5000000-0000-4000-8000-000000000001"], orderItemIds: [], orderStatusEventIds: [], orderIds: [], rateBucketIds: [], authUserIds: [] } }],
   ])("rejects %s", (_name, override) => {
     expect(() => validateCleanupManifest(manifest(override), RUN_ID)).toThrow();
   });
 });
 
 describe("buildDeletionPlan", () => {
-  it("deletes child rows before parent rows and never broadens IDs", () => {
+  it("deletes independent buckets and exact parents, then relies on immutable cascades", () => {
     expect(buildDeletionPlan(validateCleanupManifest(manifest(), RUN_ID))).toEqual([
+      {
+        table: "order_rate_buckets",
+        idColumn: "id",
+        ids: ["d4000000-0000-4000-8000-000000000003"],
+      },
+      {
+        table: "orders",
+        idColumn: "id",
+        ids: ["d5000000-0000-4000-8000-000000000001"],
+      },
+    ]);
+    expect(
+      buildCascadeVerificationPlan(validateCleanupManifest(manifest(), RUN_ID))
+    ).toEqual([
       {
         table: "order_items",
         idColumn: "id",
         ids: ["d4000000-0000-4000-8000-000000000001"],
       },
       {
-        table: "orders",
+        table: "order_status_events",
         idColumn: "id",
-        ids: ["d5000000-0000-4000-8000-000000000001"],
+        ids: ["d4000000-0000-4000-8000-000000000002"],
       },
     ]);
   });
@@ -106,7 +125,9 @@ describe("buildDeletionPlan", () => {
       records: {
         staffMembershipUserIds: [],
         orderItemIds: [],
+        orderStatusEventIds: [],
         orderIds: [],
+        rateBucketIds: [],
         authUserIds: [],
       },
     });

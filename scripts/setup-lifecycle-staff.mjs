@@ -68,7 +68,9 @@ export function buildStaffCleanupManifest(runId, userId) {
     records: {
       staffMembershipUserIds: [userId],
       orderItemIds: [],
+      orderStatusEventIds: [],
       orderIds: [],
+      rateBucketIds: [],
       authUserIds: [userId],
     },
   };

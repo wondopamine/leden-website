@@ -49,7 +49,9 @@ describe("buildStaffCleanupManifest", () => {
       records: {
         staffMembershipUserIds: [USER_ID],
         orderItemIds: [],
+        orderStatusEventIds: [],
         orderIds: [],
+        rateBucketIds: [],
         authUserIds: [USER_ID],
       },
     });

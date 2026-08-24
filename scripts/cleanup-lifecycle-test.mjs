@@ -22,7 +22,9 @@ const MAX_IDS_PER_COLLECTION = 500;
 const RECORD_KEYS = [
   "staffMembershipUserIds",
   "orderItemIds",
+  "orderStatusEventIds",
   "orderIds",
+  "rateBucketIds",
   "authUserIds",
 ];
 
@@ -139,10 +141,18 @@ export function validateCleanupManifest(value, requestedRunId) {
     "records.staffMembershipUserIds"
   );
   const orderItemIds = validateUuidList(
-    records.orderItemIds,
+    records.orderItemIds ?? [],
     "records.orderItemIds"
   );
-  const orderIds = validateUuidList(records.orderIds, "records.orderIds");
+  const orderStatusEventIds = validateUuidList(
+    records.orderStatusEventIds ?? [],
+    "records.orderStatusEventIds"
+  );
+  const orderIds = validateUuidList(records.orderIds ?? [], "records.orderIds");
+  const rateBucketIds = validateUuidList(
+    records.rateBucketIds ?? [],
+    "records.rateBucketIds"
+  );
   const authUserIds = validateUuidList(
     records.authUserIds ?? [],
     "records.authUserIds"
@@ -166,7 +176,9 @@ export function validateCleanupManifest(value, requestedRunId) {
     records: {
       staffMembershipUserIds,
       orderItemIds,
+      orderStatusEventIds,
       orderIds,
+      rateBucketIds,
       authUserIds,
     },
   };
@@ -181,11 +193,11 @@ export function buildDeletionPlan(manifest) {
       ids: [...manifest.records.staffMembershipUserIds],
     });
   }
-  if (manifest.records.orderItemIds.length > 0) {
+  if (manifest.records.rateBucketIds.length > 0) {
     plan.push({
-      table: "order_items",
+      table: "order_rate_buckets",
       idColumn: "id",
-      ids: [...manifest.records.orderItemIds],
+      ids: [...manifest.records.rateBucketIds],
     });
   }
   if (manifest.records.orderIds.length > 0) {
@@ -193,6 +205,25 @@ export function buildDeletionPlan(manifest) {
       table: "orders",
       idColumn: "id",
       ids: [...manifest.records.orderIds],
+    });
+  }
+  return plan;
+}
+
+export function buildCascadeVerificationPlan(manifest) {
+  const plan = [];
+  if (manifest.records.orderItemIds.length > 0) {
+    plan.push({
+      table: "order_items",
+      idColumn: "id",
+      ids: [...manifest.records.orderItemIds],
+    });
+  }
+  if (manifest.records.orderStatusEventIds.length > 0) {
+    plan.push({
+      table: "order_status_events",
+      idColumn: "id",
+      ids: [...manifest.records.orderStatusEventIds],
     });
   }
   return plan;
@@ -247,6 +278,39 @@ async function deleteAndVerifyExactIds(client, step) {
   assertExactDeletionResult(step, data ?? [], remaining ?? []);
 }
 
+async function cleanupAndVerifyLifecycleOrders(client, step) {
+  const deletedRows = [];
+  for (const orderId of step.ids) {
+    const { data, error } = await client.rpc(
+      "cleanup_lifecycle_test_order_v1",
+      { p_order_id: orderId }
+    );
+    if (error || data !== orderId) {
+      throw new Error("Exact lifecycle order cleanup failed.");
+    }
+    deletedRows.push({ [step.idColumn]: data });
+  }
+
+  const { data: remaining, error: verifyError } = await client
+    .from(step.table)
+    .select(step.idColumn)
+    .in(step.idColumn, step.ids);
+  if (verifyError) {
+    throw new Error("Exact lifecycle order cleanup verification failed.");
+  }
+  assertExactDeletionResult(step, deletedRows, remaining ?? []);
+}
+
+async function verifyExactIdsAbsent(client, step) {
+  const { data: remaining, error } = await client
+    .from(step.table)
+    .select(step.idColumn)
+    .in(step.idColumn, step.ids);
+  if (error || (remaining ?? []).length > 0) {
+    throw new Error(`Cascade cleanup verification failed for ${step.table}.`);
+  }
+}
+
 async function deleteAndVerifyAuthUsers(client, authUserIds) {
   for (const userId of authUserIds) {
     const { error: deleteError } = await client.auth.admin.deleteUser(userId);
@@ -282,7 +346,7 @@ async function loadManifest(runId) {
   return validateCleanupManifest(parsed, runId);
 }
 
-async function executeCleanup(manifest, plan) {
+async function executeCleanup(manifest, plan, cascadeVerificationPlan) {
   const supabaseUrl =
     process.env.PLAYWRIGHT_NON_PRODUCTION_SUPABASE_URL ??
     process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -308,7 +372,14 @@ async function executeCleanup(manifest, plan) {
   assertCleanupTargetMatch(manifest, target);
 
   for (const step of plan) {
-    await deleteAndVerifyExactIds(client, step);
+    if (step.table === "orders") {
+      await cleanupAndVerifyLifecycleOrders(client, step);
+    } else {
+      await deleteAndVerifyExactIds(client, step);
+    }
+  }
+  for (const step of cascadeVerificationPlan) {
+    await verifyExactIdsAbsent(client, step);
   }
   await deleteAndVerifyAuthUsers(client, manifest.records.authUserIds);
 }
@@ -317,6 +388,7 @@ async function main() {
   const { execute, runId } = parseCleanupArgs(process.argv.slice(2));
   const manifest = await loadManifest(runId);
   const plan = buildDeletionPlan(manifest);
+  const cascadeVerificationPlan = buildCascadeVerificationPlan(manifest);
 
   if (!execute) {
     console.log(
@@ -329,6 +401,10 @@ async function main() {
             table: step.table,
             exactIdCount: step.ids.length,
           })),
+          cascadeVerifications: cascadeVerificationPlan.map((step) => ({
+            table: step.table,
+            exactIdCount: step.ids.length,
+          })),
           authUserExactCount: manifest.records.authUserIds.length,
         },
         null,
@@ -338,7 +414,7 @@ async function main() {
     return;
   }
 
-  await executeCleanup(manifest, plan);
+  await executeCleanup(manifest, plan, cascadeVerificationPlan);
   await rm(resolveStaffCredentialsPath(runId), { force: true });
   console.log(
     JSON.stringify({ mode: "executed", runId, exactCleanupVerified: true })
