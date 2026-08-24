@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Order lifecycle hardening active — U1-U3 complete; U4 secure server boundary next
-last_updated: "2026-08-24T13:08:00+08:00"
+status: Order lifecycle hardening active — U1-U4 complete; U5 customer lifecycle UX next
+last_updated: "2026-08-24T14:32:00+08:00"
 progress:
   total_phases: 5
   completed_phases: 1
@@ -23,7 +23,7 @@ progress:
 
 **Milestone:** Comprehensive refactor — same features, rebuilt on a coherent design system + consolidated data layer + major visual lift.
 
-**Current focus:** Order Lifecycle Hardening — U4 secure server boundary after U3 made order creation, pricing, modifiers, pickup promises, tracking, rate buckets, and transitions database-enforced and concurrency-safe.
+**Current focus:** Order Lifecycle Hardening — U5 customer lifecycle UX after U4 replaced the legacy order endpoint with strict server-only create, replay, recovery, tracking, abuse, and Turnstile boundaries.
 
 ## Current Position
 
@@ -136,10 +136,14 @@ Next: Phase 02 — Data Layer Consolidation + Image Pipeline + RLS Hardening
 - U3 keeps legacy null-contract rows compatible during expand, while v1 rows can only be created through the atomic routine. Direct application writes cannot forge totals, items, versions, events, or transitions.
 - U3 cleanup protects the 72-hour receipt/tracking window. Direct deletion of recoverable v1 orders is blocked; exact test cleanup is service-only, sentinel-gated to local/staging, revokes tracking, and deletes through a scoped guard.
 - U3 concurrency proof uses independent PostgreSQL sessions and observed lock waits for identical checkout, price/checkout, modifier-graph/checkout, and advance/cancel races. Generated public database types are now drift-checked.
+- U4 replaces the legacy price-bearing request with a strict IDs-only contract, bounded streamed JSON, canonical PostgreSQL-compatible fingerprints, stable safe error codes, and allowlisted PII-free response DTOs.
+- U4 requires same-origin requests, a trusted deployment identity, versioned HMAC rate keys, independent create/status/recovery buckets, and exact Turnstile action/hostname verification. Committed replay is resolved before a fresh challenge.
+- U4 isolates its non-cookie privileged Supabase client in a server-only module. The three Route Handlers only orchestrate validation, abuse controls, repository calls, and no-store/no-referrer responses; Resend is no longer part of order acceptance.
+- Real local service-role proof now covers create, identical replay, one-order persistence, recovery, and status through the public RPC chain. This exposed and fixed missing invoker read/lock privileges without granting direct café/menu updates.
 
 ### Open Todos
 
-- Execute U4-U8 in dependency order from the reviewed order-lifecycle plan.
+- Execute U5-U8 in dependency order from the reviewed order-lifecycle plan.
 - Resume the legacy Phase 2 roadmap only where it does not conflict with the active lifecycle-hardening units.
 
 ### Blockers
@@ -154,9 +158,9 @@ Next: Phase 02 — Data Layer Consolidation + Image Pipeline + RLS Hardening
 
 ## Session Continuity
 
-**Last session:** U3 completed. Migrations 001-007 reset cleanly; 211 pgTAP assertions, 60 unit tests, four observed-lock concurrency races, generated-type drift, schema lint, ESLint, typecheck, and production build passed. Atomic creation now owns authoritative pricing/modifiers/pickup/tax/idempotency/tracking, and every status change follows the legal graph with one immutable actor event.
+**Last session:** U4 completed. A role-accurate regression fixed the service-role invoker chain; 214 pgTAP assertions, 121 unit tests, the real local create/replay/recovery/status flow, four lock races, typecheck, lint, and the webpack production build passed. The default Turbopack build remains environment-blocked by its internal PostCSS worker port binding, with no code diagnostic.
 
-**Next session entry point:** Execute U4 secure server-only order modules and thin create/status/recovery Route Handlers. Do not touch a hosted target until U7's owner-approved sentinel bootstrap and full target handshake are available.
+**Next session entry point:** Execute U5 customer checkout identity, Turnstile, lost-response recovery, durable receipt, and bilingual tracking flow against the new server boundary. Do not touch a hosted target until U7's owner-approved sentinel bootstrap and full target handshake are available.
 
 **Files of record:**
 

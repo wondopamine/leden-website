@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test:unit": "vitest run tests/unit",
+    "test:order-boundary": "vitest run tests/unit/order-*.test.ts",
     "test:target-safety": "vitest run tests/unit/supabase-target.test.ts",
     "check:lifecycle-prerequisites": "node scripts/check-order-lifecycle-prerequisites.mjs",
     "supabase:start": "supabase start",
