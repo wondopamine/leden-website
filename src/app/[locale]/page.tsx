@@ -1,5 +1,6 @@
 import { Suspense } from "react";
-import { setRequestLocale } from "next-intl/server";
+import type { Metadata } from "next";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import { fetchCafeInfo, fetchMenuItems } from "@/lib/data";
 import { getGooglePlaceData } from "@/lib/google-places";
 import { Hero } from "@/components/home/hero";
@@ -16,6 +17,16 @@ export const dynamic = "force-dynamic";
 
 type Props = { params: Promise<{ locale: string }> };
 
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "metadata.home" });
+
+  return {
+    title: t("title"),
+    description: t("description"),
+  };
+}
+
 export default async function HomePage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
@@ -25,7 +36,7 @@ export default async function HomePage({ params }: Props) {
 
   return (
     <>
-      <Hero locale={locale} hours={info.hours} />
+      <Hero locale={locale} info={info} />
 
       <Suspense fallback={<HomeSkeleton />}>
         <BelowHero locale={locale} info={info} />

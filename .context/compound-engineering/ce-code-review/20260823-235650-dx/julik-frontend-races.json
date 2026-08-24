@@ -1,0 +1,82 @@
+{
+  "reviewer": "julik-frontend-races",
+  "findings": [
+    {
+      "title": "Save completion silently clears newer form edits",
+      "severity": "P1",
+      "file": "src/components/admin/settings-form.tsx",
+      "line": 93,
+      "why_it_matters": "An admin can keep editing Settings or a menu item while its save request is pending, but the request contains only the values captured at submit time. When that older request succeeds, both components unconditionally clear `isDirty`, so the newer visible values are treated as saved and can be lost on the next navigation without a warning. Freeze editable controls for the duration of the save, or compare an edit revision before clearing the dirty state.",
+      "autofix_class": "safe_auto",
+      "owner": "review-fixer",
+      "requires_verification": true,
+      "suggested_fix": "Disable the editable form controls while the save is pending, and only clear isDirty when the completed request still matches the latest edit revision; do not suspend the guard before success for non-redirecting saves.",
+      "confidence": 75,
+      "evidence": [
+        "src/components/admin/settings-form.tsx:79-93 suspends protection and clears isDirty before awaiting updateCafeInfo, then clears isDirty again after the awaited request; the form fields remain enabled while only the submit button is disabled.",
+        "src/components/admin/menu-item-form.tsx:170-179 takes a FormData snapshot, suspends protection, and unconditionally clears isDirty after await action(formData), while the form's inputs and Cancel link remain interactive during isPending."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "Undo can change cart after checkout submission",
+      "severity": "P1",
+      "file": "src/components/order/order-content.tsx",
+      "line": 123,
+      "why_it_matters": "A customer can remove an item, submit the remaining order, and then press Undo while the request is pending; the item reappears even though the already-serialized request does not contain it. The same toast survives the redirect because the Toaster lives in the locale layout, so pressing Undo on confirmation repopulates the newly cleared cart. Dismiss or invalidate removal toasts when checkout begins and prevent their callbacks from applying after the cart generation has been submitted.",
+      "autofix_class": "safe_auto",
+      "owner": "review-fixer",
+      "requires_verification": true,
+      "suggested_fix": "Track the removal toast id and a cart/submission generation; dismiss the toast at submission start and make its action a no-op once that generation has been submitted or the checkout component unmounts.",
+      "confidence": 75,
+      "evidence": [
+        "src/components/order/order-content.tsx:123-137 installs an Undo callback that always calls addItem with the captured item and has no submission or lifecycle guard.",
+        "src/components/order/order-content.tsx:155-181 serializes the current items before awaiting fetch, then clears the whole cart and navigates on success.",
+        "src/app/[locale]/layout.tsx:45-50 keeps the shared Toaster mounted while the child route changes from checkout to confirmation."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "Search transition drops rapid keystrokes",
+      "severity": "P2",
+      "file": "src/components/admin/orders-filter.tsx",
+      "line": 73,
+      "why_it_matters": "Typing the second search character starts a server-backed route transition and immediately disables the search input; any further keystrokes before that navigation settles are ignored. Because the field is also uncontrolled, back/forward changes to `currentSearch` can leave the displayed query out of sync with the results. Keep a local controlled query, debounce URL replacement, and sequence updates from the latest complete filter state instead of disabling the text box.",
+      "autofix_class": "safe_auto",
+      "owner": "review-fixer",
+      "requires_verification": true,
+      "suggested_fix": "Use controlled local search state synchronized from currentSearch, debounce router.replace, leave the input enabled during pending work, and construct each URL from the latest desired date/status/query tuple.",
+      "confidence": 75,
+      "evidence": [
+        "src/components/admin/orders-filter.tsx:67-73 calls updateParams for every value of length two or more and disables the same input for the resulting isPending transition.",
+        "src/components/admin/orders-filter.tsx:29-38 builds each navigation from the last committed useSearchParams snapshot, while line 66 uses defaultValue so later history-driven prop changes do not update the DOM value."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "Sign-out runs before the draft guard",
+      "severity": "P2",
+      "file": "src/components/admin/sidebar.tsx",
+      "line": 49,
+      "why_it_matters": "An admin with an unsaved Settings or menu draft can press Sign out and lose the draft without a usable stay-on-page choice. In browsers with the Navigation API, interception happens only after `auth.signOut()` has already cleared the session; in fallback browsers, the button and programmatic `router.push` are not intercepted at all. The dirty-state decision must happen before the authentication side effect.",
+      "autofix_class": "manual",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "suggested_fix": "Expose the active admin draft blocker to the sidebar (for example through a provider or cancellable custom event) and require it to approve before calling auth.signOut; add coverage with the Navigation API absent as well as present.",
+      "confidence": 75,
+      "evidence": [
+        "src/components/admin/sidebar.tsx:45-57 awaits supabase.auth.signOut before issuing the programmatic router.push.",
+        "src/lib/use-unsaved-changes.ts:99-147 shows the non-Navigation-API fallback only observes anchor clicks and popstate, so the Sign out button's router.push bypasses it.",
+        "src/lib/use-unsaved-changes.ts:74-90 handles Navigation API events at navigation time, which is necessarily after the sidebar has completed signOut."
+      ],
+      "pre_existing": false
+    }
+  ],
+  "residual_risks": [],
+  "testing_gaps": [
+    "No delayed-action test edits Settings or MenuItemForm while a save is pending and verifies that newer edits remain dirty.",
+    "No checkout test invokes the removal Undo action during submission or after the confirmation redirect.",
+    "No orders-filter test types rapidly against a delayed server navigation or exercises back/forward query synchronization.",
+    "No dirty-form test signs out with and without the Navigation API available."
+  ]
+}

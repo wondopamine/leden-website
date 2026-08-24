@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { Badge } from "@/components/ui/badge";
 import { FadeIn } from "@/components/fade-in";
 import { getItemImageUrl } from "@/lib/menu-images";
@@ -24,10 +24,15 @@ export function Featured({ locale, items }: { locale: string; items: MenuItem[] 
             <h2 className="text-h1">{t("title")}</h2>
             <p className="mt-2 text-body text-muted-foreground">{t("subtitle")}</p>
           </div>
-          <Link href="/menu" className="hidden sm:block">
-            <Button variant="ghost" size="default" className="rounded-full">
-              {tc("viewFullMenu")} <span aria-hidden>→</span>
-            </Button>
+          <Link
+            href="/menu"
+            className={buttonVariants({
+              variant: "ghost",
+              size: "default",
+              className: "hidden rounded-full sm:inline-flex",
+            })}
+          >
+            {tc("viewFullMenu")} <span aria-hidden>→</span>
           </Link>
         </div>
       </FadeIn>
@@ -39,7 +44,7 @@ export function Featured({ locale, items }: { locale: string; items: MenuItem[] 
             <FadeIn as="li" key={item._id} delay={Math.min(i, 2) * 90}>
               <Link
                 href="/menu"
-                className="group flex h-full flex-col overflow-hidden rounded-2xl border border-cream-6 bg-card transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className="group flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card transition-[transform,box-shadow] duration-[var(--duration-base)] hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
                 <div className="relative aspect-[4/3] overflow-hidden bg-cream-3">
                   <Image
@@ -47,7 +52,7 @@ export function Featured({ locale, items }: { locale: string; items: MenuItem[] 
                     alt={getLocalizedString(item.name, locale)}
                     fill
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                    className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+                    className="object-cover transition-transform duration-[var(--duration-base)] group-hover:scale-[1.04]"
                   />
                   {soldOut && (
                     <div className="absolute inset-0 flex items-center justify-center bg-cream-1/70">
@@ -58,7 +63,7 @@ export function Featured({ locale, items }: { locale: string; items: MenuItem[] 
                   )}
                 </div>
                 <div className="flex flex-1 flex-col p-5">
-                  <p className="text-label uppercase tracking-wide text-forest-9">
+                  <p className="text-caption font-semibold text-primary">
                     {getLocalizedString(item.category.name, locale)}
                   </p>
                   <h3 className="mt-1.5 font-display text-h3 leading-tight text-forest-12">
@@ -67,7 +72,7 @@ export function Featured({ locale, items }: { locale: string; items: MenuItem[] 
                   <p className="mt-1.5 line-clamp-2 text-caption leading-snug text-muted-foreground">
                     {getLocalizedString(item.description, locale)}
                   </p>
-                  <p className="mt-4 text-body font-semibold tabular-nums text-orange-11">
+                  <p className="mt-4 text-body font-semibold tabular-nums text-accent-text">
                     {formatPrice(item.price)}
                   </p>
                 </div>
@@ -78,10 +83,15 @@ export function Featured({ locale, items }: { locale: string; items: MenuItem[] 
       </ul>
 
       <div className="mt-8 sm:hidden">
-        <Link href="/menu">
-          <Button variant="outline" size="lg" className="h-12 w-full rounded-full">
-            {tc("viewFullMenu")} <span aria-hidden>→</span>
-          </Button>
+        <Link
+          href="/menu"
+          className={buttonVariants({
+            variant: "outline",
+            size: "lg",
+            className: "h-12 w-full rounded-full",
+          })}
+        >
+          {tc("viewFullMenu")} <span aria-hidden>→</span>
         </Link>
       </div>
     </section>

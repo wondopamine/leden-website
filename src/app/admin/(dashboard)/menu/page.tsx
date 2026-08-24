@@ -1,9 +1,15 @@
 import { createClient } from "@/lib/supabase/server";
+import type { Metadata } from "next";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { Plus } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/page-header";
 import { MenuItemRow } from "@/components/admin/menu-item-row";
+
+export const metadata: Metadata = {
+  title: "Menu",
+  description: "Manage Café Le Den menu items and availability.",
+};
 
 export default async function MenuPage() {
   const supabase = await createClient();
@@ -19,10 +25,10 @@ export default async function MenuPage() {
   return (
     <div className="space-y-4">
       <AdminPageHeader title="Menu" subtitle="Manage your menu items">
-        <Button variant="default" size="default" nativeButton={false} render={<Link href="/admin/menu/new" />}>
+        <Link href="/admin/menu/new" className={buttonVariants({ variant: "default", size: "default" })}>
           <Plus className="h-4 w-4" />
           Add item
-        </Button>
+        </Link>
       </AdminPageHeader>
 
       <div className="space-y-4">
@@ -34,7 +40,7 @@ export default async function MenuPage() {
 
           return (
             <section key={cat.id} className="space-y-2">
-              <h2 className="font-sans text-label uppercase tracking-wider text-muted-foreground">
+              <h2 className="font-sans text-sm font-semibold text-foreground">
                 {cat.name_en}
               </h2>
               <div className="overflow-hidden rounded-lg border border-border bg-card">

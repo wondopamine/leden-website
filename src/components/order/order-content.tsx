@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Plus, Minus, X, Clock } from "lucide-react";
-import { useCartStore } from "@/lib/cart-store";
+import { toast } from "sonner";
+import { useCartStore, type CartItem } from "@/lib/cart-store";
 import { Link, useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -15,6 +17,11 @@ import { getOpenStatus, getCafeWeekday, getCafeMinutes, formatTime } from "@/lib
 import type { CafeInfo } from "@/lib/types";
 
 type Props = { locale: string; cafeInfo: CafeInfo };
+
+type SubmitError = {
+  message: string;
+  showMenuLink: boolean;
+};
 
 function generateTimeSlots(cafeInfo: CafeInfo): string[] {
   // Café-timezone clock, shared with getOpenStatus so slots and status agree.
@@ -43,6 +50,7 @@ export function OrderContent({ locale, cafeInfo }: Props) {
   const tc = useTranslations("common");
   const router = useRouter();
   const items = useCartStore((s) => s.items);
+  const addItem = useCartStore((s) => s.addItem);
   const removeItem = useCartStore((s) => s.removeItem);
   const updateQuantity = useCartStore((s) => s.updateQuantity);
   const customerInfo = useCartStore((s) => s.customerInfo);
@@ -54,8 +62,13 @@ export function OrderContent({ locale, cafeInfo }: Props) {
   const getTotal = useCartStore((s) => s.getTotal);
   const clearCart = useCartStore((s) => s.clearCart);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<SubmitError | null>(null);
   const [attempted, setAttempted] = useState(false);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const phoneInputRef = useRef<HTMLInputElement>(null);
+  const errorSummaryRef = useRef<HTMLDivElement>(null);
+  const removalToastIdsRef = useRef<Set<string | number>>(new Set());
+  const cartGenerationRef = useRef(0);
 
   const status = getOpenStatus(cafeInfo.hours);
   const cafeOpen = status.isOpen;
@@ -63,6 +76,12 @@ export function OrderContent({ locale, cafeInfo }: Props) {
 
   const nameInvalid = attempted && !customerInfo.name.trim();
   const phoneInvalid = attempted && customerInfo.phone.replace(/\D/g, "").length < 10;
+
+  useEffect(() => {
+    if (error) {
+      errorSummaryRef.current?.focus();
+    }
+  }, [error]);
 
   if (items.length === 0) {
     return (
@@ -76,10 +95,15 @@ export function OrderContent({ locale, cafeInfo }: Props) {
               : "Browse our menu and add a few favourites."}
           </p>
         </div>
-        <Link href="/menu">
-          <Button variant="default" size="lg" className="h-12 rounded-full px-8">
-            {tc("viewMenu")}
-          </Button>
+        <Link
+          href="/menu"
+          className={buttonVariants({
+            variant: "default",
+            size: "lg",
+            className: "h-12 rounded-full px-8",
+          })}
+        >
+          {tc("viewMenu")}
         </Link>
       </div>
     );
@@ -95,10 +119,52 @@ export function OrderContent({ locale, cafeInfo }: Props) {
       ? formatTime(status.nextOpen, locale)
       : `${tc(`daysShort.${status.nextDay}`)} ${formatTime(status.nextOpen, locale)}`;
 
+  const invalidateRemovalUndos = () => {
+    cartGenerationRef.current += 1;
+    for (const toastId of removalToastIdsRef.current) {
+      toast.dismiss(toastId);
+    }
+    removalToastIdsRef.current.clear();
+  };
+
+  const handleRemoveItem = (item: CartItem) => {
+    const itemName = locale === "fr" ? item.nameFr : item.nameEn;
+    const generation = cartGenerationRef.current;
+    removeItem(item.id);
+    const toastId = toast(t("removedItem", { item: itemName }), {
+      action: {
+        label: tc("undo"),
+        onClick: () => {
+          removalToastIdsRef.current.delete(toastId);
+          if (generation !== cartGenerationRef.current) return;
+          addItem({
+            menuItemId: item.menuItemId,
+            name: item.name,
+            nameEn: item.nameEn,
+            nameFr: item.nameFr,
+            price: item.price,
+            quantity: item.quantity,
+            modifiers: item.modifiers,
+            image: item.image,
+          });
+        },
+      },
+    });
+    removalToastIdsRef.current.add(toastId);
+  };
+
   const handleSubmitOrder = async () => {
     setAttempted(true);
-    if (!customerInfo.name.trim() || customerInfo.phone.replace(/\D/g, "").length < 10) return;
+    if (!customerInfo.name.trim()) {
+      nameInputRef.current?.focus();
+      return;
+    }
+    if (customerInfo.phone.replace(/\D/g, "").length < 10) {
+      phoneInputRef.current?.focus();
+      return;
+    }
     if (!cafeOpen) return;
+    invalidateRemovalUndos();
     setLoading(true);
     setError(null);
 
@@ -122,43 +188,45 @@ export function OrderContent({ locale, cafeInfo }: Props) {
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to submit order");
+        setError({ message: t("errorSubmitting"), showMenuLink: false });
+        return;
       }
 
       const data = await res.json();
+      invalidateRemovalUndos();
       clearCart();
       router.push(`/order/confirmation?order=${data.orderNumber}`);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t("errorSubmitting"));
+    } catch {
+      setError({ message: t("errorSubmitting"), showMenuLink: false });
+    } finally {
       setLoading(false);
     }
   };
 
-  const card = "rounded-2xl border border-cream-6 bg-card";
+  const card = "rounded-2xl border border-border bg-card";
 
   return (
     <div className="mx-auto max-w-5xl px-5 pb-28 pt-10 md:pb-16">
       <h1 className="text-h1">{t("title")}</h1>
 
       {!cafeOpen && (
-        <div className="mt-6 flex items-start gap-3 rounded-2xl border border-orange-6 bg-orange-2 p-4">
-          <Clock aria-hidden className="mt-0.5 size-5 shrink-0 text-orange-11" />
+        <div className="mt-6 flex items-start gap-3 rounded-2xl border border-accent-border bg-accent-surface p-4" role="status">
+          <Clock aria-hidden className="mt-0.5 size-5 shrink-0 text-accent-text" />
           <div>
-            <p className="font-medium text-orange-12">{t("orderingClosed")}</p>
+            <p className="font-medium text-accent-text">{t("orderingClosed")}</p>
             {nextOpenLabel && (
-              <p className="mt-0.5 text-caption text-orange-11">{t("opensAt", { time: nextOpenLabel })}</p>
+              <p className="mt-0.5 text-caption text-accent-text">{t("opensAt", { time: nextOpenLabel })}</p>
             )}
           </div>
         </div>
       )}
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-[1.5fr_1fr] lg:items-start">
+      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-12 lg:items-start">
         {/* Left: items + pickup + info */}
-        <div className="space-y-6">
+        <div className="space-y-6 lg:col-span-7">
           {/* Cart items */}
           <div className={card}>
-            <ul className="divide-y divide-cream-6">
+            <ul className="divide-y divide-border">
               {items.map((item) => {
                 const lineTotal =
                   (item.price + item.modifiers.reduce((s, m) => s + m.priceAdjustment, 0)) * item.quantity;
@@ -174,33 +242,43 @@ export function OrderContent({ locale, cafeInfo }: Props) {
                       )}
                     </div>
                     <div className="flex items-center justify-between gap-3 sm:justify-start">
-                      <div className="flex items-center rounded-full border border-cream-6">
-                        <button
-                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                      <div className="flex items-center rounded-full border border-border">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() =>
+                            item.quantity === 1
+                              ? handleRemoveItem(item)
+                              : updateQuantity(item.id, item.quantity - 1)
+                          }
                           aria-label={`${tc("remove")} ${itemName}`}
-                          className="flex h-11 w-11 items-center justify-center rounded-l-full text-forest-11 transition-colors hover:bg-cream-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          className="rounded-l-full rounded-r-none text-foreground"
                         >
                           <Minus aria-hidden className="size-4" />
-                        </button>
+                        </Button>
                         <span className="w-8 text-center text-caption font-medium tabular-nums">{item.quantity}</span>
-                        <button
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={() => updateQuantity(item.id, item.quantity + 1)}
                           aria-label={`${tc("add")} ${itemName}`}
-                          className="flex h-11 w-11 items-center justify-center rounded-r-full text-forest-11 transition-colors hover:bg-cream-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          className="rounded-l-none rounded-r-full text-foreground"
                         >
                           <Plus aria-hidden className="size-4" />
-                        </button>
+                        </Button>
                       </div>
                       <span className="text-caption font-semibold tabular-nums text-forest-12 sm:w-20 sm:text-right">
                         {formatPrice(lineTotal)}
                       </span>
-                      <button
-                        onClick={() => removeItem(item.id)}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRemoveItem(item)}
                         aria-label={`${tc("remove")} ${itemName}`}
-                        className="flex size-11 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-cream-3 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        className="shrink-0 rounded-full text-muted-foreground hover:text-destructive"
                       >
                         <X aria-hidden className="size-4" />
-                      </button>
+                      </Button>
                     </div>
                   </li>
                 );
@@ -210,8 +288,8 @@ export function OrderContent({ locale, cafeInfo }: Props) {
 
           {/* Pickup time */}
           {cafeOpen && (
-            <div className={`${card} p-5`}>
-              <h2 className="text-label uppercase tracking-wide text-muted-foreground">{t("pickupTime")}</h2>
+            <fieldset className={`${card} p-5`}>
+              <legend className="px-1 text-caption font-semibold text-foreground">{t("pickupTime")}</legend>
               <p className="mt-2 text-caption text-muted-foreground">{t("pickupTimeDescription")}</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <TimePill selected={!pickupTime} onClick={() => setPickupTime(null)}>
@@ -223,38 +301,54 @@ export function OrderContent({ locale, cafeInfo }: Props) {
                   </TimePill>
                 ))}
               </div>
-            </div>
+            </fieldset>
           )}
 
           {/* Customer info */}
           {cafeOpen && (
             <div className={`${card} p-5`}>
-              <h2 className="text-label uppercase tracking-wide text-muted-foreground">{t("customerInfo")}</h2>
+              <h2 className="text-caption font-semibold text-foreground">{t("customerInfo")}</h2>
               <div className="mt-4 space-y-4">
                 <div>
                   <Label htmlFor="name">{tc("name")} *</Label>
                   <Input
                     id="name"
+                    ref={nameInputRef}
                     className="mt-1.5"
                     placeholder={t("nameRequired")}
                     value={customerInfo.name}
                     aria-invalid={nameInvalid}
+                    aria-describedby="name-requirement"
+                    aria-errormessage={nameInvalid ? "name-requirement" : undefined}
                     onChange={(e) => setCustomerInfo({ name: e.target.value })}
                   />
-                  {nameInvalid && <p className="mt-1 text-caption text-destructive">{t("nameRequired")}</p>}
+                  <p
+                    id="name-requirement"
+                    className={`mt-1 text-caption ${nameInvalid ? "text-destructive" : "text-muted-foreground"}`}
+                  >
+                    {t("nameRequired")}
+                  </p>
                 </div>
                 <div>
                   <Label htmlFor="phone">{tc("phone")} *</Label>
                   <Input
                     id="phone"
+                    ref={phoneInputRef}
                     type="tel"
                     className="mt-1.5"
                     placeholder={t("phoneRequired")}
                     value={customerInfo.phone}
                     aria-invalid={phoneInvalid}
+                    aria-describedby="phone-requirement"
+                    aria-errormessage={phoneInvalid ? "phone-requirement" : undefined}
                     onChange={(e) => setCustomerInfo({ phone: e.target.value })}
                   />
-                  {phoneInvalid && <p className="mt-1 text-caption text-destructive">{t("phoneRequired")}</p>}
+                  <p
+                    id="phone-requirement"
+                    className={`mt-1 text-caption ${phoneInvalid ? "text-destructive" : "text-muted-foreground"}`}
+                  >
+                    {t("phoneRequired")}
+                  </p>
                 </div>
               </div>
             </div>
@@ -262,7 +356,7 @@ export function OrderContent({ locale, cafeInfo }: Props) {
         </div>
 
         {/* Right: order summary (sticky on desktop) */}
-        <div className={`${card} p-5 lg:sticky lg:top-20`}>
+        <div className={`${card} p-5 lg:sticky lg:top-20 lg:col-span-5`}>
           <h2 className="font-display text-h3 text-forest-12">{tc("total")}</h2>
           <div className="mt-4 space-y-2 text-caption">
             <Row label={tc("subtotal")} value={formatPrice(subtotal)} />
@@ -274,14 +368,36 @@ export function OrderContent({ locale, cafeInfo }: Props) {
               <span className="tabular-nums">{formatPrice(total)}</span>
             </div>
           </div>
-          <p className="mt-3 text-caption text-muted-foreground">{t("payInPerson")}</p>
-          {error && <p className="mt-2 text-caption text-destructive">{error}</p>}
+          <p id="payment-note" className="mt-3 text-caption text-muted-foreground">{t("payInPerson")}</p>
+          {error && (
+            <div
+              id="submit-error"
+              ref={errorSummaryRef}
+              tabIndex={-1}
+              className="mt-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-caption text-destructive outline-none focus-visible:ring-2 focus-visible:ring-destructive/40"
+            >
+              <p>{error.message}</p>
+              {error.showMenuLink && (
+                <Link
+                  href="/menu"
+                  className={buttonVariants({
+                    variant: "link",
+                    className: "mt-2 h-11 px-0 text-destructive",
+                  })}
+                >
+                  {tc("viewMenu")}
+                </Link>
+              )}
+            </div>
+          )}
           <Button
             variant="default"
             size="lg"
             className="mt-5 h-12 w-full rounded-full"
             disabled={!cafeOpen || loading}
             onClick={handleSubmitOrder}
+            aria-busy={loading}
+            aria-describedby={error ? "payment-note submit-error" : "payment-note"}
           >
             {!cafeOpen ? t("orderingClosed") : loading ? t("processing") : t("placeOrder")}
           </Button>
@@ -310,16 +426,18 @@ function TimePill({
   children: React.ReactNode;
 }) {
   return (
-    <button
+    <Button
+      variant="outline"
+      size="default"
       onClick={onClick}
       aria-pressed={selected}
-      className={`rounded-full border px-4 py-2 text-caption font-medium tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card ${
+      className={`min-h-11 rounded-full px-4 text-caption font-medium tabular-nums ${
         selected
-          ? "border-forest-9 bg-forest-9 text-cream-1"
-          : "border-cream-6 bg-card text-forest-11 hover:border-forest-8"
+          ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
+          : "border-border bg-card text-foreground hover:border-primary/60"
       }`}
     >
       {children}
-    </button>
+    </Button>
   );
 }

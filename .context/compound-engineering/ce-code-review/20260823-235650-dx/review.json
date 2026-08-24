@@ -1,0 +1,183 @@
+{
+  "run_id": "20260823-235650-dx",
+  "mode": "autofix",
+  "scope": {
+    "base_ref": "origin/main",
+    "base_sha": "495f95419e1ae68f10afa5509ba3b41bd65ea09e",
+    "branch": "codex/refactor-dx-design-conformance",
+    "plan": "docs/plans/2026-08-15-001-refactor-dx-design-conformance-plan.md"
+  },
+  "intent": "Conform the Cafe Le Den customer and admin UI to the canonical DX design contract while preserving ordering, authentication, data, pricing, tax, internationalization, and state semantics.",
+  "reviewers": [
+    "correctness",
+    "testing",
+    "maintainability",
+    "project-standards",
+    "reliability",
+    "adversarial",
+    "kieran-typescript",
+    "julik-frontend-races",
+    "agent-native",
+    "learnings"
+  ],
+  "applied_fixes": [
+    {
+      "title": "Create redirects are swallowed as save failures",
+      "files": ["src/components/admin/menu-item-form.tsx"],
+      "verification": ["TypeScript", "ESLint", "targeted Playwright"]
+    },
+    {
+      "title": "Pending saves can clear newer draft edits",
+      "files": [
+        "src/components/admin/menu-item-form.tsx",
+        "src/components/admin/settings-form.tsx",
+        "src/app/dev/admin/form-race-previews.tsx",
+        "tests/e2e/admin-design.spec.ts"
+      ],
+      "verification": ["TypeScript", "ESLint", "delayed-action Playwright"]
+    },
+    {
+      "title": "Undo can repopulate a completed order cart",
+      "files": [
+        "src/components/order/order-content.tsx",
+        "tests/e2e/storefront-design.spec.ts"
+      ],
+      "verification": ["EN/FR intercepted-success Playwright"]
+    },
+    {
+      "title": "Order recovery link targets a missing route",
+      "files": ["src/app/admin/(dashboard)/orders/error.tsx"],
+      "verification": ["TypeScript", "route inspection"]
+    },
+    {
+      "title": "Order search drops rapid keystrokes",
+      "files": [
+        "src/components/admin/orders-filter.tsx",
+        "src/app/dev/admin/orders-filter-preview.tsx",
+        "tests/e2e/admin-design.spec.ts"
+      ],
+      "verification": ["debounce and overlap Playwright"]
+    },
+    {
+      "title": "Analytics retry evidence targets a no-op",
+      "files": [
+        "src/components/admin/analytics-dashboard.tsx",
+        "src/app/dev/admin/analytics-error-preview.tsx",
+        "tests/e2e/admin-design.spec.ts"
+      ],
+      "verification": ["fail-once recovery Playwright"]
+    },
+    {
+      "title": "Checkout success path lacks deterministic characterization",
+      "files": ["tests/e2e/storefront-design.spec.ts"],
+      "verification": ["EN/FR payload, tax, confirmation, and cart-clear assertions"]
+    },
+    {
+      "title": "New Buttons rely on implicit variants or sizes",
+      "files": [
+        "src/app/admin/(dashboard)/orders/error.tsx",
+        "src/components/admin/order-card.tsx",
+        "src/components/layout/header.tsx",
+        "src/components/order/order-content.tsx"
+      ],
+      "verification": ["project standards re-review"]
+    },
+    {
+      "title": "Manifest omits shared modified admin components",
+      "files": [".dx/component-manifest.json"],
+      "verification": ["component manifest validator"]
+    }
+  ],
+  "residual_actionable_work": [
+    {
+      "severity": "P1",
+      "title": "Order rejections prescribe an unsafe retry",
+      "file": "src/components/order/order-content.tsx",
+      "line": 190,
+      "autofix_class": "gated_auto",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "next_step": "Map the existing API error strings to localized hours, menu-change, service, price-change, and partial-write recovery without changing the API response shape or exposing raw server text."
+    },
+    {
+      "severity": "P2",
+      "title": "Mutation gate passes without testing a mutation",
+      "file": "tests/e2e/admin-design.spec.ts",
+      "line": 313,
+      "autofix_class": "manual",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "next_step": "Keep the placeholder visibly skipped until a seeded non-production Supabase target exists, then replace it with authenticated synthetic mutations and deterministic cleanup."
+    },
+    {
+      "severity": "P2",
+      "title": "Sign-out runs before the draft guard",
+      "file": "src/components/admin/sidebar.tsx",
+      "line": 45,
+      "autofix_class": "manual",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "next_step": "Coordinate the shared sign-out action with active unsaved-change guards before clearing authentication."
+    },
+    {
+      "severity": "P2",
+      "title": "Navigation guard cannot cancel some history traversals",
+      "file": "src/lib/use-unsaved-changes.ts",
+      "line": 79,
+      "autofix_class": "manual",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "next_step": "Define and test a Back/Forward strategy for non-cancelable Navigation API events and browser fallback paths."
+    },
+    {
+      "severity": "P2",
+      "title": "Filter changes leave a pending search debounce active",
+      "file": "src/components/admin/orders-filter.tsx",
+      "line": 127,
+      "autofix_class": "safe_auto",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "next_step": "Cancel the pending search timer before an immediate date or status navigation, then assert that only one route transition occurs."
+    }
+  ],
+  "advisory_only": [
+    {
+      "title": "Real cafe data needs owner authority before launch",
+      "source": "docs/design-reviews/2026-08-15-dx-conformance.md"
+    },
+    {
+      "title": "Static analytics preview can drift from the production renderer",
+      "source": ".context/compound-engineering/ce-code-review/20260823-235650-dx/maintainability.json"
+    }
+  ],
+  "residual_risks": [
+    "The approved visual-refactor boundary leaves Supabase-returned analytics and order-history query errors represented as empty data unless a query throws.",
+    "Authenticated admin mutations remain intentionally unverified without a seeded non-production Supabase target.",
+    "Build-backed tests must remain serialized because concurrent Next build writers previously corrupted .next output."
+  ],
+  "agent_native": {
+    "verdict": "pass",
+    "summary": "No agent or LLM integration exists, and each newly visible action remains backed by the existing programmatic action, store, fetch, or API primitive."
+  },
+  "learnings": [
+    "Keep Server Component link styling in the server-safe button-variants module.",
+    "Serialize production builds and Playwright because the shared .next directory is not safe for concurrent writers.",
+    "Preserve the sample-data authority gate as launch work rather than presenting fallback content as owner-approved."
+  ],
+  "coverage": {
+    "structured_reviewer_artifacts": 8,
+    "validator_dispatches": 15,
+    "validator_accepts": 14,
+    "validator_rejects": 1,
+    "validator_reject_reason": "Open-status direct ramp usage is allowed tone-based brand composition; state-dependent dot classes predate this diff.",
+    "validator_over_budget_drops": 2,
+    "over_budget_items": [
+      "Checkout recovery flag has no reachable true state",
+      "Menu status metadata includes an unused dot API"
+    ],
+    "autofix_rounds": 2,
+    "final_round_residuals": 1,
+    "failed_reviewers": 0
+  },
+  "verdict": "Not ready"
+}

@@ -6,6 +6,7 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { fetchCafeInfo } from "@/lib/data";
 import { AnnouncementBanner } from "@/components/layout/announcement-banner";
+import { Toaster } from "@/components/ui/sonner";
 
 type Props = {
   children: React.ReactNode;
@@ -36,16 +37,17 @@ export default async function LocaleLayout({ children, params }: Props) {
     <NextIntlClientProvider>
       <a
         href="#main"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-forest-9 focus:px-4 focus:py-2 focus:text-caption focus:font-medium focus:text-cream-1 focus:shadow-lg"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-caption focus:font-medium focus:text-primary-foreground focus:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
         {t("skipToContent")}
       </a>
       {announcementText && <AnnouncementBanner text={announcementText} />}
       <Header />
-      <main id="main" tabIndex={-1} className="flex-1 focus:outline-none">
+      <main id="main" tabIndex={-1} className="flex-1">
         {children}
       </main>
       <Footer locale={locale} info={cafeInfo} />
+      <Toaster position="bottom-center" />
     </NextIntlClientProvider>
   );
 }

@@ -16,10 +16,22 @@ type Props = {
   initialOrders: Order[];
 };
 
-const COLUMN_EMPTY_TEXT: Record<string, string> = {
-  new: "No new orders",
-  preparing: "Nothing being prepared",
-  ready: "Nothing ready to hand off",
+const COLUMN_EMPTY_STATE: Record<
+  string,
+  { title: string; description: string }
+> = {
+  new: {
+    title: "No new orders",
+    description: "Incoming pickup orders will appear here.",
+  },
+  preparing: {
+    title: "Nothing in preparation",
+    description: "Orders move here after preparation starts.",
+  },
+  ready: {
+    title: "Nothing ready",
+    description: "Orders waiting for handoff will appear here.",
+  },
 };
 
 export function OrdersDashboard({ initialOrders }: Props) {
@@ -109,7 +121,10 @@ export function OrdersDashboard({ initialOrders }: Props) {
             key={status}
             status={status}
             orders={byStatus(status)}
-            emptyText={COLUMN_EMPTY_TEXT[status] ?? "No orders"}
+            emptyState={COLUMN_EMPTY_STATE[status] ?? {
+              title: "No orders",
+              description: "Orders in this state will appear here.",
+            }}
           />
         ))}
       </div>
@@ -117,7 +132,7 @@ export function OrdersDashboard({ initialOrders }: Props) {
       {/* Quiet terminal strip: recently picked up / cancelled */}
       {terminalOrders.length > 0 && (
         <section className="space-y-3 border-t border-border pt-4">
-          <h2 className="font-sans text-label uppercase tracking-wide text-muted-foreground">
+          <h2 className="font-sans text-sm font-semibold text-foreground">
             Recently picked up ({pickedUpCount}) / cancelled ({cancelledCount})
           </h2>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -134,30 +149,39 @@ export function OrdersDashboard({ initialOrders }: Props) {
 function KdsColumn({
   status,
   orders,
-  emptyText,
+  emptyState,
 }: {
   status: OrderStatus;
   orders: Order[];
-  emptyText: string;
+  emptyState: { title: string; description: string };
 }) {
   const meta = ORDER_STATUS[status];
+  const StatusIcon = meta.icon;
+  const headingId = `orders-${status}-heading`;
 
   return (
-    <section className="flex flex-col gap-3">
-      <div className="flex items-center gap-2 border-b border-border pb-2">
-        <span className={cn("size-2 rounded-full", meta.dot)} />
-        <h2 className="font-sans text-sm font-semibold text-foreground">
+    <section aria-labelledby={headingId} className="flex min-w-0 flex-col gap-3">
+      <div className="flex min-h-11 items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 shadow-sm">
+        <span aria-hidden="true" className={cn("size-2.5 rounded-full", meta.dot)} />
+        <StatusIcon aria-hidden="true" className="size-4 text-muted-foreground" />
+        <h2 id={headingId} className="font-sans text-sm font-semibold text-foreground">
           {meta.label}
         </h2>
-        <span className="ml-auto text-caption tabular-nums text-muted-foreground">
+        <span
+          aria-label={`${orders.length} ${orders.length === 1 ? "order" : "orders"}`}
+          className="ml-auto rounded-full bg-muted px-2 py-0.5 text-caption font-semibold tabular-nums text-foreground"
+        >
           {orders.length}
         </span>
       </div>
       <div className="flex flex-col gap-3">
         {orders.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-border py-8 text-center text-caption text-muted-foreground">
-            {emptyText}
-          </p>
+          <div className="rounded-lg border border-dashed border-border px-4 py-8 text-center">
+            <p className="text-sm font-medium text-foreground">{emptyState.title}</p>
+            <p className="mt-1 text-caption text-muted-foreground">
+              {emptyState.description}
+            </p>
+          </div>
         ) : (
           orders.map((order) => <OrderCard key={order.id} order={order} />)
         )}

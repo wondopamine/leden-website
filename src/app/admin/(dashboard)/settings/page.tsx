@@ -1,6 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
+import type { Metadata } from "next";
 import { SettingsForm } from "@/components/admin/settings-form";
 import { AdminPageHeader } from "@/components/admin/page-header";
+
+export const metadata: Metadata = {
+  title: "Settings",
+  description: "Manage Café Le Den hours, contact details, and order timing.",
+};
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -14,7 +20,7 @@ export default async function SettingsPage() {
     <div className="space-y-4">
       <AdminPageHeader
         title="Settings"
-        subtitle="Manage cafe information and hours"
+        subtitle="Manage café information and hours"
       />
       <SettingsForm initialData={cafeInfo} />
     </div>

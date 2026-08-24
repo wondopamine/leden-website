@@ -13,6 +13,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { PeriodSelector } from "./period-selector";
 import {
   type Period,
@@ -36,20 +37,40 @@ const TOOLTIP_CONTENT_STYLE = {
 
 const TOOLTIP_TEXT_STYLE = { color: "var(--popover-foreground)" } as const;
 
-export function AnalyticsDashboard() {
+export type AnalyticsLoader = (
+  period: Period,
+  retryAttempt: number,
+) => Promise<AnalyticsData>;
+
+export function AnalyticsDashboard({
+  loadAnalytics = fetchAnalytics,
+}: {
+  loadAnalytics?: AnalyticsLoader;
+}) {
   const [period, setPeriod] = useState<Period>("daily");
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
 
     async function run() {
       setLoading(true);
-      const result = await fetchAnalytics(period);
-      if (!cancelled) {
-        setData(result);
-        setLoading(false);
+      setError(null);
+      try {
+        const result = await loadAnalytics(period, retryKey);
+        if (!cancelled) setData(result);
+      } catch {
+        if (!cancelled) {
+          setData(null);
+          setError(
+            "Order analysis could not be loaded. Check your connection and try again.",
+          );
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     }
 
@@ -57,39 +78,50 @@ export function AnalyticsDashboard() {
     return () => {
       cancelled = true;
     };
-  }, [period]);
+  }, [loadAnalytics, period, retryKey]);
 
   const handlePeriodChange = (p: Period) => {
     setPeriod(p);
   };
 
   return (
-    <div className="space-y-4">
+    <section
+      aria-labelledby="order-analysis-heading"
+      className="space-y-4 tabular-nums"
+    >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="font-sans text-lg font-semibold text-foreground">
-          Order Analysis
+        <h2
+          id="order-analysis-heading"
+          className="font-sans text-lg font-semibold text-foreground"
+        >
+          Order analysis
         </h2>
         <PeriodSelector selected={period} onSelect={handlePeriodChange} />
       </div>
 
       {loading ? (
         <LoadingSkeleton />
+      ) : error ? (
+        <AnalyticsErrorState
+          message={error}
+          onRetry={() => setRetryKey((key) => key + 1)}
+        />
       ) : data ? (
         <>
           {/* Stat strip */}
           <div className="grid grid-cols-2 rounded-lg border border-border bg-card sm:grid-cols-4">
             <StatTile
-              label="Total Orders"
+              label="Total orders"
               value={data.totalOrders.toString()}
               icon={<ShoppingBag className="size-3.5" />}
             />
             <StatTile
-              label="Revenue"
+              label="Submitted value"
               value={`$${data.totalRevenue.toFixed(2)}`}
               icon={<DollarSign className="size-3.5" />}
             />
             <StatTile
-              label="Avg Order"
+              label="Average order"
               value={`$${data.avgOrderValue.toFixed(2)}`}
               icon={<TrendingUp className="size-3.5" />}
             />
@@ -103,8 +135,8 @@ export function AnalyticsDashboard() {
           {/* Revenue trend chart */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="font-sans text-sm font-semibold text-foreground">
-                Revenue Trend
+              <CardTitle as="h3" className="font-sans text-sm font-semibold text-foreground">
+                Submitted order value
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -127,7 +159,10 @@ export function AnalyticsDashboard() {
                       tickFormatter={(v) => `$${v}`}
                     />
                     <Tooltip
-                      formatter={(value) => [`$${Number(value).toFixed(2)}`, "Revenue"]}
+                      formatter={(value) => [
+                        `$${Number(value).toFixed(2)}`,
+                        "Submitted value",
+                      ]}
                       contentStyle={TOOLTIP_CONTENT_STYLE}
                       labelStyle={TOOLTIP_TEXT_STYLE}
                       itemStyle={TOOLTIP_TEXT_STYLE}
@@ -154,8 +189,8 @@ export function AnalyticsDashboard() {
             {/* Top items */}
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="font-sans text-sm font-semibold text-foreground">
-                  Top Selling Items
+                <CardTitle as="h3" className="font-sans text-sm font-semibold text-foreground">
+                  Top-selling items
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -194,8 +229,8 @@ export function AnalyticsDashboard() {
             {/* Peak hours */}
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="font-sans text-sm font-semibold text-foreground">
-                  Orders by Hour
+                <CardTitle as="h3" className="font-sans text-sm font-semibold text-foreground">
+                  Orders by hour
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -239,7 +274,36 @@ export function AnalyticsDashboard() {
           </div>
         </>
       ) : null}
-    </div>
+    </section>
+  );
+}
+
+export function AnalyticsErrorState({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry: () => void;
+}) {
+  return (
+    <Card role="alert" className="border-destructive/30">
+      <CardHeader>
+        <CardTitle as="h3" className="font-sans text-base font-semibold text-foreground">
+          Analysis unavailable
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-sm text-muted-foreground">{message}</p>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={onRetry}
+        >
+          Try again
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -256,7 +320,7 @@ function StatTile({
     <div className="border-border p-4 [&:nth-child(-n+2)]:border-b [&:nth-child(odd)]:border-r sm:border-b-0 sm:[&:nth-child(2)]:border-r">
       <div className="flex items-center gap-1.5 text-muted-foreground">
         {icon}
-        <span className="text-label uppercase tracking-wide">{label}</span>
+        <span className="text-label">{label}</span>
       </div>
       <div className="mt-1 text-xl font-semibold tabular-nums text-foreground">
         {value}
@@ -267,7 +331,7 @@ function StatTile({
 
 function LoadingSkeleton() {
   return (
-    <div className="space-y-4">
+    <div role="status" aria-label="Loading order analysis" className="space-y-4">
       <div className="grid grid-cols-2 rounded-lg border border-border bg-card sm:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
           <div

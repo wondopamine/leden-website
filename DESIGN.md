@@ -1,65 +1,78 @@
-# Design
+# DESIGN.md — Café Le Den
 
-> Seeded from `src/app/globals.css` (the token layer) and `.planning/brand/SPEC.md` (locked brand-expression decisions). Colors here describe brand *intent* and the semantic mapping; the raw 50–900 brand scales are being migrated to Radix-quality monotonic scales (the current OKLCH-swept scales contain inversions — e.g. `forest-600` is lighter than `forest-500`). Prefer semantic tokens over raw scale steps.
+## Essence
 
-## Theme
+Café Le Den should feel warm, local, and appetite-led to customers, while staying calm and operational for café staff. When character and clarity compete, clarity wins without becoming generic.
 
-Warm, light, editorial. The physical scene: a Montrealer glances at their phone on a bright street or in a warm café, deciding where to eat lunch. Light theme only — the surface is cream, like butcher paper or a bakery bag, never dark. Personality is handmade and confident, anchored by a chunky wordmark and a watermelon mascot used as a small accent.
+## Colour
 
-## Color Palette
-
-Brand palette is anchored by the existing logo. Three hues, each with a 50–900 scale (`--brand-{cream|forest|orange}-*`), plus a UI-system red kept independent of the brand.
-
-**Anchors (–500 stops):**
-- Cream `#EFE7D2` — the background / paper. Warm neutral, low chroma.
-- Forest green `#2F5436` — primary. Used for the wordmark "Café", primary buttons, headings-on-cream.
-- Warm orange `#D9682E` — accent. Used for "Le Den", CTAs' energy, links, small highlights. Deploy sparingly (≤10–15% of surface).
-- Destructive `#B3261E` — UI red, not a brand color.
-
-**Scales:** Each hue has a **Radix-methodology 1–12 scale** (`--cream-*`, `--forest-*`, `--orange-*`) generated + contrast-verified by `scripts/derive-radix-tokens.ts` (monotonic OKLCH lightness 1→12; anchor pinned at its natural step: cream→2, forest→9, orange→9). Step semantics: 1–2 bg · 3–5 component bg · 6 subtle border · 7–8 border/ring · 9–10 solid fill+hover · 11–12 text.
-
-**Semantic mapping (the source of truth for components — shadcn/Base UI primitives consume these; every text pairing ≥ WCAG AA):**
-- `--background` = cream-2, `--foreground` = forest-12
-- `--card` / `--popover` = cream-1, foreground forest-12
-- `--primary` = forest-9, `--primary-foreground` = cream-1
-- `--secondary` / `--muted` = cream-3, foreground forest-11
-- `--accent` = orange-9, `--accent-foreground` = forest-12 (dark on orange, 4.71:1)
-- `--border` = cream-6, `--input` = cream-8, `--ring` = orange-10
-- On-cream accent text (prices, links): `orange-11` (4.71:1). Never light text on orange-9 (fails AA).
-
-**Color strategy:** Committed-warm. Cream carries ~80% of the surface; forest carries structure and one full-bleed band; orange is the single accent held to ~10–15% (order CTA, prices, live-status). Restraint-then-commit: one loud element per section. Not Restrained (the surface is deliberately warm-tinted), not Drenched.
+<!-- Cites: COL-1, COL-2. -->
+- primary: --forest-9 #2F5436
+- accent: --orange-9 #D9682E
+- canvas: --cream-2 #EFE7D2
+- destructive: --red-9 #B3261E
+- expression: customer surfaces are warmer and appetite-led; admin surfaces use the same roles with lower warmth and higher density
 
 ## Typography
 
-Two families. Display is an editorial serif; body/UI is a clean grotesque sans.
+<!-- Cites: TYP-1 through TYP-5. -->
+- family: Fraunces 500/600 for display and headings; Inter 400/500/600 for body and UI
+- base: 16/24
+- scale: [12, 14, 16, 20, 24, 30, 40, 48, 60]
+- casing: sentence case; preserve genuine acronyms such as EN, FR, GST, and QST
+- numerals: Inter tabular figures for prices, totals, timers, counts, and aligned operational data
 
-- **Display** — **Fraunces** (variable serif with SOFT/WONK axes for the chunky, hand-made feel), loaded via `next/font`. `--text-display` clamps 2.75→4rem. Used for hero tagline and section headings via the `text-display`/`text-h1`/`text-h2`/`text-h3` tokens.
-- **Headings** — Fraunces: `text-h1` clamp 2→2.5rem (500), `text-h2` clamp 1.6→2rem (500), `text-h3` 1.5rem (600). Applied to `h1,h2,h3` by default in the base layer.
-- **Body** — **Inter**, loaded via `next/font`: `--text-body` 1rem/1.5 (400).
-- **Caption** — `--text-caption` 0.8125rem/1.4 (500). **Label** — `--text-label` 0.75rem/1.3 (600), uppercase, tracking 0.05em.
-- Tailwind v4 generates `text-display`, `text-h1`…`text-label` utilities. **Pages use these, not raw `text-4xl`.**
-- Hierarchy via scale + weight contrast; measure capped ~65–75ch on body copy.
+## Tokens
 
-> `--font-display` resolves to `var(--font-fraunces)` (loaded, no more silent Georgia fallback); `--font-sans` resolves to `var(--font-inter)`. Set in `src/app/layout.tsx` + `@theme` in `globals.css`.
-
-## Spacing
-
-Scale: `--space-xs` 0.5rem, `--space-sm` 1rem, `--space-md` 1.5rem, `--space-lg` 2rem, `--space-xl` 3rem. Vary section rhythm deliberately; avoid identical padding on every section. Current pages use ad-hoc `py-24 sm:py-32` — migrate to a consistent section-rhythm scale.
-
-## Elevation
-
-Three shadows, soft and warm: `--shadow-sm` (hairline), `--shadow-md` (card lift), `--shadow-lg` (hover/modal). Radius scale: `--radius-sm` 0.375rem, `--radius-md` 0.5rem, `--radius-lg` 0.75rem, `--radius-xl` 1rem. Cards and CTAs currently favor large/pill radii. Use elevation sparingly; prefer borders and tints over stacked shadows.
+<!-- Cites: TOK controls. The code is authoritative. -->
+- source: src/app/globals.css
+- prefix: --cream-, --forest-, --orange-, and semantic role aliases
+- spacing: 8px base with a 4px half-step where compact controls require it
+- dark-mode: light-only product; retain class-scoped `.dark` compatibility and never switch from the operating system preference
 
 ## Motion
 
-Three durations — fast 150ms, base 300ms, slow 500ms. Three eases — in `cubic-bezier(0.4,0,1,1)`, out `cubic-bezier(0,0,0.2,1)`, spring `cubic-bezier(0.34,1.56,0.64,1)`. Hero fade-ups use slow + out. No parallax, no scroll-jacking. Every animation must have a `prefers-reduced-motion: reduce` off-switch. Do not animate layout properties; animate transform/opacity.
+<!-- Cites: MOT-1, SLP-8, A11Y-5. -->
+- entrance: restrained fade with up to 16px rise, 500ms, ease-out
+- state-change: opacity or transform feedback, 150–300ms
+- emphasis: one short spring accent for small brand details only, never for operational status changes
 
-## Iconography & Assets
+## Voice & Tone
 
-- Icons: `lucide-react` via a CVA `Icon` component (`src/components/ui/icon.tsx`). One coherent set only.
-- Brand marks: `/public/logo.png` (wordmark), `/public/google.svg`. Watermelon mascot: accent role only, ≤64px, allowed in hero corner / footer / confirmation success; never inside buttons, never a logo replacement, never animated longer than `--duration-slow`.
-- Photography: warm-tone product + ambient café shots, natural daylight, mid-shadow; aspect 4:5 portrait or 16:9 landscape; no human-face hero shots in v1; no Unsplash filler. Serve via `next/image`.
+Friendly, direct, and food-forward. Customer copy uses “we”, short sentences, and no exclamation marks; French and English carry equal meaning and confidence. Admin copy is concise and operational, naming the state and the next valid action without marketing language.
+
+## Layout system
+
+<!-- Cites: LAY-1. Keep these bullets machine-readable. -->
+- columns: 12
+- gutter: space-sm
+- margins: space-md
+- breakpoints: [320, 768, 1280]
+- maxContentWidth: 1280px
 
 ## Components
 
-Base UI primitives + shadcn (base-nova style) in `src/components/ui/`: Button, Card, Input, Label, Select, Badge, Stars, Icon, Dialog, Sheet, Tabs, Switch, Dropdown-menu, Scroll-area, Separator, Skeleton, Table, Textarea, Sonner (toasts). `FadeIn` wraps scroll-reveal. Buttons carry explicit `variant` + `size` at every call site. A dev-only gallery lives at `/dev/components`.
+<!-- Cites: CMP-1, CMP-7. -->
+- manifest: .dx/component-manifest.json
+- foundation: Base UI-backed shadcn primitives in src/components/ui
+- customer: warmer composition, one dominant pickup action, and specialised item-modifier, quantity, pickup-time, and cart patterns
+- admin: denser composition, text-plus-icon status, tabular operational figures, and specialised queue, filter, and availability patterns
+- actions: explicit Button variant and size; never present two visually dominant actions together
+
+## Guardrails
+
+- Check the component manifest before creating a component or control.
+- Preserve the EN/FR route pair and equal meaning across both languages.
+- Keep pickup and pay-in-person truth explicit before submission.
+- Never round, hide, or decorate away item prices, modifiers, GST, QST, totals, order references, pickup times, or operational status.
+- Let food, place, and opening truth create appetite and trust before decorative brand gestures.
+- Treat the watermelon mascot as a small accent, never the primary action or a replacement for the wordmark.
+- Keep staff paths scannable under a dense queue; status and next action must remain paired.
+- Do not add customer accounts, payments, delivery, loyalty, new order states, or multi-location concepts without a separate product decision.
+- Do not claim operational readiness while order-integrity, authorization, recovery, or platform gates remain open.
+- Add no recurring software cost without explicit approval.
+
+## Overrides
+
+- TYP-1 (L1): Display and headings use Fraunces at 500/600; body and UI use Inter at 400/500/600; no third UI typeface — reason: Fraunces carries Café Le Den’s established local, appetite-led character while Inter preserves interface clarity; approver: Jeongwon Do
+- SLP-10 (L1): Menu-item customisation remains a focused Dialog within the browse-to-cart flow — reason: the approved plan and benchmark contract explicitly preserve the item modal, modifier state, quantity, overlay focus trap, and focus return; the Dialog must contain only one item’s configuration and a single add-to-order action; approver: Jeongwon Do

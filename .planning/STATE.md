@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Phase 1 complete (verified 7/7) — ready for Phase 2
-last_updated: "2026-05-02T15:45:00Z"
+status: Design conformance complete — residual review work recorded; Phase 2 ready
+last_updated: "2026-08-24T09:20:00+08:00"
 progress:
   total_phases: 5
   completed_phases: 1
@@ -23,7 +23,7 @@ progress:
 
 **Milestone:** Comprehensive refactor — same features, rebuilt on a coherent design system + consolidated data layer + major visual lift.
 
-**Current focus:** Phase 01 — design-system-foundation-brand-expression
+**Current focus:** Phase 02 — Data Layer Consolidation + Image Pipeline + RLS Hardening
 
 ## Current Position
 
@@ -140,9 +140,9 @@ None.
 
 ## Session Continuity
 
-**Last session:** Phase 1 plan 06 complete — Button prop-explicitness pass (DSY-07); 9 files modified; 14 call sites updated with explicit variant= + size= props; full-tree audit exits 0; lint+tsc+build all green; Phase 1 all 7 DSY requirements complete. Commits: `1a5d9f1`, `d0003f2`.
+**Last session:** The non-roadmap storefront/admin design-conformance track completed. Independent DX review passed with one launch-data advisory; LFG code review applied safe fixes, recorded five residual findings, and the browser gate passed every credential-free route with the protected admin route environment-blocked.
 
-**Next session entry point:** Phase 1 complete. Run `/gsd-spec-phase 2` to begin Data Layer Consolidation + Image Pipeline + RLS Hardening.
+**Next session entry point:** Run `/gsd-spec-phase 2` to begin Data Layer Consolidation + Image Pipeline + RLS Hardening. Review `docs/residual-review-findings/codex-refactor-dx-design-conformance.md` before changing checkout recovery, admin draft protection, order filtering, or authenticated mutation coverage.
 
 **Files of record:**
 

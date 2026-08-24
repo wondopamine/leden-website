@@ -1,0 +1,91 @@
+{
+  "reviewer": "adversarial",
+  "findings": [
+    {
+      "title": "Pending saves can silently discard newer draft edits",
+      "severity": "P1",
+      "file": "src/components/admin/settings-form.tsx",
+      "line": 79,
+      "why_it_matters": "A staff member can click Save on a slow connection, continue editing an enabled field, and then leave without a warning even though the later value was never persisted. The save handler disables protection before the request and unconditionally clears dirty state after success; the menu-item editor uses the same protocol. Keeping protection active through non-redirecting saves and only clearing the submitted draft revision prevents both unload loss and post-submit edits being mislabeled as saved.",
+      "autofix_class": "manual",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "suggested_fix": "Track an edit revision at submission and clear dirty state only when that revision is still current; keep navigation/unload protection active while settings and edit saves are pending, or disable all editable controls until the captured submission settles.",
+      "confidence": 100,
+      "evidence": [
+        "src/components/admin/settings-form.tsx:79-80 calls suspendProtection() and setIsDirty(false) before awaiting updateCafeInfo(), so navigation and unload are immediately unguarded while persistence is still uncertain.",
+        "src/components/admin/settings-form.tsx:83-92 submits a snapshot of the current state, while the rendered inputs remain enabled; an edit made during the request is not in that snapshot.",
+        "src/components/admin/settings-form.tsx:93 unconditionally calls setIsDirty(false) on success, erasing the dirty signal created by any edit made after submission.",
+        "src/components/admin/menu-item-form.tsx:174-179 repeats the same suspend-before-await and unconditional-clear sequence while the form fields remain editable, so the failure is shared by both substantial admin editors.",
+        "Concrete sequence: edit address A, submit, change it to B before the server responds, then let A save. The UI shows B and says Settings saved, but B is absent from the database and a later navigation gets no discard prompt."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "Recovery link sends failed order views to a 404",
+      "severity": "P2",
+      "file": "src/app/admin/(dashboard)/orders/error.tsx",
+      "line": 37,
+      "why_it_matters": "When order rendering does reach the new error boundary, the fallback action promising live orders navigates to a route that does not exist. Staff trying the alternative to Retry land on a 404 during an already degraded workflow. Pointing it to the route-group-backed /admin page restores the intended recovery path.",
+      "autofix_class": "safe_auto",
+      "owner": "review-fixer",
+      "requires_verification": true,
+      "suggested_fix": "Change the recovery href from /admin/dashboard to /admin and cover the error-boundary action with a route assertion.",
+      "confidence": 100,
+      "evidence": [
+        "src/app/admin/(dashboard)/orders/error.tsx:37 hard-codes href=\"/admin/dashboard\" for Return to live orders.",
+        "The route inventory has src/app/admin/(dashboard)/page.tsx, whose route-group URL is /admin; there is no src/app/admin/dashboard/page.tsx.",
+        "The admin sidebar's canonical Dashboard link also uses /admin, confirming the recovery target is mistyped."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "Undo after checkout repopulates the cleared cart",
+      "severity": "P2",
+      "file": "src/components/order/order-content.tsx",
+      "line": 126,
+      "why_it_matters": "A customer who removes one line from a multi-item cart and immediately places the remaining order can still activate the removal toast after checkout succeeds. The submitted order is already final and clearCart has started a new cart, so Undo unexpectedly creates a leftover item for a future order instead of undoing anything about the completed order. Invalidating removal actions when checkout commits keeps toast recovery scoped to the cart generation it describes.",
+      "autofix_class": "manual",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "suggested_fix": "Track removal-toast IDs or a cart generation token and dismiss/invalidate all outstanding Undo actions immediately before clearCart on successful submission.",
+      "confidence": 75,
+      "evidence": [
+        "src/components/order/order-content.tsx:123-138 creates a persistent toast action whose closure can call addItem at any later point in the toast lifetime.",
+        "src/components/order/order-content.tsx:179-181 clears the persisted cart and navigates after a successful API response without dismissing or invalidating earlier removal actions.",
+        "src/app/[locale]/layout.tsx:50 hosts Toaster in the locale layout, which persists across the child navigation from /order to /order/confirmation.",
+        "Concrete sequence: start with items A and B, remove A, submit B before the toast expires, arrive at confirmation, and press Undo. A is inserted into the now-empty persisted cart even though the order just submitted contains only B."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "Search locks after the second typed character",
+      "severity": "P2",
+      "file": "src/components/admin/orders-filter.tsx",
+      "line": 73,
+      "why_it_matters": "On any route transition slower than normal typing, entering the second search character starts navigation and immediately disables the active field, interrupting longer order-number or customer-name queries. Every later character requires waiting and refocusing, and rapid successive transitions can search intermediate strings. Keeping a local input draft and debouncing/cancelling URL updates preserves continuous typing while retaining pending feedback.",
+      "autofix_class": "manual",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "suggested_fix": "Use controlled local search text, debounce the URL update, and do not disable the active search field during the transition; retain pending state for results and non-text filters.",
+      "confidence": 75,
+      "evidence": [
+        "src/components/admin/orders-filter.tsx:67-71 calls updateParams as soon as the uncontrolled value reaches length 2 and on every subsequent change.",
+        "src/components/admin/orders-filter.tsx:36-38 wraps router.push in a transition, making isPending true for the route load.",
+        "src/components/admin/orders-filter.tsx:73 binds that pending state to the search input's disabled attribute, so the currently edited control stops accepting input during every query navigation.",
+        "Concrete sequence on a delayed route: type A-101 continuously. The A- transition disables the field before 101 can be entered, so the intended full query is never captured in one typing interaction."
+      ],
+      "pre_existing": false
+    }
+  ],
+  "residual_risks": [
+    "The create-menu action redirects, and Next 16 represents a Server Action redirect as a handled rejected action promise; MenuItemForm catches every rejection and resumes dirty protection. No authenticated success test demonstrates that this recovery branch cannot race or mislabel the intentional redirect.",
+    "The non-Navigation-API history fallback uses one restoringHistory boolean for popstate recovery. Rapid Back/Forward traversal can interleave user and programmatic history events, but this could not be confirmed without Safari/Firefox coverage."
+  ],
+  "testing_gaps": [
+    "No authenticated mutation test edits SettingsForm or MenuItemForm while save is pending, navigates/reloads during the request, or verifies that a post-submit edit remains dirty.",
+    "No order-success test leaves an Undo toast outstanding across clearCart and confirmation navigation.",
+    "No slow-navigation test types a search longer than two characters through OrdersFilter and verifies uninterrupted focus/value updates.",
+    "Unsaved-change traversal is only exercised in the Chromium Playwright path; fallback click/popstate behavior and rapid history repetition are unverified in browsers without the Navigation API."
+  ]
+}

@@ -22,15 +22,12 @@ export function OpenStatusPill({
       className={cn(
         "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-caption font-medium",
         onForest
-          ? "border-cream-1/20 bg-cream-1/10 text-cream-1"
+          ? "border-forest-8 bg-forest-10 text-cream-1"
           : "border-cream-6 bg-cream-1 text-forest-11 shadow-sm",
         className
       )}
     >
       <span className="relative flex h-2 w-2 shrink-0">
-        {isOpen && (
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-forest-7 opacity-75" />
-        )}
         <span
           className={cn(
             "relative inline-flex h-2 w-2 rounded-full",

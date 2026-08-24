@@ -1,15 +1,24 @@
 import { createClient } from "@/lib/supabase/server";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { OrderCard, type Order } from "@/components/admin/order-card";
 import { AdminPageHeader } from "@/components/admin/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 
 type Props = {
   params: Promise<{ id: string }>;
 };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  await params;
+  return {
+    title: "Order detail",
+    description: "Review an order's customer, items, status, and pricing.",
+  };
+}
 
 export default async function OrderDetailPage({ params }: Props) {
   const { id } = await params;
@@ -27,16 +36,17 @@ export default async function OrderDetailPage({ params }: Props) {
 
   return (
     <div className="max-w-2xl space-y-4">
-      <Button
-        variant="ghost"
-        size="sm"
-        nativeButton={false}
-        render={<Link href="/admin/orders" />}
-        className="-ml-2 text-muted-foreground"
+      <Link
+        href="/admin/orders"
+        className={buttonVariants({
+          variant: "ghost",
+          size: "sm",
+          className: "-ml-2 text-muted-foreground",
+        })}
       >
         <ArrowLeft className="h-4 w-4" />
         Back to orders
-      </Button>
+      </Link>
 
       <AdminPageHeader
         title={`Order ${typedOrder.order_number}`}
@@ -47,7 +57,7 @@ export default async function OrderDetailPage({ params }: Props) {
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="font-sans text-sm font-semibold">
+          <CardTitle as="h2" className="font-sans text-sm font-semibold">
             Pricing breakdown
           </CardTitle>
         </CardHeader>

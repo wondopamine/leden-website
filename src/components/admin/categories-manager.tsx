@@ -1,13 +1,15 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useCallback, useState, useTransition } from "react";
 import {
   saveCategory,
   deleteCategory,
 } from "@/app/admin/(dashboard)/categories/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2, Save } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { useUnsavedChanges } from "@/lib/use-unsaved-changes";
+import { Plus, Trash2, Save, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
 type Category = {
@@ -23,6 +25,7 @@ type Props = {
 };
 
 export function CategoriesManager({ initialCategories }: Props) {
+  const [savedCategories, setSavedCategories] = useState(initialCategories);
   const [categories, setCategories] = useState(initialCategories);
   const [editedIds, setEditedIds] = useState<Set<string>>(new Set());
   const [isPending, startTransition] = useTransition();
@@ -31,6 +34,18 @@ export function CategoriesManager({ initialCategories }: Props) {
     name_fr: "",
     slug: "",
   });
+  const hasNewCategoryDraft = Object.values(newCat).some((value) => value.trim());
+  const isDirty = editedIds.size > 0 || hasNewCategoryDraft;
+  const resetChanges = useCallback(() => {
+    setCategories(savedCategories);
+    setEditedIds(new Set());
+    setNewCat({ name_en: "", name_fr: "", slug: "" });
+  }, [savedCategories]);
+  const { confirmDiscard } = useUnsavedChanges(
+    isDirty,
+    resetChanges,
+    "Discard your unsaved category changes and leave this page?",
+  );
 
   function handleFieldChange(id: string, field: string, value: string | number) {
     setCategories(
@@ -51,6 +66,9 @@ export function CategoriesManager({ initialCategories }: Props) {
           slug: cat.slug,
           sort_order: cat.sort_order,
         });
+        setSavedCategories((current) =>
+          current.map((saved) => (saved.id === cat.id ? cat : saved)),
+        );
         setEditedIds((prev) => {
           const next = new Set(prev);
           next.delete(cat.id);
@@ -58,7 +76,9 @@ export function CategoriesManager({ initialCategories }: Props) {
         });
         toast.success(`${cat.name_en} saved`);
       } catch {
-        toast.error("Failed to save");
+        toast.error(`${cat.name_en || "Category"} was not saved`, {
+          description: "Check the fields and your connection, then try again.",
+        });
       }
     });
   }
@@ -68,10 +88,20 @@ export function CategoriesManager({ initialCategories }: Props) {
     startTransition(async () => {
       try {
         await deleteCategory(id);
-        setCategories(categories.filter((c) => c.id !== id));
+        setCategories((current) => current.filter((category) => category.id !== id));
+        setSavedCategories((current) =>
+          current.filter((category) => category.id !== id),
+        );
+        setEditedIds((current) => {
+          const next = new Set(current);
+          next.delete(id);
+          return next;
+        });
         toast.success(`${name} deleted`);
       } catch {
-        toast.error("Cannot delete — category may have menu items");
+        toast.error(`${name} was not deleted`, {
+          description: "Move its menu items to another category, then try again.",
+        });
       }
     });
   }
@@ -89,105 +119,172 @@ export function CategoriesManager({ initialCategories }: Props) {
         setNewCat({ name_en: "", name_fr: "", slug: "" });
         toast.success("Category added — refresh to see it");
       } catch {
-        toast.error("Failed to add category");
+        toast.error("Category was not added", {
+          description: "Check the required fields and your connection, then try again.",
+        });
       }
     });
   }
 
   return (
-    <div className="max-w-2xl space-y-2">
-      {/* Existing categories */}
-      {categories.map((cat) => (
-        <div
-          key={cat.id}
-          className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card p-3"
-        >
-          <Input
-            value={cat.sort_order}
-            onChange={(e) =>
-              handleFieldChange(cat.id, "sort_order", parseInt(e.target.value) || 0)
-            }
-            className="w-14 shrink-0 text-center text-sm tabular-nums"
-            type="number"
-            aria-label={`${cat.name_en || "Category"} sort order`}
-          />
-          <Input
-            value={cat.name_en}
-            onChange={(e) => handleFieldChange(cat.id, "name_en", e.target.value)}
-            placeholder="Name (EN)"
-            className="min-w-[7rem] flex-1 text-sm"
-            aria-label="Name (EN)"
-          />
-          <Input
-            value={cat.name_fr}
-            onChange={(e) => handleFieldChange(cat.id, "name_fr", e.target.value)}
-            placeholder="Name (FR)"
-            className="min-w-[7rem] flex-1 text-sm"
-            aria-label="Name (FR)"
-          />
-          <Input
-            value={cat.slug}
-            onChange={(e) => handleFieldChange(cat.id, "slug", e.target.value)}
-            placeholder="slug"
-            className="w-28 shrink-0 text-sm"
-            aria-label="Slug"
-          />
-          {editedIds.has(cat.id) && (
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => handleSave(cat)}
-              disabled={isPending}
-              aria-label={`Save ${cat.name_en || "category"}`}
-            >
-              <Save />
-            </Button>
-          )}
+    <div aria-busy={isPending} className="max-w-3xl space-y-3">
+      {isDirty && (
+        <div className="flex justify-end">
           <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => handleDelete(cat.id, cat.name_en)}
+            variant="outline"
+            size="sm"
+            onClick={confirmDiscard}
             disabled={isPending}
-            aria-label={`Delete ${cat.name_en || "category"}`}
           >
-            <Trash2 className="text-destructive" />
+            <RotateCcw />
+            Discard unsaved changes
           </Button>
         </div>
+      )}
+      {categories.map((cat) => (
+        <section
+          key={cat.id}
+          aria-labelledby={`category-${cat.id}-heading`}
+          className="rounded-xl border border-border bg-card p-3"
+        >
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2
+              id={`category-${cat.id}-heading`}
+              className="font-sans text-sm font-semibold text-foreground"
+            >
+              {cat.name_en || "Unnamed category"}
+            </h2>
+            <div className="flex items-center gap-1">
+              {editedIds.has(cat.id) && (
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => handleSave(cat)}
+                  disabled={isPending}
+                  aria-busy={isPending}
+                  aria-label={`Save ${cat.name_en || "category"}`}
+                >
+                  <Save />
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleDelete(cat.id, cat.name_en)}
+                disabled={isPending}
+                aria-busy={isPending}
+                aria-label={`Delete ${cat.name_en || "category"}`}
+              >
+                <Trash2 className="text-destructive" />
+              </Button>
+            </div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[6rem_1fr_1fr_9rem]">
+            <div className="space-y-1.5">
+              <Label htmlFor={`category-${cat.id}-sort`}>Sort order</Label>
+              <Input
+                id={`category-${cat.id}-sort`}
+                value={cat.sort_order}
+                onChange={(e) =>
+                  handleFieldChange(
+                    cat.id,
+                    "sort_order",
+                    parseInt(e.target.value) || 0
+                  )
+                }
+                className="text-sm tabular-nums"
+                type="number"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor={`category-${cat.id}-name-en`}>Name (EN)</Label>
+              <Input
+                id={`category-${cat.id}-name-en`}
+                value={cat.name_en}
+                onChange={(e) =>
+                  handleFieldChange(cat.id, "name_en", e.target.value)
+                }
+                className="text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor={`category-${cat.id}-name-fr`}>Name (FR)</Label>
+              <Input
+                id={`category-${cat.id}-name-fr`}
+                value={cat.name_fr}
+                onChange={(e) =>
+                  handleFieldChange(cat.id, "name_fr", e.target.value)
+                }
+                className="text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor={`category-${cat.id}-slug`}>Slug</Label>
+              <Input
+                id={`category-${cat.id}-slug`}
+                value={cat.slug}
+                onChange={(e) =>
+                  handleFieldChange(cat.id, "slug", e.target.value)
+                }
+                className="text-sm"
+              />
+            </div>
+          </div>
+        </section>
       ))}
 
-      {/* Add new */}
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-border bg-muted/50 p-3">
-        <Input
-          value={newCat.name_en}
-          onChange={(e) => setNewCat({ ...newCat, name_en: e.target.value })}
-          placeholder="New category (EN)"
-          className="min-w-[7rem] flex-1 text-sm"
-          aria-label="New category name (EN)"
-        />
-        <Input
-          value={newCat.name_fr}
-          onChange={(e) => setNewCat({ ...newCat, name_fr: e.target.value })}
-          placeholder="(FR)"
-          className="min-w-[7rem] flex-1 text-sm"
-          aria-label="New category name (FR)"
-        />
-        <Input
-          value={newCat.slug}
-          onChange={(e) => setNewCat({ ...newCat, slug: e.target.value })}
-          placeholder="slug"
-          className="w-28 shrink-0 text-sm"
-          aria-label="New category slug"
-        />
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleAdd}
-          disabled={isPending || !newCat.name_en || !newCat.slug}
-        >
-          <Plus />
-          Add
-        </Button>
-      </div>
+      <section
+        aria-labelledby="new-category-heading"
+        className="rounded-xl border border-dashed border-border bg-muted/50 p-3"
+      >
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2
+            id="new-category-heading"
+            className="font-sans text-sm font-semibold text-foreground"
+          >
+            Add category
+          </h2>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleAdd}
+            disabled={isPending || !newCat.name_en || !newCat.slug}
+            aria-busy={isPending}
+          >
+            <Plus />
+            Add
+          </Button>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="new-category-name-en">Name (EN)</Label>
+            <Input
+              id="new-category-name-en"
+              value={newCat.name_en}
+              onChange={(e) => setNewCat({ ...newCat, name_en: e.target.value })}
+              className="text-sm"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="new-category-name-fr">Name (FR)</Label>
+            <Input
+              id="new-category-name-fr"
+              value={newCat.name_fr}
+              onChange={(e) => setNewCat({ ...newCat, name_fr: e.target.value })}
+              className="text-sm"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="new-category-slug">Slug</Label>
+            <Input
+              id="new-category-slug"
+              value={newCat.slug}
+              onChange={(e) => setNewCat({ ...newCat, slug: e.target.value })}
+              className="text-sm"
+            />
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

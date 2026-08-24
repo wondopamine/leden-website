@@ -1,10 +1,10 @@
 {
   "common": {
-    "orderNow": "Order Now",
-    "orderForPickup": "Order for Pickup",
-    "viewMenu": "View Menu",
-    "viewFullMenu": "See Full Menu",
-    "ourStory": "Our Story",
+    "orderNow": "Order now",
+    "orderForPickup": "Order for pickup",
+    "viewMenu": "View menu",
+    "viewFullMenu": "View menu",
+    "ourStory": "Our story",
     "language": "Language",
     "cart": "Cart",
     "home": "Home",
@@ -14,10 +14,11 @@
     "back": "Back",
     "add": "Add",
     "remove": "Remove",
-    "total": "Estimated Total",
+    "undo": "Undo",
+    "total": "Estimated total",
     "subtotal": "Subtotal",
     "tax": "Tax",
-    "continueShopping": "Continue Shopping",
+    "continueShopping": "Continue shopping",
     "emptyCart": "Your cart is empty",
     "phone": "Phone",
     "name": "Name",
@@ -53,70 +54,93 @@
       "since": "Serving since 1994"
     },
     "reviews": {
-      "title": "What Our Guests Say",
+      "title": "What our guests say",
       "subtitle": "Real reviews from our community",
       "onGoogle": "on Google"
     },
     "about": {
-      "title": "Our Story",
+      "title": "Our story",
       "description": "For over 30 years, Café Le Den has been the neighbourhood's living room in Valois Village. Run by Gina and Josh, we bake our bread fresh every morning, simmer our soups from scratch, and craft specialty drinks with care. From the pistachio latte to our famous hot and sour soup, every item is made by hand with the finest ingredients.",
       "panel": "Baked fresh, served warm",
       "years": "Years",
       "ranking": "in Pointe-Claire"
     },
     "hours": {
-      "title": "Visit Us",
+      "title": "Visit us",
       "address": "121 Donegani, Pointe-Claire, QC",
       "openDaily": "Hours",
       "closed": "Closed",
-      "findUs": "Find Us"
+      "findUs": "Find us"
     },
     "featured": {
-      "title": "Customer Favourites",
+      "title": "Customer favourites",
       "subtitle": "The dishes and drinks people keep coming back for"
     }
   },
   "menu": {
-    "title": "Our Menu",
+    "title": "Our menu",
     "allCategories": "All",
-    "soldOut": "Sold Out",
-    "addToOrder": "Add to Order",
+    "soldOut": "Sold out",
+    "addToOrder": "Add to order",
     "customize": "Customize",
     "search": "Search menu..."
   },
   "order": {
-    "title": "Your Order",
-    "pickupTime": "Pickup Time",
+    "title": "Your order",
+    "pickupTime": "Pickup time",
     "pickupTimeDescription": "Choose when you'd like to pick up your order",
     "asap": "As soon as possible",
     "scheduleFor": "Schedule for later",
     "selectTime": "Select a time",
-    "customerInfo": "Your Information",
+    "customerInfo": "Your information",
     "nameRequired": "Name is required for pickup",
     "phoneRequired": "Phone number for order updates",
-    "placeOrder": "Place Order",
-    "processing": "Submitting...",
+    "placeOrder": "Place order",
+    "processing": "Submitting…",
+    "removedItem": "{item} removed from your order",
     "payInPerson": "Payment is collected in person at pickup.",
-    "errorSubmitting": "Something went wrong. Please try again.",
+    "errorSubmitting": "We couldn’t place your order. Your cart is saved. Check your connection and try again.",
+    "errorService": "Ordering is temporarily unavailable. Your cart is saved. Please try again in a few minutes.",
+    "errorOrderDetails": "Your order may have been received, but we couldn’t confirm its details. Keep your cart and call the cafe before trying again.",
+    "errorHours": "Pickup is no longer available at that time. Choose another available time and try again.",
+    "errorMenuChanged": "A menu item or price changed. Review the menu and update your cart before trying again.",
     "orderingClosed": "Ordering is currently closed",
     "opensAt": "We open at {time}",
     "itemsInCart": "{count, plural, =0 {No items} =1 {1 item} other {# items}}"
   },
   "confirmation": {
-    "title": "Order Placed!",
-    "thankYou": "Thank you! Your order has been sent to the cafe.",
-    "orderNumber": "Order Number",
-    "pickupTime": "Pickup Time",
+    "title": "Order placed",
+    "thankYou": "Thank you. Your order has been sent to the cafe.",
+    "orderNumber": "Order number",
+    "pickupTime": "Pickup time",
     "asap": "As soon as possible",
     "pickupAt": "Pick up at",
     "items": "Items",
     "subtotal": "Subtotal",
     "total": "Total",
     "paymentNote": "Please pay in person when you pick up your order.",
-    "backToMenu": "Back to Menu"
+    "backToMenu": "Back to menu"
   },
   "footer": {
     "rights": "All rights reserved.",
     "madeWith": "Made with love in Pointe-Claire"
+  },
+  "metadata": {
+    "home": {
+      "title": "Café Le Den — Café in Pointe-Claire",
+      "description": "Fresh bread, specialty lattes, and homemade meals in Valois Village, Pointe-Claire."
+    },
+    "menu": {
+      "title": "Menu for pickup | Café Le Den",
+      "description": "Browse Café Le Den’s current food and drink menu for pickup in Pointe-Claire."
+    },
+    "order": {
+      "title": "Order for pickup | Café Le Den",
+      "description": "Review your Café Le Den cart, choose a pickup time, and place your order."
+    },
+    "confirmation": {
+      "title": "Order confirmation | Café Le Den",
+      "description": "Review the pickup details for your Café Le Den order."
+    }
   }
 }

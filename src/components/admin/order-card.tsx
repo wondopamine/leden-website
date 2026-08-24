@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import {
   updateOrderStatus,
   type OrderStatus,
@@ -13,6 +13,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,18 +58,23 @@ export type Order = {
 
 export function OrderCard({ order }: { order: Order }) {
   const [isPending, startTransition] = useTransition();
+  const [cancelOpen, setCancelOpen] = useState(false);
   const meta = ORDER_STATUS[order.status];
+  const StatusIcon = meta.icon;
   const isTerminal = order.status === "picked_up" || order.status === "cancelled";
 
   function handleStatusChange(newStatus: OrderStatus) {
     startTransition(async () => {
       try {
         await updateOrderStatus(order.id, newStatus);
+        setCancelOpen(false);
         toast.success(
           `Order ${order.order_number} → ${ORDER_STATUS[newStatus].label}`
         );
       } catch {
-        toast.error("Failed to update order status");
+        toast.error(`Order ${order.order_number} was not updated`, {
+          description: "Check your connection, then try the action again.",
+        });
       }
     });
   }
@@ -75,12 +89,18 @@ export function OrderCard({ order }: { order: Order }) {
   const timeAgo = getTimeAgo(order.created_at);
 
   return (
-    <Card className={cn("gap-3 py-4", isPending && "opacity-60")}>
+    <Card
+      aria-busy={isPending}
+      className={cn("gap-3 py-4", isPending && "opacity-60")}
+    >
       <CardHeader className="pb-0">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 space-y-0.5">
-            <CardTitle className="flex items-center gap-2 font-sans text-sm font-semibold text-foreground">
-              <span className={cn("size-2 shrink-0 rounded-full", meta.dot)} />
+            <CardTitle as="h3" className="flex items-center gap-2 font-sans text-lg font-semibold text-foreground">
+              <span
+                aria-hidden="true"
+                className={cn("size-2.5 shrink-0 rounded-full", meta.dot)}
+              />
               <span className="truncate tabular-nums">{order.order_number}</span>
             </CardTitle>
             <p className="truncate text-sm font-medium text-foreground">
@@ -89,6 +109,7 @@ export function OrderCard({ order }: { order: Order }) {
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
             <Badge variant="outline" className={meta.badge}>
+              <StatusIcon aria-hidden="true" data-icon="inline-start" />
               {meta.label}
             </Badge>
             {!isTerminal && (
@@ -98,6 +119,8 @@ export function OrderCard({ order }: { order: Order }) {
                     <Button
                       variant="ghost"
                       size="icon-sm"
+                      disabled={isPending}
+                      aria-busy={isPending}
                       aria-label="Order actions"
                     />
                   }
@@ -106,7 +129,7 @@ export function OrderCard({ order }: { order: Order }) {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem
-                    onClick={() => handleStatusChange("cancelled")}
+                    onClick={() => setCancelOpen(true)}
                     className="text-destructive"
                   >
                     <X className="mr-2 size-4" />
@@ -119,38 +142,51 @@ export function OrderCard({ order }: { order: Order }) {
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+        <div className="grid grid-cols-2 gap-x-3 gap-y-2 rounded-lg bg-muted/55 p-2.5 text-caption text-muted-foreground">
           <span className="flex items-center gap-1">
-            <Phone className="size-3" />
+            <Phone aria-hidden="true" className="size-3.5" />
             <span className="tabular-nums">{order.customer_phone}</span>
           </span>
           <span className="flex items-center gap-1">
-            <Clock className="size-3" />
+            <Clock aria-hidden="true" className="size-3.5" />
             <span className="tabular-nums">{pickupDisplay}</span>
           </span>
-          <span className="tabular-nums">{timeAgo}</span>
+          <span className="col-span-2 flex items-baseline justify-between border-t border-border pt-2">
+            <span>Order age</span>
+            <span className="font-semibold tabular-nums text-foreground">
+              {timeAgo}
+            </span>
+          </span>
         </div>
 
-        <ul className="space-y-1 text-sm">
+        <ul className="divide-y divide-border text-sm">
           {order.order_items.map((item) => (
-            <li key={item.id} className="flex justify-between gap-2">
-              <span className="min-w-0">
-                <span className="tabular-nums">{item.quantity}x</span>{" "}
+            <li key={item.id} className="grid grid-cols-[1fr_auto] gap-x-3 py-2 first:pt-0 last:pb-0">
+              <span className="min-w-0 font-medium text-foreground">
+                <span className="mr-1 font-semibold tabular-nums">
+                  {item.quantity}×
+                </span>
                 {item.menu_item_name}
-                {item.modifiers.length > 0 && (
-                  <span className="ml-1 text-xs text-muted-foreground">
-                    ({item.modifiers.map((m) => m.option).join(", ")})
-                  </span>
-                )}
               </span>
               <span className="shrink-0 tabular-nums text-muted-foreground">
-                $
-                {(
+                ${(
                   (item.price +
-                    item.modifiers.reduce((s, m) => s + m.priceAdjustment, 0)) *
-                  item.quantity
+                    item.modifiers.reduce((sum, modifier) =>
+                      sum + modifier.priceAdjustment, 0)) * item.quantity
                 ).toFixed(2)}
               </span>
+              {item.modifiers.length > 0 ? (
+                <ul className="col-span-2 mt-1 space-y-0.5 border-l-2 border-status-progress-border pl-3 text-caption text-muted-foreground">
+                  {item.modifiers.map((modifier, index) => (
+                    <li key={`${modifier.name}-${modifier.option}-${index}`}>
+                      <span>{modifier.name}: </span>
+                      <span className="font-medium text-foreground">
+                        {modifier.option}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
             </li>
           ))}
         </ul>
@@ -165,13 +201,40 @@ export function OrderCard({ order }: { order: Order }) {
               size="sm"
               onClick={() => handleStatusChange(meta.next!)}
               disabled={isPending}
+              aria-busy={isPending}
             >
               {meta.nextLabel}
-              <ChevronRight className="ml-1 size-4" />
+              <ChevronRight aria-hidden="true" className="ml-1 size-4" />
             </Button>
           )}
         </div>
       </CardContent>
+
+      <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-sans">Cancel order {order.order_number}?</DialogTitle>
+            <DialogDescription>
+              This marks {order.customer_name}&apos;s order as cancelled. The
+              cancellation cannot be undone from this screen.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline" size="default" />}>
+              Keep order
+            </DialogClose>
+            <Button
+              variant="destructive"
+              size="default"
+              onClick={() => handleStatusChange("cancelled")}
+              disabled={isPending}
+              aria-busy={isPending}
+            >
+              {isPending ? "Cancelling…" : "Cancel order"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
@@ -179,8 +242,8 @@ export function OrderCard({ order }: { order: Order }) {
 function getTimeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return "Less than 1 min";
+  if (mins < 60) return `${mins} min`;
   const hours = Math.floor(mins / 60);
-  return `${hours}h ago`;
+  return `${hours} hr`;
 }

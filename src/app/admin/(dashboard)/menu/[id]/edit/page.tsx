@@ -1,15 +1,24 @@
 import { createClient } from "@/lib/supabase/server";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { updateMenuItem } from "../../actions";
 import { MenuItemForm } from "@/components/admin/menu-item-form";
 import { AdminPageHeader } from "@/components/admin/page-header";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 
 type Props = {
   params: Promise<{ id: string }>;
 };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  await params;
+  return {
+    title: "Edit menu item",
+    description: "Update a Café Le Den menu item, photo, and modifiers.",
+  };
+}
 
 export default async function EditMenuItemPage({ params }: Props) {
   const { id } = await params;
@@ -55,16 +64,17 @@ export default async function EditMenuItemPage({ params }: Props) {
 
   return (
     <div className="space-y-4">
-      <Button
-        variant="ghost"
-        size="sm"
-        nativeButton={false}
-        render={<Link href="/admin/menu" />}
-        className="-ml-2.5 text-muted-foreground"
+      <Link
+        href="/admin/menu"
+        className={buttonVariants({
+          variant: "ghost",
+          size: "sm",
+          className: "-ml-2.5 text-muted-foreground",
+        })}
       >
         <ArrowLeft className="h-4 w-4" />
         Back to menu
-      </Button>
+      </Link>
       <AdminPageHeader title="Edit menu item" subtitle={item.name_en} />
       <MenuItemForm
         categories={categories ?? []}

@@ -8,13 +8,11 @@
 // Every piece is composed from the REAL admin components with inline sample data in
 // the admin/Supabase row shapes (derived from each component's prop types). Client
 // components that touch Supabase degrade gracefully on interaction: OrdersDashboard
-// guards its realtime subscribe/createClient in try/catch; OrderCard / MenuItemRow /
-// SettingsForm only reach their server actions on click/submit (never at render).
+// guards its realtime subscribe/createClient in try/catch; OrderCard and MenuItemRow
+// only reach their server actions on interaction. Form saves use local delayed actions.
 //
-// The analytics chart area is shown two ways: the live <AnalyticsDashboard /> (which
-// fetches on mount and, without env, degrades to its loading skeleton) and a static
-// <AnalyticsPreview /> that renders the same chart JSX + token props against sample
-// data so the recharts token migration is actually visible.
+// Analytics includes both a static chart preview and the real dashboard wired to a
+// deterministic fail-once loader for recovery testing. Neither contacts Supabase.
 
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -25,8 +23,7 @@ import { StatStrip } from "@/components/admin/stat-strip";
 import { OrdersDashboard } from "@/components/admin/orders-dashboard";
 import { OrderCard, type Order } from "@/components/admin/order-card";
 import { MenuItemRow } from "@/components/admin/menu-item-row";
-import { SettingsForm } from "@/components/admin/settings-form";
-import { AnalyticsDashboard } from "@/components/admin/analytics-dashboard";
+import { CategoriesManager } from "@/components/admin/categories-manager";
 import {
   ORDER_STATUS,
   ORDER_STATUS_SEQUENCE,
@@ -44,6 +41,12 @@ import {
 } from "@/components/ui/table";
 
 import { AnalyticsPreview } from "./analytics-preview";
+import { AnalyticsErrorPreview } from "./analytics-error-preview";
+import { OrdersFilterPreview } from "./orders-filter-preview";
+import {
+  MenuItemSaveRacePreview,
+  SettingsSaveRacePreview,
+} from "./form-race-previews";
 
 // created_at stamps are computed once at render so the KDS "Xm ago" labels read
 // naturally in a screenshot.
@@ -260,6 +263,23 @@ const sampleMenuItems: (MenuRowItem & { status: MenuStatus })[] = [
   },
 ];
 
+const sampleCategories = [
+  {
+    id: "c-1",
+    name_en: "Coffee",
+    name_fr: "Café",
+    slug: "coffee",
+    sort_order: 1,
+  },
+  {
+    id: "c-2",
+    name_en: "Pastries",
+    name_fr: "Pâtisseries",
+    slug: "pastries",
+    sort_order: 2,
+  },
+];
+
 // --- Sample cafe_info (SettingsForm initialData shape) -----------------------
 const sampleCafeInfo = {
   id: "cafe-1",
@@ -308,11 +328,13 @@ const statTiles = [
   },
 ];
 
-const headClass =
-  "text-xs font-semibold uppercase tracking-wider text-muted-foreground";
+const headClass = "text-xs font-semibold text-muted-foreground";
 
 export default function DevAdminPreviewPage() {
-  if (process.env.NODE_ENV !== "development") {
+  if (
+    process.env.NODE_ENV !== "development" &&
+    process.env.PLAYWRIGHT_ADMIN_PREVIEW !== "1"
+  ) {
     notFound();
   }
 
@@ -323,7 +345,7 @@ export default function DevAdminPreviewPage() {
         <div className="space-y-10 p-6">
           <header className="border-b border-border pb-6">
             <h1 className="font-sans text-xl font-semibold tracking-tight text-foreground">
-              Admin Redesign Preview
+              Admin redesign preview
             </h1>
             <p className="mt-2 text-caption text-muted-foreground">
               Dev-only, auth-free and Supabase-free. Every block below is a real
@@ -349,12 +371,12 @@ export default function DevAdminPreviewPage() {
 
           <Section
             title="Order cards - one per status"
-            note="OrderCard across all five statuses. Badges and dots come from ORDER_STATUS; the advance-status button and cancel dropdown are live but only reach their server action on click."
+            note="OrderCard across all five statuses. Badges and dots come from ORDER_STATUS; the advance-status button and cancel dropdown are live but only reach their server action when used."
           >
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {ORDER_STATUS_SEQUENCE.map((status) => (
                 <div key={status} className="space-y-2">
-                  <p className="text-label uppercase tracking-wide text-muted-foreground">
+                  <p className="text-label font-semibold text-muted-foreground">
                     {ORDER_STATUS[status].label}
                   </p>
                   <OrderCard order={firstByStatus(status)} />
@@ -386,8 +408,8 @@ export default function DevAdminPreviewPage() {
             note="Dense scanning table (Order / Customer / Items / Total / Status / Time) mirroring /admin/orders. Rows link to detail; status uses ORDER_STATUS badges."
           >
             <div className="overflow-hidden rounded-lg border border-border bg-card">
-              <Table>
-                <TableHeader>
+              <Table containerClassName="max-h-96">
+                <TableHeader sticky>
                   <TableRow className="hover:bg-transparent">
                     <TableHead className={headClass}>Order</TableHead>
                     <TableHead className={headClass}>Customer</TableHead>
@@ -450,6 +472,20 @@ export default function DevAdminPreviewPage() {
           </Section>
 
           <Section
+            title="Orders filter behavior"
+            note="OrdersFilter with a local navigation adapter for deterministic debounce and overlapping-filter verification. No route or network mutation."
+          >
+            <OrdersFilterPreview />
+          </Section>
+
+          <Section
+            title="Category editor"
+            note="CategoriesManager with safe local drafts. This preview verifies explicit discard and navigation protection without calling a server action."
+          >
+            <CategoriesManager initialCategories={sampleCategories} />
+          </Section>
+
+          <Section
             title="Analytics chart area"
             note="Static preview: the same recharts JSX + token props (var(--chart-1/2), var(--border), var(--muted-foreground), popover tooltip) rendered against sample data."
           >
@@ -457,17 +493,24 @@ export default function DevAdminPreviewPage() {
           </Section>
 
           <Section
-            title="Analytics - live component (graceful degrade)"
-            note="The real <AnalyticsDashboard /> fetches from Supabase on mount. Without env it degrades to its loading skeleton instead of crashing."
+            title="Analytics recovery state"
+            note="The production analysis error surface remains distinct from a valid empty period and keeps an explicit retry action."
           >
-            <AnalyticsDashboard />
+            <AnalyticsErrorPreview />
           </Section>
 
           <Section
             title="Settings form"
-            note="SettingsForm with an inline cafe_info sample (hours, address, phone, announcements, lead times). Submit is wired to a server action, reached only on save."
+            note="SettingsForm with an inline cafe_info sample and a local delayed save action for pending-edit verification. No server action is called."
           >
-            <SettingsForm initialData={sampleCafeInfo} />
+            <SettingsSaveRacePreview initialData={sampleCafeInfo} />
+          </Section>
+
+          <Section
+            title="Menu item form save race"
+            note="MenuItemForm with a local delayed edit action for proving newer pending edits remain guarded. No server action is called."
+          >
+            <MenuItemSaveRacePreview />
           </Section>
         </div>
       </main>

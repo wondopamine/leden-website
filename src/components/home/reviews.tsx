@@ -21,7 +21,7 @@ export function Reviews({ place }: { place: PlaceData }) {
             href={place.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-full border border-cream-1/25 bg-cream-1/10 px-4 py-2 text-caption transition-colors hover:bg-cream-1/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cream-1 focus-visible:ring-offset-2 focus-visible:ring-offset-forest-9"
+            className="inline-flex min-h-11 items-center gap-2 rounded-full border border-cream-1/25 bg-cream-1/10 px-4 py-2 text-caption transition-colors hover:bg-cream-1/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cream-1 focus-visible:ring-offset-2 focus-visible:ring-offset-forest-9"
           >
             <Image src="/google.svg" alt="Google" width={16} height={16} />
             <span className="font-semibold">{place.rating}</span>
