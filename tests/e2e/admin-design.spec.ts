@@ -202,7 +202,7 @@ test.describe("explicit non-production admin preview", () => {
     await expect(navigationCount).toHaveText("0");
 
     await search.fill("ab");
-    await page.waitForTimeout(250);
+    await page.waitForTimeout(100);
     await expect(navigationCount).toHaveText("0");
     await expect(navigationCount).toHaveText("1");
     let navigation = JSON.parse((await latestNavigation.textContent()) ?? "{}");
