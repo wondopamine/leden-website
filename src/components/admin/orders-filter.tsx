@@ -1,7 +1,7 @@
 "use client";
 
-import { useTransition } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -10,6 +10,16 @@ type Props = {
   currentDate: string;
   currentStatus: string;
   currentSearch: string;
+  navigationAdapter?: {
+    push: (href: string) => void;
+    replace: (href: string) => void;
+  };
+};
+
+type FilterState = {
+  date: string;
+  status: string;
+  search: string;
 };
 
 const statuses = [
@@ -21,21 +31,104 @@ const statuses = [
   { value: "cancelled", label: "Cancelled" },
 ];
 
-export function OrdersFilter({ currentDate, currentStatus, currentSearch }: Props) {
+export function OrdersFilter({
+  currentDate,
+  currentStatus,
+  currentSearch,
+  navigationAdapter,
+}: Props) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
+  const [searchValue, setSearchValue] = useState(currentSearch);
+  const searchValueRef = useRef(currentSearch);
+  const lastRequestedSearchRef = useRef(currentSearch);
+  const latestFiltersRef = useRef<FilterState>({
+    date: currentDate,
+    status: currentStatus,
+    search: currentSearch,
+  });
 
-  function updateParams(key: string, value: string) {
-    const params = new URLSearchParams(searchParams.toString());
-    if (value && value !== "all" && value !== "") {
-      params.set(key, value);
-    } else {
-      params.delete(key);
+  const navigate = useCallback(
+    (filters: FilterState, method: "push" | "replace") => {
+      const params = new URLSearchParams();
+      if (filters.date) params.set("date", filters.date);
+      if (filters.search) params.set("q", filters.search);
+      if (filters.status && filters.status !== "all") {
+        params.set("status", filters.status);
+      }
+      const query = params.toString();
+      const href = `/admin/orders${query ? `?${query}` : ""}`;
+      startTransition(() => {
+        if (navigationAdapter) {
+          navigationAdapter[method](href);
+        } else {
+          router[method](href);
+        }
+      });
+    },
+    [navigationAdapter, router],
+  );
+
+  useEffect(() => {
+    latestFiltersRef.current = {
+      ...latestFiltersRef.current,
+      date: currentDate,
+      status: currentStatus,
+    };
+  }, [currentDate, currentStatus]);
+
+  useEffect(() => {
+    if (
+      currentSearch === lastRequestedSearchRef.current &&
+      searchValueRef.current !== currentSearch
+    ) {
+      return;
     }
-    startTransition(() => {
-      router.push(`/admin/orders?${params.toString()}`);
-    });
+
+    const timeout = window.setTimeout(() => {
+      if (
+        currentSearch === lastRequestedSearchRef.current &&
+        searchValueRef.current !== currentSearch
+      ) {
+        return;
+      }
+      searchValueRef.current = currentSearch;
+      latestFiltersRef.current = {
+        ...latestFiltersRef.current,
+        search: currentSearch,
+      };
+      setSearchValue(currentSearch);
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
+  }, [currentSearch]);
+
+  useEffect(() => {
+    if (
+      (searchValue !== "" && searchValue.length < 2) ||
+      searchValue === lastRequestedSearchRef.current
+    ) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      const filters = {
+        ...latestFiltersRef.current,
+        search: searchValue,
+      };
+      latestFiltersRef.current = filters;
+      lastRequestedSearchRef.current = searchValue;
+      navigate(filters, "replace");
+    }, 300);
+
+    return () => window.clearTimeout(timeout);
+  }, [navigate, searchValue]);
+
+  function updateFilters(patch: Partial<FilterState>) {
+    const filters = { ...latestFiltersRef.current, ...patch };
+    latestFiltersRef.current = filters;
+    lastRequestedSearchRef.current = filters.search;
+    navigate(filters, "push");
   }
 
   return (
@@ -52,7 +145,7 @@ export function OrdersFilter({ currentDate, currentStatus, currentSearch }: Prop
           id="orders-date"
           type="date"
           value={currentDate}
-          onChange={(e) => updateParams("date", e.target.value)}
+          onChange={(e) => updateFilters({ date: e.target.value })}
           disabled={isPending}
           className="w-full lg:w-auto"
         />
@@ -63,14 +156,18 @@ export function OrdersFilter({ currentDate, currentStatus, currentSearch }: Prop
           id="orders-search"
           type="search"
           placeholder="Order number or customer name"
-          defaultValue={currentSearch}
+          value={searchValue}
           onChange={(e) => {
             const value = e.target.value;
+            searchValueRef.current = value;
+            setSearchValue(value);
             if (value === "" || value.length >= 2) {
-              updateParams("q", value);
+              latestFiltersRef.current = {
+                ...latestFiltersRef.current,
+                search: value,
+              };
             }
           }}
-          disabled={isPending}
           className="w-full"
         />
       </div>
@@ -78,7 +175,7 @@ export function OrdersFilter({ currentDate, currentStatus, currentSearch }: Prop
         <span className="block text-sm font-medium text-foreground">Status</span>
         <Tabs
           value={currentStatus}
-          onValueChange={(value) => updateParams("status", value)}
+          onValueChange={(value) => updateFilters({ status: value })}
           className="w-full lg:w-auto"
         >
           <TabsList

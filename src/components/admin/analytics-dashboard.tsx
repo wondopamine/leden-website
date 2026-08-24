@@ -37,7 +37,16 @@ const TOOLTIP_CONTENT_STYLE = {
 
 const TOOLTIP_TEXT_STYLE = { color: "var(--popover-foreground)" } as const;
 
-export function AnalyticsDashboard() {
+export type AnalyticsLoader = (
+  period: Period,
+  retryAttempt: number,
+) => Promise<AnalyticsData>;
+
+export function AnalyticsDashboard({
+  loadAnalytics = fetchAnalytics,
+}: {
+  loadAnalytics?: AnalyticsLoader;
+}) {
   const [period, setPeriod] = useState<Period>("daily");
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -51,7 +60,7 @@ export function AnalyticsDashboard() {
       setLoading(true);
       setError(null);
       try {
-        const result = await fetchAnalytics(period);
+        const result = await loadAnalytics(period, retryKey);
         if (!cancelled) setData(result);
       } catch {
         if (!cancelled) {
@@ -69,7 +78,7 @@ export function AnalyticsDashboard() {
     return () => {
       cancelled = true;
     };
-  }, [period, retryKey]);
+  }, [loadAnalytics, period, retryKey]);
 
   const handlePeriodChange = (p: Period) => {
     setPeriod(p);

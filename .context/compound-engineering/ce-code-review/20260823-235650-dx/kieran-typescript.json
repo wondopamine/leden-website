@@ -1,0 +1,65 @@
+{
+  "reviewer": "kieran-typescript",
+  "findings": [
+    {
+      "title": "Recovery link targets a nonexistent admin route",
+      "severity": "P2",
+      "file": "src/app/admin/(dashboard)/orders/error.tsx",
+      "line": 37,
+      "why_it_matters": "When order history fails, the only escape CTA sends staff to /admin/dashboard, but the dashboard route group exposes its index at /admin. The recovery path therefore lands on a 404 instead of the promised live-orders dashboard.",
+      "autofix_class": "safe_auto",
+      "owner": "review-fixer",
+      "requires_verification": true,
+      "suggested_fix": "Change the link target to /admin and add a focused assertion for the orders error-boundary recovery link.",
+      "confidence": 100,
+      "evidence": [
+        "src/app/admin/(dashboard)/orders/error.tsx:31-40 promises the live-orders dashboard but renders href=\"/admin/dashboard\".",
+        "The App Router tree contains src/app/admin/(dashboard)/page.tsx, which maps to /admin because route groups do not contribute a URL segment; no src/app/admin/dashboard page exists.",
+        "A repository search finds /admin/dashboard only in this new error-boundary link."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "Navigation guard cannot cancel some history traversals",
+      "severity": "P2",
+      "file": "src/lib/use-unsaved-changes.ts",
+      "line": 89,
+      "why_it_matters": "In browsers with the Navigation API, some same-document history traversals are non-cancelable even though they can be intercepted. In that case a staff user can reject the discard confirmation and still leave the dirty form, losing the draft. Because this branch returns early, the click and popstate fallback never protects that navigation.",
+      "autofix_class": "manual",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "suggested_fix": "Treat NavigateEvent.cancelable separately from canIntercept and implement a tested history-traversal strategy for non-cancelable events (for example a guarded sentinel entry or router-level blocker). Verify browser Back, repeated Back after cancel, and forward traversal in a Navigation API browser.",
+      "confidence": 75,
+      "evidence": [
+        "src/lib/use-unsaved-changes.ts:77-89 checks canIntercept but never checks the inherited Event.cancelable flag before relying on preventDefault().",
+        "src/lib/use-unsaved-changes.ts:74-97 returns after installing the Navigation API listener, so its popstate restoration fallback at lines 135-151 is absent in supporting browsers.",
+        "The HTML Navigation API defines canIntercept independently from cancelable; preventDefault() cannot cancel a non-cancelable navigate event, including qualifying browser-UI or repeated traverse cases."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "Late save completion clears newer unsaved edits",
+      "severity": "P2",
+      "file": "src/components/admin/menu-item-form.tsx",
+      "line": 179,
+      "why_it_matters": "Editable controls remain enabled while a save action is pending. A user can make a newer edit that was not part of the submitted FormData, but completion of the older request unconditionally clears isDirty. The UI then treats the newer value as saved and permits navigation without a discard warning; the same race exists in the settings form.",
+      "autofix_class": "safe_auto",
+      "owner": "review-fixer",
+      "requires_verification": true,
+      "suggested_fix": "Either disable all editable controls while the request is pending or capture a change revision at submit and clear isDirty only when that revision is still current. Apply the same protection to SettingsForm.",
+      "confidence": 75,
+      "evidence": [
+        "src/components/admin/menu-item-form.tsx:170-179 submits a FormData snapshot, awaits the server action, and then unconditionally calls setIsDirty(false).",
+        "src/components/admin/menu-item-form.tsx:196-200 marks subsequent field changes dirty, while lines 538-547 disable only the submit button rather than the editable form controls.",
+        "src/components/admin/settings-form.tsx:75-94 has the same stale-completion reset after submitting the current state snapshot, and lines 306-314 again disable only the submit button."
+      ],
+      "pre_existing": false
+    }
+  ],
+  "residual_risks": [],
+  "testing_gaps": [
+    "No focused test covers the orders error boundary's dashboard recovery destination.",
+    "No browser test exercises rejecting the dirty-form prompt during Back/Forward traversal in a Navigation API browser.",
+    "No test edits a menu or settings field while its save action is still pending and then verifies dirty-state preservation."
+  ]
+}

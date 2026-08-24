@@ -32,9 +32,11 @@ export default function OrdersError({ error, reset }: Props) {
         Check your connection and try again. Live orders are still available from the dashboard.
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
-        <Button onClick={reset}>Retry loading orders</Button>
+        <Button variant="default" size="default" onClick={reset}>
+          Retry loading orders
+        </Button>
         <Link
-          href="/admin/dashboard"
+          href="/admin"
           className={buttonVariants({ variant: "outline" })}
         >
           Return to live orders

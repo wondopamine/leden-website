@@ -8,11 +8,11 @@
 // Every piece is composed from the REAL admin components with inline sample data in
 // the admin/Supabase row shapes (derived from each component's prop types). Client
 // components that touch Supabase degrade gracefully on interaction: OrdersDashboard
-// guards its realtime subscribe/createClient in try/catch; OrderCard / MenuItemRow /
-// SettingsForm only reach their server actions on click/submit (never at render).
+// guards its realtime subscribe/createClient in try/catch; OrderCard and MenuItemRow
+// only reach their server actions on interaction. Form saves use local delayed actions.
 //
-// Analytics uses a static preview that renders the production chart structure and
-// token props against sample data. The auth-free gallery never contacts Supabase.
+// Analytics includes both a static chart preview and the real dashboard wired to a
+// deterministic fail-once loader for recovery testing. Neither contacts Supabase.
 
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -24,7 +24,6 @@ import { OrdersDashboard } from "@/components/admin/orders-dashboard";
 import { OrderCard, type Order } from "@/components/admin/order-card";
 import { MenuItemRow } from "@/components/admin/menu-item-row";
 import { CategoriesManager } from "@/components/admin/categories-manager";
-import { SettingsForm } from "@/components/admin/settings-form";
 import {
   ORDER_STATUS,
   ORDER_STATUS_SEQUENCE,
@@ -43,6 +42,11 @@ import {
 
 import { AnalyticsPreview } from "./analytics-preview";
 import { AnalyticsErrorPreview } from "./analytics-error-preview";
+import { OrdersFilterPreview } from "./orders-filter-preview";
+import {
+  MenuItemSaveRacePreview,
+  SettingsSaveRacePreview,
+} from "./form-race-previews";
 
 // created_at stamps are computed once at render so the KDS "Xm ago" labels read
 // naturally in a screenshot.
@@ -468,6 +472,13 @@ export default function DevAdminPreviewPage() {
           </Section>
 
           <Section
+            title="Orders filter behavior"
+            note="OrdersFilter with a local navigation adapter for deterministic debounce and overlapping-filter verification. No route or network mutation."
+          >
+            <OrdersFilterPreview />
+          </Section>
+
+          <Section
             title="Category editor"
             note="CategoriesManager with safe local drafts. This preview verifies explicit discard and navigation protection without calling a server action."
           >
@@ -490,9 +501,16 @@ export default function DevAdminPreviewPage() {
 
           <Section
             title="Settings form"
-            note="SettingsForm with an inline cafe_info sample (hours, address, phone, announcements, lead times). Submit is wired to a server action, reached only on save."
+            note="SettingsForm with an inline cafe_info sample and a local delayed save action for pending-edit verification. No server action is called."
           >
-            <SettingsForm initialData={sampleCafeInfo} />
+            <SettingsSaveRacePreview initialData={sampleCafeInfo} />
+          </Section>
+
+          <Section
+            title="Menu item form save race"
+            note="MenuItemForm with a local delayed edit action for proving newer pending edits remain guarded. No server action is called."
+          >
+            <MenuItemSaveRacePreview />
           </Section>
         </div>
       </main>

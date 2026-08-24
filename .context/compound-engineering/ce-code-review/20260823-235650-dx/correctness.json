@@ -1,0 +1,89 @@
+{
+  "reviewer": "correctness",
+  "findings": [
+    {
+      "title": "Create redirects are swallowed as save failures",
+      "severity": "P1",
+      "file": "src/components/admin/menu-item-form.tsx",
+      "line": 184,
+      "why_it_matters": "Creating a menu item successfully ends by throwing Next.js's framework-controlled redirect, but this catch treats every thrown value as an application failure. The form therefore restores dirty-state protection and reports that the item was not saved even though the database insert completed, which can interrupt the intended redirect or prompt staff to retry an already-created item. Rethrowing framework-controlled errors before the application error branch preserves the create redirect while retaining the new friendly failure state for real save errors.",
+      "autofix_class": "safe_auto",
+      "owner": "review-fixer",
+      "requires_verification": true,
+      "suggested_fix": "Change the catch to receive the error and call Next.js `unstable_rethrow(error)` before resuming protection and setting the failure message, or keep the redirecting create action outside the wrapper catch as the baseline implementation did.",
+      "confidence": 100,
+      "evidence": [
+        "src/components/admin/menu-item-form.tsx:177-189 awaits the supplied action inside a catch-all and unconditionally runs the failure branch for anything it throws.",
+        "src/app/admin/(dashboard)/menu/actions.ts:46-47 revalidates and then calls redirect(\"/admin/menu\") after a successful create.",
+        "The installed Next.js redirect and unstable_rethrow guides state that redirect is implemented by throwing a framework error and must be rethrown rather than consumed by application try/catch handling.",
+        "The base implementation special-cased creates by calling action(formData) outside the edit-only try/catch; this diff removed that distinction."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "Supabase failures bypass the new recovery states",
+      "severity": "P1",
+      "file": "src/components/admin/analytics-dashboard.tsx",
+      "line": 54,
+      "why_it_matters": "A failed orders query is presented to staff as zero orders, zero submitted value, and empty charts instead of the new actionable error UI. The same error-to-empty conversion keeps the new order-history error boundary from handling ordinary Supabase failures, so staff can mistake a database or network outage for an empty queue/history. Checking the returned Supabase error and throwing it routes failures into the retry states while preserving genuinely empty datasets as empty states.",
+      "autofix_class": "safe_auto",
+      "owner": "review-fixer",
+      "requires_verification": true,
+      "suggested_fix": "In fetchAnalytics and the order-history query, destructure the returned error and throw when it is present (or call `.throwOnError()`), before applying the `data ?? []` empty fallback.",
+      "confidence": 100,
+      "evidence": [
+        "src/components/admin/analytics-dashboard.tsx:53-60 only activates the new error state when fetchAnalytics rejects.",
+        "src/lib/supabase/analytics.ts:143-144 discards the query's `error` field and converts null data to an empty orders array, so normal PostgREST failures resolve successfully.",
+        "src/app/admin/(dashboard)/orders/page.tsx:58-59 likewise discards `error` and renders null data as `No orders found`, bypassing the newly added route error boundary.",
+        "src/lib/supabase/queries.ts:6-12, 24-39, and 94-101 demonstrate the project's working Supabase pattern: destructure `error` and throw it before returning data."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "Recovery link targets a nonexistent admin route",
+      "severity": "P2",
+      "file": "src/app/admin/(dashboard)/orders/error.tsx",
+      "line": 37,
+      "why_it_matters": "When order history fails, the secondary recovery action sends staff to `/admin/dashboard`, which has no page and resolves to a 404 instead of live orders. Pointing it at the existing `/admin` dashboard restores the promised escape path from the error state.",
+      "autofix_class": "safe_auto",
+      "owner": "review-fixer",
+      "requires_verification": true,
+      "suggested_fix": "Change the recovery link href from `/admin/dashboard` to `/admin` and add a focused route assertion.",
+      "confidence": 100,
+      "evidence": [
+        "src/app/admin/(dashboard)/orders/error.tsx:36-40 labels the link `Return to live orders` but points it to `/admin/dashboard`.",
+        "src/app/admin/(dashboard)/page.tsx is the live-orders dashboard route, which maps to `/admin` because `(dashboard)` is a route group.",
+        "src/components/admin/sidebar.tsx:28-33 also defines the Dashboard navigation target as `/admin`, and no `/admin/dashboard` page or rewrite exists."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "Undo can repopulate a completed order's cart",
+      "severity": "P2",
+      "file": "src/components/order/order-content.tsx",
+      "line": 180,
+      "why_it_matters": "A removal Undo remains callable when checkout succeeds, even though success clears the cart and begins confirmation navigation. If the customer clicks the still-visible action, its closure adds the removed configured item back after the completed order, leaving a stale cart and cart badge immediately after confirmation. Dismissing or invalidating removal actions before clearing the cart keeps Undo scoped to the order being edited.",
+      "autofix_class": "safe_auto",
+      "owner": "review-fixer",
+      "requires_verification": true,
+      "suggested_fix": "Track the removal toast IDs and dismiss or invalidate them immediately before clearCart/router.push; verify that an outstanding Undo cannot add an item after successful submission.",
+      "confidence": 75,
+      "evidence": [
+        "src/components/order/order-content.tsx:120-138 registers an Undo callback that can call addItem at any later point while the toast is active.",
+        "src/components/order/order-content.tsx:179-181 clears the cart and navigates on success without dismissing or invalidating that callback.",
+        "src/app/[locale]/layout.tsx:50 mounts the Toaster in the shared locale layout, so the toast host survives the child-route transition to confirmation.",
+        "tests/e2e/storefront-design.spec.ts:219-226 verifies Undo only before submission; the successful clear-cart transition with an outstanding Undo is not exercised."
+      ],
+      "pre_existing": false
+    }
+  ],
+  "residual_risks": [
+    "Authenticated mutation scenarios remain fixture-gated, so the menu-create redirect and admin save/status transitions have not been exercised against a seeded non-production Supabase target."
+  ],
+  "testing_gaps": [
+    "No authenticated test creates a menu item and proves that the successful server-action redirect reaches `/admin/menu` without entering the failure branch.",
+    "The analytics recovery test renders AnalyticsErrorState directly instead of making fetchAnalytics receive a failed Supabase response; order-history query failure and recovery are also untested.",
+    "No test follows `Return to live orders` from the order-history error boundary and asserts the `/admin` destination.",
+    "The checkout test covers removal Undo and failed submission separately, but not successful submission while an Undo action is still outstanding."
+  ]
+}

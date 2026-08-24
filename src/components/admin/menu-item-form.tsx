@@ -3,6 +3,7 @@
 import { useState, useRef, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { unstable_rethrow } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { Input } from "@/components/ui/input";
@@ -50,12 +51,29 @@ type Props = {
   submitLabel: string;
 };
 
+type ScalarFields = {
+  name_en: string;
+  name_fr: string;
+  description_en: string;
+  description_fr: string;
+  price: string;
+  category_id: string;
+};
+
 export function MenuItemForm({
   categories,
   initialData,
   action,
   submitLabel,
 }: Props) {
+  const [fields, setFields] = useState<ScalarFields>({
+    name_en: initialData?.name_en ?? "",
+    name_fr: initialData?.name_fr ?? "",
+    description_en: initialData?.description_en ?? "",
+    description_fr: initialData?.description_fr ?? "",
+    price: initialData?.price?.toString() ?? "",
+    category_id: initialData?.category_id ?? "",
+  });
   const [available, setAvailable] = useState(initialData?.available ?? true);
   const [imageUrl, setImageUrl] = useState<string | null>(
     initialData?.image_url ?? null
@@ -67,6 +85,7 @@ export function MenuItemForm({
   );
   const [isPending, startTransition] = useTransition();
   const [isDirty, setIsDirty] = useState(false);
+  const editRevisionRef = useRef(0);
   const [submissionMessage, setSubmissionMessage] = useState<{
     tone: "success" | "error";
     text: string;
@@ -75,6 +94,15 @@ export function MenuItemForm({
   const isEdit = !!initialData?.id;
   const { confirmDiscard, suspendProtection, resumeProtection } =
     useUnsavedChanges(isDirty, () => setIsDirty(false));
+
+  function markDirty() {
+    editRevisionRef.current += 1;
+    setIsDirty(true);
+  }
+
+  function updateField(field: keyof ScalarFields, value: string) {
+    setFields((current) => ({ ...current, [field]: value }));
+  }
 
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -100,7 +128,7 @@ export function MenuItemForm({
       }
 
       setImageUrl(data.url);
-      setIsDirty(true);
+      markDirty();
       setPhotoMessage("Photo uploaded. Save the menu item to keep it.");
     } catch {
       setPhotoMessage(
@@ -114,13 +142,13 @@ export function MenuItemForm({
 
   function removeImage() {
     setImageUrl(null);
-    setIsDirty(true);
+    markDirty();
     setPhotoMessage("Photo removed. Save the menu item to keep this change.");
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   function addModifier() {
-    setIsDirty(true);
+    markDirty();
     setModifiers([
       ...modifiers,
       { name_en: "", name_fr: "", options: [{ name_en: "", name_fr: "", price_adjustment: 0 }] },
@@ -128,26 +156,26 @@ export function MenuItemForm({
   }
 
   function removeModifier(idx: number) {
-    setIsDirty(true);
+    markDirty();
     setModifiers(modifiers.filter((_, i) => i !== idx));
   }
 
   function updateModifier(idx: number, field: "name_en" | "name_fr", value: string) {
-    setIsDirty(true);
+    markDirty();
     const updated = [...modifiers];
     updated[idx] = { ...updated[idx], [field]: value };
     setModifiers(updated);
   }
 
   function addOption(modIdx: number) {
-    setIsDirty(true);
+    markDirty();
     const updated = [...modifiers];
     updated[modIdx].options.push({ name_en: "", name_fr: "", price_adjustment: 0 });
     setModifiers(updated);
   }
 
   function removeOption(modIdx: number, optIdx: number) {
-    setIsDirty(true);
+    markDirty();
     const updated = [...modifiers];
     updated[modIdx].options = updated[modIdx].options.filter(
       (_, i) => i !== optIdx
@@ -161,7 +189,7 @@ export function MenuItemForm({
     field: string,
     value: string | number
   ) {
-    setIsDirty(true);
+    markDirty();
     const updated = [...modifiers];
     (updated[modIdx].options[optIdx] as Record<string, string | number>)[field] = value;
     setModifiers(updated);
@@ -169,19 +197,31 @@ export function MenuItemForm({
 
   function handleSubmit(formData: FormData) {
     setSubmissionMessage(null);
+    const submittedRevision = editRevisionRef.current;
     // A successful create redirects from its server action. Suspend the guard
     // for this intentional save navigation; restore it if the request fails.
-    suspendProtection();
-    setIsDirty(false);
+    if (!isEdit) {
+      suspendProtection();
+      setIsDirty(false);
+    }
     startTransition(async () => {
       try {
         await action(formData);
-        setIsDirty(false);
-        const text = isEdit
-          ? "Menu item changes saved."
-          : "Menu item created.";
+        const hasNewerEdits = editRevisionRef.current !== submittedRevision;
+        if (hasNewerEdits) {
+          resumeProtection();
+          setIsDirty(true);
+        } else {
+          setIsDirty(false);
+        }
+        const text = hasNewerEdits
+          ? "Menu item changes saved. Newer edits are still unsaved."
+          : isEdit
+            ? "Menu item changes saved."
+            : "Menu item created.";
         setSubmissionMessage({ tone: "success", text });
-      } catch {
+      } catch (error) {
+        unstable_rethrow(error);
         resumeProtection();
         setIsDirty(true);
         setSubmissionMessage({
@@ -195,7 +235,7 @@ export function MenuItemForm({
   return (
     <form
       action={handleSubmit}
-      onChange={() => setIsDirty(true)}
+      onChange={markDirty}
       className="max-w-2xl space-y-5"
       aria-busy={isPending}
     >
@@ -290,7 +330,8 @@ export function MenuItemForm({
           <Input
             id="name_en"
             name="name_en"
-            defaultValue={initialData?.name_en}
+            value={fields.name_en}
+            onChange={(event) => updateField("name_en", event.target.value)}
             required
           />
         </div>
@@ -299,7 +340,8 @@ export function MenuItemForm({
           <Input
             id="name_fr"
             name="name_fr"
-            defaultValue={initialData?.name_fr}
+            value={fields.name_fr}
+            onChange={(event) => updateField("name_fr", event.target.value)}
             required
           />
         </div>
@@ -312,7 +354,10 @@ export function MenuItemForm({
           <Textarea
             id="description_en"
             name="description_en"
-            defaultValue={initialData?.description_en}
+            value={fields.description_en}
+            onChange={(event) =>
+              updateField("description_en", event.target.value)
+            }
             rows={3}
           />
         </div>
@@ -321,7 +366,10 @@ export function MenuItemForm({
           <Textarea
             id="description_fr"
             name="description_fr"
-            defaultValue={initialData?.description_fr}
+            value={fields.description_fr}
+            onChange={(event) =>
+              updateField("description_fr", event.target.value)
+            }
             rows={3}
           />
         </div>
@@ -337,7 +385,8 @@ export function MenuItemForm({
             type="number"
             step="0.01"
             min="0"
-            defaultValue={initialData?.price}
+            value={fields.price}
+            onChange={(event) => updateField("price", event.target.value)}
             required
           />
         </div>
@@ -346,7 +395,10 @@ export function MenuItemForm({
           <select
             id="category_id"
             name="category_id"
-            defaultValue={initialData?.category_id}
+            value={fields.category_id}
+            onChange={(event) =>
+              updateField("category_id", event.target.value)
+            }
             className="flex h-11 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-base text-foreground shadow-xs outline-none transition-colors focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 sm:h-9 sm:px-2.5 sm:py-1 sm:text-sm"
             required
           >
@@ -366,7 +418,7 @@ export function MenuItemForm({
               checked={available}
               onCheckedChange={(checked) => {
                 setAvailable(checked);
-                setIsDirty(true);
+                markDirty();
               }}
             />
             <span className="text-sm text-muted-foreground">

@@ -154,6 +154,170 @@ for (const {
 
 for (const {
   locale,
+  emptyCart,
+  confirmationTitle,
+  placeOrder,
+  removeLabel,
+  undoLabel,
+  removedMessage,
+} of locales) {
+  test(`${locale} checkout serializes totals and clears the cart after a mocked success`, async ({
+    page,
+  }) => {
+    const orderNumber = "E2E-SAFE-101";
+    const item = {
+      id: "e2e-cart-line",
+      menuItemId: "e2e-oat-latte",
+      name: "Oat Latte",
+      nameEn: "Oat Latte",
+      nameFr: "Latte à l’avoine",
+      price: 5.25,
+      quantity: 2,
+      modifiers: [
+        { name: "Milk", option: "Oat", priceAdjustment: 0.75 },
+      ],
+      image: "/images/menu/latte.jpg",
+    };
+    const customerInfo = {
+      name: "E2E Customer",
+      phone: "5145550199",
+    };
+    const removedItem = {
+      id: "e2e-removed-line",
+      menuItemId: "e2e-blueberry-scone",
+      name: "Blueberry Scone",
+      nameEn: "Blueberry Scone",
+      nameFr: "Scone aux bleuets",
+      price: 4,
+      quantity: 1,
+      modifiers: [],
+      image: "/images/menu/scone.jpg",
+    };
+    const subtotal = 12;
+    const gst = subtotal * 0.05;
+    const qst = subtotal * 0.09975;
+    const total = subtotal + gst + qst;
+    let submittedPayload: unknown;
+
+    await page.setViewportSize({ width: 320, height: 760 });
+    await page.clock.install({ time: new Date("2026-08-17T14:00:00.000Z") });
+    await page.addInitScript(
+      ({ persistedItem, removedItem: persistedRemovedItem, persistedCustomer }) => {
+        if (window.sessionStorage.getItem("cafe-leden-e2e-cart-seeded")) {
+          return;
+        }
+        window.localStorage.setItem(
+          "cafe-leden-cart",
+          JSON.stringify({
+            state: {
+              items: [persistedItem, persistedRemovedItem],
+              customerInfo: persistedCustomer,
+              pickupTime: null,
+            },
+            version: 0,
+          }),
+        );
+        window.sessionStorage.setItem("cafe-leden-e2e-cart-seeded", "true");
+      },
+      {
+        persistedItem: item,
+        removedItem,
+        persistedCustomer: customerInfo,
+      },
+    );
+    await page.route("**/api/order", async (route) => {
+      expect(route.request().method()).toBe("POST");
+      submittedPayload = route.request().postDataJSON();
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ orderNumber }),
+      });
+    });
+
+    await page.goto(`/${locale}/order`, { waitUntil: "domcontentloaded" });
+    const removedItemName =
+      locale === "fr" ? removedItem.nameFr : removedItem.nameEn;
+    await page
+      .getByRole("button", {
+        name: `${removeLabel} ${removedItemName}`,
+      })
+      .last()
+      .click();
+    const removalToast = page.getByText(removedMessage(removedItemName), {
+      exact: true,
+    });
+    await expect(removalToast).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: undoLabel, exact: true }),
+    ).toBeVisible();
+
+    const summary = page
+      .getByRole("heading", { level: 2, name: "Total" })
+      .locator("xpath=parent::div");
+    await expect(
+      summary.getByText(locale === "fr" ? "Sous-total" : "Subtotal", {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(summary.getByText("$12.00", { exact: true })).toBeVisible();
+    await expect(summary.getByText("GST (5%)", { exact: true })).toBeVisible();
+    await expect(summary.getByText("$0.60", { exact: true })).toBeVisible();
+    await expect(summary.getByText("QST (9.975%)", { exact: true })).toBeVisible();
+    await expect(summary.getByText("$1.20", { exact: true })).toBeVisible();
+    await expect(summary.getByText("$13.80", { exact: true })).toBeVisible();
+
+    await page.getByRole("button", { name: placeOrder }).click();
+
+    await expect(page).toHaveURL(
+      new RegExp(`/${locale}/order/confirmation\\?order=${orderNumber}$`),
+    );
+    await expect(
+      page.getByRole("heading", { level: 1, name: confirmationTitle }),
+    ).toBeVisible();
+    await expect(
+      page.getByText(locale === "fr" ? "Numéro de commande" : "Order number", {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(page.getByText(orderNumber, { exact: true })).toBeVisible();
+    await expect(removalToast).toBeHidden();
+    await expect(
+      page.getByRole("button", { name: undoLabel, exact: true }),
+    ).toBeHidden();
+    expect(submittedPayload).toEqual({
+      items: [
+        {
+          name: locale === "fr" ? item.nameFr : item.nameEn,
+          price: item.price,
+          quantity: item.quantity,
+          modifiers: item.modifiers,
+          menuItemId: item.menuItemId,
+        },
+      ],
+      customerInfo,
+      pickupTime: null,
+      locale,
+      total,
+    });
+
+    const storedCart = await page.evaluate(() => {
+      const value = window.localStorage.getItem("cafe-leden-cart");
+      return value ? JSON.parse(value).state : null;
+    });
+    expect(storedCart).toMatchObject({
+      items: [],
+      customerInfo: { name: "", phone: "" },
+      pickupTime: null,
+    });
+
+    await page.goto(`/${locale}/order`, { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("heading", { name: emptyCart })).toBeVisible();
+  });
+}
+
+for (const {
+  locale,
   languageLabel,
   currentLanguage,
   alternateLanguage,

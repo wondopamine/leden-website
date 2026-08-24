@@ -138,6 +138,7 @@ export function Header() {
                     <Button
                       key={language.code}
                       variant={locale === language.code ? "secondary" : "outline"}
+                      size="default"
                       aria-pressed={locale === language.code}
                       onClick={() => {
                         switchLocale(language.code);

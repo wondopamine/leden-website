@@ -67,6 +67,8 @@ export function OrderContent({ locale, cafeInfo }: Props) {
   const nameInputRef = useRef<HTMLInputElement>(null);
   const phoneInputRef = useRef<HTMLInputElement>(null);
   const errorSummaryRef = useRef<HTMLDivElement>(null);
+  const removalToastIdsRef = useRef<Set<string | number>>(new Set());
+  const cartGenerationRef = useRef(0);
 
   const status = getOpenStatus(cafeInfo.hours);
   const cafeOpen = status.isOpen;
@@ -117,13 +119,24 @@ export function OrderContent({ locale, cafeInfo }: Props) {
       ? formatTime(status.nextOpen, locale)
       : `${tc(`daysShort.${status.nextDay}`)} ${formatTime(status.nextOpen, locale)}`;
 
+  const invalidateRemovalUndos = () => {
+    cartGenerationRef.current += 1;
+    for (const toastId of removalToastIdsRef.current) {
+      toast.dismiss(toastId);
+    }
+    removalToastIdsRef.current.clear();
+  };
+
   const handleRemoveItem = (item: CartItem) => {
     const itemName = locale === "fr" ? item.nameFr : item.nameEn;
+    const generation = cartGenerationRef.current;
     removeItem(item.id);
-    toast(t("removedItem", { item: itemName }), {
+    const toastId = toast(t("removedItem", { item: itemName }), {
       action: {
         label: tc("undo"),
-        onClick: () =>
+        onClick: () => {
+          removalToastIdsRef.current.delete(toastId);
+          if (generation !== cartGenerationRef.current) return;
           addItem({
             menuItemId: item.menuItemId,
             name: item.name,
@@ -133,9 +146,11 @@ export function OrderContent({ locale, cafeInfo }: Props) {
             quantity: item.quantity,
             modifiers: item.modifiers,
             image: item.image,
-          }),
+          });
+        },
       },
     });
+    removalToastIdsRef.current.add(toastId);
   };
 
   const handleSubmitOrder = async () => {
@@ -149,6 +164,7 @@ export function OrderContent({ locale, cafeInfo }: Props) {
       return;
     }
     if (!cafeOpen) return;
+    invalidateRemovalUndos();
     setLoading(true);
     setError(null);
 
@@ -177,6 +193,7 @@ export function OrderContent({ locale, cafeInfo }: Props) {
       }
 
       const data = await res.json();
+      invalidateRemovalUndos();
       clearCart();
       router.push(`/order/confirmation?order=${data.orderNumber}`);
     } catch {
@@ -411,6 +428,7 @@ function TimePill({
   return (
     <Button
       variant="outline"
+      size="default"
       onClick={onClick}
       aria-pressed={selected}
       className={`min-h-11 rounded-full px-4 text-caption font-medium tabular-nums ${

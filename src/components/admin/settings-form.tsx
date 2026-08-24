@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { updateCafeInfo } from "@/app/admin/(dashboard)/settings/actions";
 import { Button } from "@/components/ui/button";
@@ -32,9 +32,13 @@ type CafeInfoData = {
 
 type Props = {
   initialData: CafeInfoData | null;
+  action?: typeof updateCafeInfo;
 };
 
-export function SettingsForm({ initialData }: Props) {
+export function SettingsForm({
+  initialData,
+  action = updateCafeInfo,
+}: Props) {
   const [isPending, startTransition] = useTransition();
   const [hours, setHours] = useState<HourEntry[]>(
     initialData?.hours ?? []
@@ -54,19 +58,25 @@ export function SettingsForm({ initialData }: Props) {
     initialData?.max_advance_order_days ?? 3
   );
   const [isDirty, setIsDirty] = useState(false);
+  const editRevisionRef = useRef(0);
   const [submissionMessage, setSubmissionMessage] = useState<{
     tone: "success" | "error";
     text: string;
   } | null>(null);
-  const { confirmDiscard, suspendProtection, resumeProtection } =
+  const { confirmDiscard, resumeProtection } =
     useUnsavedChanges(isDirty, () => setIsDirty(false));
+
+  function markDirty() {
+    editRevisionRef.current += 1;
+    setIsDirty(true);
+  }
 
   function updateHour(
     idx: number,
     field: keyof HourEntry,
     value: string | boolean
   ) {
-    setIsDirty(true);
+    markDirty();
     const updated = [...hours];
     (updated[idx] as Record<string, string | boolean>)[field] = value;
     setHours(updated);
@@ -76,11 +86,10 @@ export function SettingsForm({ initialData }: Props) {
     event.preventDefault();
     if (!initialData?.id) return;
     setSubmissionMessage(null);
-    suspendProtection();
-    setIsDirty(false);
+    const submittedRevision = editRevisionRef.current;
     startTransition(async () => {
       try {
-        await updateCafeInfo({
+        await action({
           id: initialData.id,
           hours,
           address,
@@ -90,8 +99,19 @@ export function SettingsForm({ initialData }: Props) {
           pickup_lead_time: pickupLeadTime,
           max_advance_order_days: maxAdvanceDays,
         });
-        setIsDirty(false);
-        setSubmissionMessage({ tone: "success", text: "Settings saved." });
+        const hasNewerEdits = editRevisionRef.current !== submittedRevision;
+        if (hasNewerEdits) {
+          resumeProtection();
+          setIsDirty(true);
+        } else {
+          setIsDirty(false);
+        }
+        setSubmissionMessage({
+          tone: "success",
+          text: hasNewerEdits
+            ? "Settings saved. Newer edits are still unsaved."
+            : "Settings saved.",
+        });
       } catch {
         resumeProtection();
         setIsDirty(true);
@@ -120,7 +140,7 @@ export function SettingsForm({ initialData }: Props) {
   return (
     <form
       onSubmit={handleSave}
-      onChange={() => setIsDirty(true)}
+      onChange={markDirty}
       aria-busy={isPending}
       className="max-w-2xl space-y-4"
     >

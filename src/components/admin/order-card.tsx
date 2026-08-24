@@ -220,9 +220,12 @@ export function OrderCard({ order }: { order: Order }) {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <DialogClose render={<Button variant="outline" />}>Keep order</DialogClose>
+            <DialogClose render={<Button variant="outline" size="default" />}>
+              Keep order
+            </DialogClose>
             <Button
               variant="destructive"
+              size="default"
               onClick={() => handleStatusChange("cancelled")}
               disabled={isPending}
               aria-busy={isPending}

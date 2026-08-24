@@ -1,0 +1,65 @@
+{
+  "reviewer": "testing",
+  "findings": [
+    {
+      "title": "Checkout test never exercises successful submission",
+      "severity": "P1",
+      "file": "tests/e2e/storefront-design.spec.ts",
+      "line": 244,
+      "why_it_matters": "A successful customer order can submit the wrong items, prices, locale, or total, fail to clear the cart, or never reach confirmation while every committed browser test remains green. The only order interceptor returns HTTP 500 and asserts only the request method, even though the review evidence claims intercepted success, payload-shape parity, cart continuity, and a success redirect. A deterministic HTTP 200 scenario with a known order number would exercise the normal ordering branch and prove those preservation claims.",
+      "autofix_class": "safe_auto",
+      "owner": "review-fixer",
+      "requires_verification": true,
+      "suggested_fix": "Add a deterministic successful /api/order interception that asserts the complete JSON payload and rendered subtotal/GST/QST/total, returns a known orderNumber, then verifies the localized confirmation URL/reference and that the cart was cleared.",
+      "confidence": 100,
+      "evidence": [
+        "tests/e2e/storefront-design.spec.ts:244-253 installs the suite's only /api/order route and always fulfills it with status 500; its sole request assertion is method === POST.",
+        "src/components/order/order-content.tsx:155-185 contains a distinct success branch that parses orderNumber, clears the persisted cart, and navigates to confirmation; no committed test reaches it.",
+        "docs/design-reviews/2026-08-15-dx-conformance.md:35 claims an intercepted failure/success pair, preserved request payload shape, and an evidenced success redirect, none of which the referenced spec implements for success."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "Mutation gate passes without testing a mutation",
+      "severity": "P2",
+      "file": "tests/e2e/admin-design.spec.ts",
+      "line": 165,
+      "why_it_matters": "A CI job that supplies the two mutation flags will report this authenticated-mutation row as passed without authenticating, opening an admin route, invoking a server action, asserting persisted state, or cleaning up a fixture. That creates a false green signal precisely around the admin save/delete/status flows whose semantics this refactor promises to preserve. The row should remain visibly blocked until it is replaced by a real synthetic, authenticated, deterministic-cleanup workflow against the verified application target.",
+      "autofix_class": "manual",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "suggested_fix": "Keep this row unconditionally skipped as not implemented until a seeded safe target is available, then replace the environment-only assertions with authenticated synthetic CRUD/status tests that verify the app is connected to that target and clean up every record.",
+      "confidence": 100,
+      "evidence": [
+        "tests/e2e/admin-design.spec.ts:159-169 removes the skip when two environment variables exist, but the test body only validates URL-shaped strings and inequality.",
+        "docs/plans/2026-08-15-001-refactor-dx-design-conformance-plan.md:224-225 requires safe-target authenticated mutation coverage to use synthetic records and deterministic cleanup; lines 232-235 require rows to either run against that target or remain visibly blocked.",
+        "docs/design-reviews/2026-08-15-dx-conformance.md:39 accurately marks authenticated operations unverified, so allowing the placeholder to become green when flags are set would contradict the recorded evidence state."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "Analytics recovery assertion targets a no-op",
+      "severity": "P2",
+      "file": "tests/e2e/admin-design.spec.ts",
+      "line": 118,
+      "why_it_matters": "An admin can be left with a dead Try again action after analytics fails while the browser suite still passes. The preview supplies a no-op retry callback, and the test only checks that the button is enabled; it never clicks the action or observes a second fetch and recovered state. A fail-once/succeed-on-retry test around the production dashboard behavior would catch regressions in the new retryKey/effect path.",
+      "autofix_class": "safe_auto",
+      "owner": "review-fixer",
+      "requires_verification": true,
+      "suggested_fix": "Use a deterministic analytics loader that rejects once and resolves on retry, click Try again, and assert loading followed by recovered analytics content; do not use the no-op AnalyticsErrorPreview as recovery evidence.",
+      "confidence": 100,
+      "evidence": [
+        "src/app/dev/admin/analytics-error-preview.tsx:7-10 renders AnalyticsErrorState with onRetry={() => undefined}.",
+        "tests/e2e/admin-design.spec.ts:112-120 asserts only the error copy and that Try again is enabled; it never clicks the button.",
+        "src/components/admin/analytics-dashboard.tsx:45-72 and 96-99 introduce retryKey-driven refetch behavior that the preview and test never instantiate."
+      ],
+      "pre_existing": false
+    }
+  ],
+  "residual_risks": [],
+  "testing_gaps": [
+    "tests/e2e/storefront-design.spec.ts:230 verifies both validation attributes after one blank submit but never asserts the new name-first focus branch or reaches the separate invalid-phone focus branch at src/components/order/order-content.tsx:143-149.",
+    "src/lib/use-unsaved-changes.ts:99-152 adds click/popstate fallbacks for browsers without the Navigation API, but playwright.config.ts:18-23 runs only Chromium and the sole dirty-navigation test exercises the Navigation API path; same-origin link and Back-button protection in the fallback remain unverified.",
+    "tests/e2e/storefront-design.spec.ts:197-216 assumes at least two categories and an available first item from whichever Supabase dataset the production build exposes; playwright.config.ts does not force deterministic sample data, so legitimate live menu edits can make the characterization suite fail independently of this UI contract."
+  ]
+}
