@@ -236,12 +236,6 @@ on conflict (id) do update set
   price_adjustment = excluded.price_adjustment,
   sort_order = excluded.sort_order;
 
--- The committed sample catalog's Size/Milk groups remain required. Its Add-on
--- group is explicitly optional; production cardinalities remain an owner gate.
-update public.modifiers
-set min_selections = 0, max_selections = 1
-where id = 'c9999999-9999-9999-9999-999999999999';
-
 do $$
 declare
   cafe_row_count integer;

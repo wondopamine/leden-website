@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { SAME_DAY_MAX_ADVANCE_ORDER_DAYS } from "@/lib/admin-settings";
 import { requireStaff } from "@/lib/supabase/admin.server";
 
 type HourEntry = {
@@ -24,6 +25,10 @@ type CafeInfoUpdate = {
 export async function updateCafeInfo(input: CafeInfoUpdate) {
   const { supabase } = await requireStaff();
 
+  if (input.max_advance_order_days !== SAME_DAY_MAX_ADVANCE_ORDER_DAYS) {
+    throw new Error("Unable to update café settings.");
+  }
+
   const { error } = await supabase
     .from("cafe_info")
     .update({
@@ -33,7 +38,7 @@ export async function updateCafeInfo(input: CafeInfoUpdate) {
       announcement_en: input.announcement_en || null,
       announcement_fr: input.announcement_fr || null,
       pickup_lead_time: input.pickup_lead_time,
-      max_advance_order_days: input.max_advance_order_days,
+      max_advance_order_days: SAME_DAY_MAX_ADVANCE_ORDER_DAYS,
     })
     .eq("id", input.id);
 

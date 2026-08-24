@@ -55,9 +55,59 @@ alter table public.menu_items
   validate constraint menu_items_available_status_compatibility;
 alter table public.menu_items alter column available set not null;
 
+-- Cardinality is product meaning, not something that can be inferred from the
+-- number or price of existing options. Stage it nullable, apply the reviewed
+-- mapping for the committed catalog, and abort on any hosted-only group so an
+-- owner can reconcile it explicitly before retrying the migration.
 alter table public.modifiers
-  add column min_selections smallint not null default 1,
-  add column max_selections smallint not null default 1;
+  add column min_selections smallint,
+  add column max_selections smallint;
+
+update public.modifiers
+set
+  min_selections = case
+    when id = 'c9999999-9999-9999-9999-999999999999' then 0
+    else 1
+  end,
+  max_selections = 1
+where id in (
+  'c1111111-1111-1111-1111-111111111111',
+  'c2222222-2222-2222-2222-222222222222',
+  'c3333333-3333-3333-3333-333333333333',
+  'c4444444-4444-4444-4444-444444444444',
+  'c5555555-5555-5555-5555-555555555555',
+  'c6666666-6666-6666-6666-666666666666',
+  'c7777777-7777-7777-7777-777777777777',
+  'c8888888-8888-8888-8888-888888888888',
+  'c9999999-9999-9999-9999-999999999999'
+);
+
+do $$
+declare
+  unmapped_groups text;
+begin
+  select pg_catalog.string_agg(
+    pg_catalog.format('%s (%s)', modifier.id, modifier.name_en),
+    ', ' order by modifier.id
+  )
+  into unmapped_groups
+  from public.modifiers as modifier
+  where modifier.min_selections is null
+    or modifier.max_selections is null;
+
+  if unmapped_groups is not null then
+    raise exception
+      'U3 compatibility preflight: owner cardinality mapping required for modifier groups: %',
+      unmapped_groups;
+  end if;
+end;
+$$;
+
+alter table public.modifiers
+  alter column min_selections set default 1,
+  alter column min_selections set not null,
+  alter column max_selections set default 1,
+  alter column max_selections set not null;
 alter table public.modifiers
   add constraint modifiers_single_select_cardinality
   check (min_selections in (0, 1) and max_selections = 1) not valid;
@@ -115,6 +165,14 @@ alter table public.cafe_info
   add column gst_rate numeric(8,6) not null default 0.05,
   add column qst_rate numeric(8,6) not null default 0.09975;
 
+-- The active product contract is same-day only. Migration 002 predates that
+-- decision and seeded 3; normalize the singleton before v1 ordering can be
+-- resumed so hosted migration state matches the server contract without seed
+-- or an undocumented operator edit.
+update public.cafe_info
+set max_advance_order_days = 0
+where max_advance_order_days is distinct from 0;
+
 alter table public.cafe_info
   add constraint cafe_info_singleton_key unique (singleton),
   add constraint cafe_info_singleton_true check (singleton) not valid,
@@ -125,7 +183,7 @@ alter table public.cafe_info
     and pickup_lead_time is not null
     and pickup_lead_time between 0 and 240
     and max_advance_order_days is not null
-    and max_advance_order_days between 0 and 30
+    and max_advance_order_days = 0
   ) not valid,
   add constraint cafe_info_valid_weekly_hours
     check (private.valid_cafe_hours(hours)) not valid;
@@ -263,7 +321,7 @@ create table public.order_rate_buckets (
   unique (purpose, key_hash, window_start, window_seconds)
 );
 create index order_rate_buckets_expiry_idx
-  on public.order_rate_buckets (expires_at);
+  on public.order_rate_buckets (expires_at, id);
 
 alter table public.order_rate_buckets enable row level security;
 revoke all on table public.order_rate_buckets from public;
@@ -730,7 +788,13 @@ begin
         'option_id', option.id,
         'modifier_name', case when p_locale = 'fr' then modifier.name_fr else modifier.name_en end,
         'option_name', case when p_locale = 'fr' then option.name_fr else option.name_en end,
-        'price_adjustment', option.price_adjustment
+        'price_adjustment', option.price_adjustment,
+        -- Expand compatibility: loaded legacy admin clients read these exact
+        -- camelCase names directly from order_items.modifiers. Keep the v1
+        -- names above for the new receipt/repository contract until U8.
+        'name', case when p_locale = 'fr' then modifier.name_fr else modifier.name_en end,
+        'option', case when p_locale = 'fr' then option.name_fr else option.name_en end,
+        'priceAdjustment', option.price_adjustment
       ) order by modifier.sort_order, option.sort_order, option.id
     ), '[]'::jsonb), coalesce(sum(option.price_adjustment), 0)
     into modifiers_snapshot, modifier_total
@@ -966,6 +1030,11 @@ begin
   );
   end_at := start_at + pg_catalog.make_interval(secs => p_window_seconds);
 
+  -- Every request can create at most one new window and removes a larger,
+  -- bounded expired batch. Active traffic therefore pays down any backlog
+  -- without pg_cron, an Edge Function, or another paid/scheduled service.
+  perform private.prune_order_rate_buckets_v1_at(p_clock, 100);
+
   insert into public.order_rate_buckets (
     purpose, key_hash, window_start, window_seconds, request_count, expires_at
   ) values (
@@ -1001,7 +1070,10 @@ as $$
   );
 $$;
 
-create or replace function public.prune_order_rate_buckets_v1()
+create or replace function private.prune_order_rate_buckets_v1_at(
+  p_clock timestamptz,
+  p_batch_limit integer
+)
 returns integer
 language plpgsql
 volatile
@@ -1011,11 +1083,37 @@ as $$
 declare
   deleted_count integer;
 begin
-  delete from public.order_rate_buckets
-  where expires_at <= statement_timestamp();
+  if p_clock is null
+    or p_batch_limit is null
+    or p_batch_limit not between 1 and 1000
+  then
+    raise exception using errcode = 'P0001', message = 'OLH_RATE_INPUT_INVALID';
+  end if;
+
+  delete from public.order_rate_buckets as bucket
+  using (
+    select expired.id
+    from public.order_rate_buckets as expired
+    where expired.expires_at <= p_clock
+    order by expired.expires_at, expired.id
+    limit p_batch_limit
+    for update skip locked
+  ) as expired_batch
+  where bucket.id = expired_batch.id;
+
   get diagnostics deleted_count = row_count;
   return deleted_count;
 end;
+$$;
+
+create or replace function public.prune_order_rate_buckets_v1()
+returns integer
+language sql
+volatile
+security invoker
+set search_path = ''
+as $$
+  select private.prune_order_rate_buckets_v1_at(statement_timestamp(), 1000);
 $$;
 
 create or replace function public.save_menu_item_graph_v1(
@@ -1250,5 +1348,7 @@ revoke all on function private.recover_order_v1_at(uuid,bytea,timestamptz) from 
 grant execute on function private.recover_order_v1_at(uuid,bytea,timestamptz) to service_role;
 revoke all on function private.consume_order_rate_limit_v1_at(text,bytea,integer,integer,timestamptz) from public, anon, authenticated;
 grant execute on function private.consume_order_rate_limit_v1_at(text,bytea,integer,integer,timestamptz) to service_role;
+revoke all on function private.prune_order_rate_buckets_v1_at(timestamptz,integer) from public, anon, authenticated;
+grant execute on function private.prune_order_rate_buckets_v1_at(timestamptz,integer) to service_role;
 
 commit;

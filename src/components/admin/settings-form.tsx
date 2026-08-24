@@ -11,6 +11,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useUnsavedChanges } from "@/lib/use-unsaved-changes";
+import {
+  parseAdminIntegerInput,
+  SAME_DAY_MAX_ADVANCE_ORDER_DAYS,
+} from "@/lib/admin-settings";
 import { OnlineOrderingControl } from "@/components/admin/orders-dashboard";
 
 type HourEntry = {
@@ -58,9 +62,6 @@ export function SettingsForm({
   const [pickupLeadTime, setPickupLeadTime] = useState(
     initialData?.pickup_lead_time ?? 15
   );
-  const [maxAdvanceDays, setMaxAdvanceDays] = useState(
-    initialData?.max_advance_order_days ?? 3
-  );
   const [isDirty, setIsDirty] = useState(false);
   const editRevisionRef = useRef(0);
   const [submissionMessage, setSubmissionMessage] = useState<{
@@ -101,7 +102,7 @@ export function SettingsForm({
           announcement_en: announcementEn,
           announcement_fr: announcementFr,
           pickup_lead_time: pickupLeadTime,
-          max_advance_order_days: maxAdvanceDays,
+          max_advance_order_days: SAME_DAY_MAX_ADVANCE_ORDER_DAYS,
         });
         const hasNewerEdits = editRevisionRef.current !== submittedRevision;
         if (hasNewerEdits) {
@@ -290,23 +291,19 @@ export function SettingsForm({
               min="5"
               value={pickupLeadTime}
               onChange={(e) =>
-                setPickupLeadTime(parseInt(e.target.value) || 15)
+                setPickupLeadTime(parseAdminIntegerInput(e.target.value, 15))
               }
               className="tabular-nums"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="max-advance-days">Maximum advance order days</Label>
-            <Input
-              id="max-advance-days"
-              type="number"
-              min="0"
-              value={maxAdvanceDays}
-              onChange={(e) =>
-                setMaxAdvanceDays(parseInt(e.target.value) || 3)
-              }
-              className="tabular-nums"
-            />
+            <p className="text-sm font-medium text-foreground">
+              Ordering window
+            </p>
+            <p className="text-sm text-foreground">Same-day pickup only</p>
+            <p className="text-xs text-muted-foreground">
+              Future-day orders are not available in this ordering flow.
+            </p>
           </div>
         </CardContent>
       </Card>

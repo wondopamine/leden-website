@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public, pg_catalog;
 
-select plan(83);
+select plan(88);
 
 select has_column('public', 'orders', 'lifecycle_contract_version', 'orders identify the lifecycle contract version');
 select has_column('public', 'orders', 'idempotency_key', 'orders retain the idempotency identity');
@@ -21,6 +21,37 @@ select has_column('public', 'cafe_info', 'ordering_enabled', 'café configuratio
 select has_column('public', 'cafe_info', 'timezone', 'café configuration pins its authoritative timezone');
 select has_column('public', 'order_items', 'line_total', 'line snapshots retain authoritative totals');
 select has_table('public', 'order_status_events', 'the lifecycle event ledger exists');
+
+select is(
+  (
+    select min_selections
+    from public.modifiers
+    where id = 'c9999999-9999-9999-9999-999999999999'
+  ),
+  0::smallint,
+  'the known paid Add-on remains optional after the expand migration'
+);
+select is(
+  (select max_advance_order_days from public.cafe_info),
+  0,
+  'the expand migration establishes the same-day ordering contract'
+);
+select throws_ok(
+  $$ update public.cafe_info set max_advance_order_days = 1 $$,
+  '23514',
+  null,
+  'the database cannot be switched back to unsupported future-day ordering'
+);
+select lives_ok(
+  $$
+    update public.cafe_info
+    set address = address,
+        phone = phone,
+        pickup_lead_time = pickup_lead_time,
+        max_advance_order_days = 0
+  $$,
+  'a normal same-day settings save preserves an orderable configuration'
+);
 
 select has_function(
   'public',
@@ -275,6 +306,19 @@ select results_eq(
   $$,
   $$ values (5.00::numeric, 0.00::numeric, 5.00::numeric, 5.00::numeric, 'Lifecycle test latte'::text) $$,
   'line snapshots ignore browser display and price authority'
+);
+select ok(
+  (
+    select item.modifiers -> 0 ?& array[
+      'modifier_id', 'option_id',
+      'modifier_name', 'option_name', 'price_adjustment',
+      'name', 'option', 'priceAdjustment'
+    ]
+    from public.order_items as item
+    join public.orders as order_header on order_header.id = item.order_id
+    where order_header.idempotency_key = 'f1000000-0000-4000-8000-000000000001'
+  ),
+  'new modifier snapshots retain both v1 and legacy admin field names during expand'
 );
 select ok(
   not ((select receipt from atomic_receipts) ?| array['id', 'order_id', 'customer_name', 'customer_phone', 'tracking_token_hash', 'idempotency_key']),
@@ -738,7 +782,7 @@ select ok(
         'save_menu_item_graph_v1', 'create_menu_item_graph_v1',
         'get_order_status_v1', 'recover_order_v1', 'recover_order_v1_at',
         'consume_order_rate_limit_v1', 'consume_order_rate_limit_v1_at',
-        'prune_order_rate_buckets_v1'
+        'prune_order_rate_buckets_v1', 'prune_order_rate_buckets_v1_at'
       )
       and grant_entry.grantee = 0
       and grant_entry.privilege_type = 'EXECUTE'

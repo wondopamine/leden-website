@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public, pg_catalog;
 
-select plan(42);
+select plan(49);
 
 select has_table('public', 'order_rate_buckets', 'durable rate buckets exist');
 select has_function('public', 'get_order_status_v1', array['bytea'], 'the token-scoped status projection exists');
@@ -19,6 +19,22 @@ select has_function(
   'consume_order_rate_limit_v1_at',
   array['text', 'bytea', 'integer', 'integer', 'timestamp with time zone'],
   'rate windows have a private injectable test clock'
+);
+select has_function(
+  'private',
+  'prune_order_rate_buckets_v1_at',
+  array['timestamp with time zone', 'integer'],
+  'rate bucket maintenance has a bounded injectable helper'
+);
+select ok(
+  (
+    select pg_catalog.pg_get_indexdef(index_definition.indexrelid)
+      like '%(expires_at, id)%'
+    from pg_catalog.pg_index as index_definition
+    where index_definition.indexrelid =
+      'public.order_rate_buckets_expiry_idx'::regclass
+  ),
+  'bounded pruning has an expires-at/id index matching its ordered scan'
 );
 select has_function(
   'private',
@@ -55,6 +71,29 @@ select ok(
   not has_function_privilege('authenticated', 'private.consume_order_rate_limit_v1_at(text,bytea,integer,integer,timestamp with time zone)', 'EXECUTE')
     and not has_function_privilege('anon', 'private.consume_order_rate_limit_v1_at(text,bytea,integer,integer,timestamp with time zone)', 'EXECUTE'),
   'the injected rate clock is unavailable to browser roles and outside the exposed schema'
+);
+select ok(
+  has_function_privilege(
+    'service_role',
+    'private.prune_order_rate_buckets_v1_at(timestamp with time zone,integer)',
+    'EXECUTE'
+  )
+    and has_function_privilege(
+      'service_role', 'public.prune_order_rate_buckets_v1()', 'EXECUTE'
+    )
+    and not has_function_privilege(
+    'anon', 'private.prune_order_rate_buckets_v1_at(timestamp with time zone,integer)', 'EXECUTE'
+  )
+    and not has_function_privilege(
+      'authenticated', 'private.prune_order_rate_buckets_v1_at(timestamp with time zone,integer)', 'EXECUTE'
+    )
+    and not has_function_privilege(
+      'anon', 'public.prune_order_rate_buckets_v1()', 'EXECUTE'
+    )
+    and not has_function_privilege(
+      'authenticated', 'public.prune_order_rate_buckets_v1()', 'EXECUTE'
+    ),
+  'only the production server role can execute bounded rate maintenance'
 );
 select is(
   (
@@ -197,6 +236,67 @@ select throws_ok(
   $$ select private.consume_order_rate_limit_v1_at(null, null, null, null, null) $$,
   'P0001', 'OLH_RATE_INPUT_INVALID',
   'null rate inputs fail closed instead of relying on SQL three-valued logic'
+);
+insert into public.order_rate_buckets (
+  purpose, key_hash, window_start, window_seconds, request_count, expires_at
+)
+select
+  'status',
+  extensions.digest(pg_catalog.convert_to('expired-' || series.value, 'UTF8'), 'sha256'),
+  '2026-08-24 10:00:00+00'::timestamptz + series.value * interval '1 second',
+  1,
+  1,
+  '2026-08-24 10:05:00+00'::timestamptz
+from pg_catalog.generate_series(1, 125) as series(value);
+insert into public.order_rate_buckets (
+  purpose, key_hash, window_start, window_seconds, request_count, expires_at
+) values (
+  'status', decode(repeat('b4', 32), 'hex'), '2026-08-24 12:00:00+00', 60, 1,
+  '2026-08-24 12:06:00+00'
+);
+select lives_ok(
+  $$
+    select private.consume_order_rate_limit_v1_at(
+      'status', decode(repeat('b3', 32), 'hex'), 2, 60,
+      '2026-08-24 12:00:00+00'
+    )
+  $$,
+  'normal rate consumption performs bounded no-cost maintenance'
+);
+select is(
+  (
+    select count(*)
+    from public.order_rate_buckets
+    where expires_at <= '2026-08-24 12:00:00+00'
+  ),
+  25::bigint,
+  'one hot-path maintenance pass removes at most one bounded batch'
+);
+select is(
+  (
+    select count(*)
+    from public.order_rate_buckets
+    where key_hash = decode(repeat('b4', 32), 'hex')
+  ),
+  1::bigint,
+  'opportunistic maintenance preserves an unrelated active bucket'
+);
+do $$
+begin
+  perform private.consume_order_rate_limit_v1_at(
+    'status', decode(repeat('b3', 32), 'hex'), 2, 60,
+    '2026-08-24 12:00:01+00'
+  );
+end;
+$$;
+select is(
+  (
+    select count(*)
+    from public.order_rate_buckets
+    where expires_at <= '2026-08-24 12:00:01+00'
+  ),
+  0::bigint,
+  'later traffic drains the remaining expired backlog without a scheduler'
 );
 
 do $$
