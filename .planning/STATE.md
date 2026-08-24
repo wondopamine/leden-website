@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Design conformance complete — residual review work recorded; Phase 2 ready
-last_updated: "2026-08-24T09:20:00+08:00"
+status: Order lifecycle hardening active — U1 safe foundation complete; U2 staff allowlisting next
+last_updated: "2026-08-24T11:24:00+08:00"
 progress:
   total_phases: 5
   completed_phases: 1
@@ -15,7 +15,7 @@ progress:
 # Project State: Café Le Den — Website Refactor
 
 **Initialized:** 2026-04-26
-**Last updated:** 2026-04-26
+**Last updated:** 2026-08-24
 
 ## Project Reference
 
@@ -23,7 +23,7 @@ progress:
 
 **Milestone:** Comprehensive refactor — same features, rebuilt on a coherent design system + consolidated data layer + major visual lift.
 
-**Current focus:** Phase 02 — Data Layer Consolidation + Image Pipeline + RLS Hardening
+**Current focus:** Order Lifecycle Hardening — U2 staff allowlisting after U1's production-denying local harness passed reset, seed, pgTAP, unit, type, lint, build, and production dependency audit gates.
 
 ## Current Position
 
@@ -124,13 +124,21 @@ Next: Phase 02 — Data Layer Consolidation + Image Pipeline + RLS Hardening
 - DSY-07 native `<button>` widget gap (13 multi-line elements: header language picker, dismiss banner, sidebar Sign Out, period filter, qty stepper, modifier pills) accepted as-is; will be replaced when Phase 3 (Customer rebuild) and Phase 4 (Admin rebuild) rewrite their containing files. ESLint guardrails enforce token discipline on every file those phases touch.
 - DSY-03 acceptance regex was overbroad — all 9 `(0\.[0-9]+s|ease-(out|in|in-out))` matches in globals.css are token definitions or `var(--ease-*)` references; intent (no bare easing keyword as literal CSS timing value) confirmed met.
 
+### Decisions Logged (Order Lifecycle Hardening)
+
+- The reviewed plan at `docs/plans/2026-08-24-001-feat-order-lifecycle-hardening-plan.md` supersedes the old lifecycle deferrals while preserving guest pay-at-pickup, EN/FR, one café, and the current status vocabulary.
+- U1 establishes a pinned local Supabase stack, deterministic synthetic fixtures, a protected checksum-pinned environment sentinel, production-denying target validation, and exact per-run cleanup manifests.
+- No remote mutation is allowed during U1. Hosted work remains blocked until the U7 owner-approved sentinel bootstrap and the full independent staging handshake.
+- U7, not U1, owns the final aggregate local lifecycle verifier after database, unit, race, browser, and cleanup suites exist.
+
 ### Open Todos
 
-- Phase 1 complete. Start Phase 2 with `/gsd-spec-phase 2` (Data Layer Consolidation + Image Pipeline + RLS Hardening). Watch the package.json conflict risk noted in Risks.
+- Execute U2-U8 in dependency order from the reviewed order-lifecycle plan.
+- Resume the legacy Phase 2 roadmap only where it does not conflict with the active lifecycle-hardening units.
 
 ### Blockers
 
-None.
+- Hosted non-production proof requires an owner-confirmed free project, exact production denylist ref, and later U7 bootstrap authority. No hosted operation is authorized before U7.
 
 ### Risks Surfaced During Roadmapping
 
@@ -140,9 +148,9 @@ None.
 
 ## Session Continuity
 
-**Last session:** The non-roadmap storefront/admin design-conformance track completed. Independent DX review passed with one launch-data advisory; LFG code review applied safe fixes, recorded five residual findings, and the browser gate passed every credential-free route with the protected admin route environment-blocked.
+**Last session:** U1 completed. The pinned local Supabase stack reset cleanly, deterministic synthetic seed and protected sentinel loaded, all 18 pgTAP assertions and 46 unit tests passed, and the production npm tree audited clean after mature dependency security updates.
 
-**Next session entry point:** Run `/gsd-spec-phase 2` to begin Data Layer Consolidation + Image Pipeline + RLS Hardening. Review `docs/residual-review-findings/codex-refactor-dx-design-conformance.md` before changing checkout recovery, admin draft protection, order filtering, or authenticated mutation coverage.
+**Next session entry point:** Execute U2 staff allowlisting. Do not touch a hosted target until U7's owner-approved sentinel bootstrap and full target handshake are available.
 
 **Files of record:**
 

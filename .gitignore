@@ -16,6 +16,7 @@
 /test-results/
 /playwright/.auth/
 /.playwright-artifacts/
+/.lifecycle-tests/
 
 # next.js
 /.next/
@@ -46,3 +47,4 @@ next-env.d.ts
 .env*.local
 .gstack/
 supabase/.temp/
+supabase/.branches/

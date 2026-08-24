@@ -5,7 +5,7 @@
 
 ## v1 Requirements
 
-Strict-refactor scope. Same features as today, rebuilt on a coherent design system + consolidated data layer + major visual lift. Each requirement is user-centric and verifiable.
+The original v1 list records the strict visual/data refactor. The 2026-08-24 lifecycle-hardening addendum below supersedes the old deferrals only for the bounded guest pickup lifecycle. Each requirement is user-centric and verifiable.
 
 ### Design System (DSY)
 
@@ -83,14 +83,31 @@ Strict-refactor scope. Same features as today, rebuilt on a coherent design syst
 - [ ] **GAT-02**: All "High" priority items in `.planning/codebase/CONCERNS.md` (Tech Debt + Visual & Design Quality Issues sections) are resolved or explicitly migrated to a future milestone with rationale
 - [ ] **GAT-03**: User has reviewed the deployed result on a real phone and confirms it meets the "I'd show it to a friend without apology" subjective bar
 
+## Active Order Lifecycle Hardening Addendum
+
+Authorized 2026-08-24. These requirements are traced to implementation units U1-U8 in `docs/plans/2026-08-24-001-feat-order-lifecycle-hardening-plan.md` and do not reopen unrelated v2 scope.
+
+- [ ] **OLH-01**: A new pickup order and all immutable line snapshots commit atomically; a failure leaves no partial order
+- [ ] **OLH-02**: Postgres derives menu/modifier identity, availability, pickup promise, tax, and totals from authoritative configuration rather than browser display data
+- [ ] **OLH-03**: Every checkout attempt is idempotent; identical retries replay one receipt and changed semantics conflict
+- [ ] **OLH-04**: Public creation fails closed behind bounded validation, trusted-origin throttling, and server-validated Turnstile outside explicit local/test mode
+- [ ] **OLH-05**: Only explicitly allowlisted staff can read order PII or mutate café data, with independent authorization at every protected boundary
+- [ ] **OLH-06**: The database enforces the existing transition graph, optimistic concurrency, terminal immutability, and one customer-PII-free event per committed status change
+- [ ] **OLH-07**: The admin treats Realtime as a hint, exposes freshness, and reconciles canonical orders after subscribe, reconnect, focus, mutation, and polling fallback
+- [ ] **OLH-08**: Customers receive an EN/FR, PII-free status view authorized by a high-entropy bearer secret that is not stored in database plaintext or HTTP request URLs
+- [ ] **OLH-09**: A production-denying local/non-production harness proves Auth, RLS, RPC, Realtime, idempotency, cleanup, and the real cross-surface lifecycle
+- [ ] **OLH-10**: Stable failure codes distinguish invalid input, closed service, changed menu, abuse verification, conflict, uncertain receipt, dependency outage, and stale tracking
+- [ ] **OLH-11**: Correctness stays within the zero-additional-cost envelope and does not depend on per-order email
+- [ ] **OLH-12**: EN/FR, guest pay-at-pickup, one café, existing GST/QST labels, current order states, accessibility, and no customer account remain invariant
+
 ## v2 Requirements
 
 Acknowledged but deferred. Not in this milestone's roadmap. Promotion to v1 requires explicit milestone update.
 
 ### Customer Features
 
-- **NXT-01**: Real-time order status updates for customers (Supabase Realtime, polling fallback)
-- **NXT-02**: Customer-facing order lookup by order number + email
+- **NXT-01**: Broader push/Realtime customer notifications remain deferred; private token-scoped polling was promoted as OLH-08 on 2026-08-24
+- **NXT-02**: Public order-number/email lookup was rejected; private bearer-secret tracking was promoted as OLH-08
 - **NXT-03**: Optional customer accounts (Supabase Auth) with order history
 - **NXT-04**: PWA manifest + offline menu caching
 
@@ -104,14 +121,14 @@ Acknowledged but deferred. Not in this milestone's roadmap. Promotion to v1 requ
 ### Reliability
 
 - **REL-01**: Caching strategy reintroduction (Next.js `unstable_cache`, ISR, Redis or Supabase-backed cache)
-- **REL-02**: Vitest unit tests for order validation, menu status transitions, image upload
-- **REL-03**: Playwright E2E tests for the order flow
+- **REL-02**: Lifecycle-focused database/unit tests were promoted as OLH-09; unrelated broad backend coverage remains deferred
+- **REL-03**: Real customer → database → admin → customer Playwright proof was promoted as OLH-09
 - **REL-04**: Error boundaries with retry UI on customer pages
-- **REL-05**: Rate limiting on `/api/order` (per-IP throttle)
+- **REL-05**: Durable privacy-preserving order abuse controls were promoted as OLH-04
 
 ### Schema
 
-- **SCH-01**: Order total `CHECK` constraint validating total = subtotal + GST + QST
+- **SCH-01**: Authoritative order equations and new-contract constraints were promoted as OLH-01 and OLH-02
 - **SCH-02**: `created_by` / `updated_by` audit columns on menu_items, categories, cafe_info
 - **SCH-03**: Discount / promotion fields on menu_items
 
@@ -119,9 +136,9 @@ Acknowledged but deferred. Not in this milestone's roadmap. Promotion to v1 requ
 
 | Feature | Reason |
 |---|---|
-| New customer features (real-time, accounts, lookup, PWA) | Strict refactor scope locked; defer to a future milestone once design system + data layer are stable |
+| Customer accounts, public lookup, push notifications, PWA | Private bearer-secret polling is in OLH-08; the broader features remain deferred |
 | Admin audit log + multi-role | Closing the RLS hole via `admin_users` allowlist is in scope; full role/audit work is a separate milestone |
-| Backend tests / CI test suite | Adding test infrastructure during refactor doubles surface area; settle architecture first, then add tests |
+| Unrelated general backend test expansion | OLH-09 requires lifecycle-focused pgTAP, unit, race, and Playwright proof; broad unrelated coverage remains deferred |
 | Caching strategy / ISR / Redis | Caching layers were just removed for consistency reasons; reintroduce as a separate post-data-consolidation phase |
 | Multi-location / multi-tenant | Single café only; do not generalize schema or admin |
 | Customer authentication | Guests only; no signup, no login, no email-magic-link order lookup |
@@ -186,15 +203,31 @@ Populated by roadmapper on 2026-04-26. Each REQ-ID maps to exactly one phase.
 | GAT-02 | Phase 5: Performance, Accessibility, Done-Gate Verification | Pending |
 | GAT-03 | Phase 5: Performance, Accessibility, Done-Gate Verification | Pending |
 
+### Order Lifecycle Addendum Traceability
+
+| Requirement | Plan units | Status |
+|---|---|---|
+| OLH-01 | U3, U4, U7, U8 | Active |
+| OLH-02 | U3, U4, U5, U7 | Active |
+| OLH-03 | U3, U4, U5, U7 | Active |
+| OLH-04 | U3, U4, U5, U7 | Active |
+| OLH-05 | U2, U6, U7, U8 | Active |
+| OLH-06 | U3, U6, U7, U8 | Active |
+| OLH-07 | U6, U7 | Active |
+| OLH-08 | U3, U4, U5, U7 | Active |
+| OLH-09 | U1-U8 | Active — U1 foundation in progress |
+| OLH-10 | U3-U8 | Active |
+| OLH-11 | U1, U4, U7 | Active |
+| OLH-12 | U1, U5, U6, U7 | Active |
+
 **Coverage:**
 - v1 requirements: 49 total (DSY 7 + CST 7 + ADM 6 + DAT 5 + SEC 4 + IMG 5 + MOB 6 + PRF 6 + GAT 3)
 - Mapped to phases: 49 ✓
 - Unmapped: 0
 - Duplicates across phases: 0
-
-> Note: PROJECT.md prose currently states "47 v1 requirements" — the enumerated REQ-IDs above total 49. The roadmap maps all 49; update the PROJECT.md prose count on the next edit if desired.
+- lifecycle-hardening addendum: 12 active requirements, all mapped to U1-U8
 
 ---
 
 *Requirements defined: 2026-04-26*
-*Last updated: 2026-04-26 — traceability section populated by roadmapper*
+*Last updated: 2026-08-24 — order-lifecycle hardening addendum promoted and traced*

@@ -10,6 +10,12 @@ Café Le Den is a Montreal café and sandwicherie. Its bilingual (EN/FR) website
 
 A customer who lands on the homepage on their phone walks away thinking *"this place is real, I want to go here"* — and is able to place a pickup order without friction. Visual quality and order-flow reliability are the gates; everything else exists to serve them.
 
+## Active Milestone Addendum — Order Lifecycle Hardening
+
+On 2026-08-24 the user promoted production order integrity from the deferred backlog after the design-conformance work proved visual readiness but not lifecycle correctness. `docs/plans/2026-08-24-001-feat-order-lifecycle-hardening-plan.md` is the active implementation plan and supersedes the earlier strict-refactor deferrals only for atomic guest pickup ordering, private customer status, abuse protection, staff allowlisting, degraded admin operation, and real lifecycle tests.
+
+The approved product shape remains one Montréal café, guest pay-at-pickup, EN/FR customer parity, the existing five order statuses, and a lean single-role staff admin. Payments, accounts, delivery, loyalty, POS integration, future-day scheduling, multi-location abstractions, and paid dependencies remain excluded.
+
 ## Requirements
 
 ### Validated
@@ -49,9 +55,9 @@ A customer who lands on the homepage on their phone walks away thinking *"this p
 
 <!-- Explicit exclusions, locked to prevent silent re-inclusion. -->
 
-- **New customer features** — no real-time order status, no customer accounts, no order lookup, no PWA — strict refactor scope; defer to a future milestone once the design system + data layer are stable
+- **Other new customer features** — private token-scoped order status is promoted by the lifecycle-hardening addendum; customer accounts, public order-number/email lookup, PWA, delivery, and loyalty remain deferred
 - **Admin audit log and multi-user roles** — keep "any authenticated user is admin" model with the RLS hole closed by `admin_users` allowlist; full role/audit work is a future milestone
-- **Backend tests / CI test suite** — no Vitest, no Playwright, no integration suites in this milestone; type-check + manual QA + Lighthouse only; tests come once the architecture has settled
+- **General backend test expansion** — lifecycle database/unit/integration/Playwright proof is promoted because it is a release gate; unrelated broad test-suite work remains deferred
 - **Caching strategy / ISR / Redis** — leave `force-dynamic` on customer pages; revisit caching as a separate phase after the data layer is consolidated
 - **Multi-location / multi-tenant** — single café only; do not generalize schema or admin for multiple locations
 - **Customer authentication** — guests only; no signup, no login, no email-magic-link order lookup
@@ -99,7 +105,7 @@ A customer who lands on the homepage on their phone walks away thinking *"this p
 
 | Decision | Rationale | Outcome |
 |---|---|---|
-| Strict refactor — no new customer features | User wants visual + architectural lift before adding capability; separates "what hurts now" from "what's missing" | — Pending |
+| Strict visual refactor, with an explicit lifecycle-hardening addendum | The design iteration is complete enough to expose production order-integrity gaps; the 2026-08-24 addendum promotes only the bounded guest pickup lifecycle | Order hardening active |
 | Balanced strategy: architecture + visual co-evolve | Visual without tokens reproduces the same chaos; tokens without visual misses the goal of "huge improvement"; co-evolution most coherent | — Pending |
 | Consolidate to Supabase only, remove Sanity | Dual-source coupling drove caching removal + admin/customer inconsistency; one source of truth is the architectural unlock | — Pending |
 | Brand palette anchored by existing logo (cream / forest green / warm orange / watermelon mascot) | Logo predates the refactor and is the established brand truth; site must serve it, not reinvent it | — Pending |
