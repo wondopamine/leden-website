@@ -7,6 +7,7 @@ import {
   clearCheckoutAttempt,
   ensureCheckoutAttempt,
   getCheckoutRecoveryAttempt,
+  recoverCheckoutAttempt,
   requireCheckoutRecovery,
   resolveOrderStatusSession,
   runCheckoutSubmission,
@@ -207,6 +208,27 @@ describe("checkout attempt identity", () => {
 });
 
 describe("ambiguous checkout recovery", () => {
+  it("serializes only the recovery DTO from a persisted attempt", async () => {
+    const attempt = {
+      attemptId: "33333333-3333-4333-8333-333333333333",
+      trackingSecret: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      acceptanceKnown: false,
+    };
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ receipt }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    await recoverCheckoutAttempt(fetcher, attempt);
+
+    expect(JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body))).toEqual({
+      attemptId: attempt.attemptId,
+      trackingSecret: attempt.trackingSecret,
+    });
+  });
+
   it("recovers a committed order after the create response is dropped", async () => {
     const attempt = {
       attemptId: "33333333-3333-4333-8333-333333333333",

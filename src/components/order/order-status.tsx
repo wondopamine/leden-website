@@ -34,6 +34,60 @@ const TERMINAL_STATUSES = new Set<PublicOrderStatus>(["picked_up", "cancelled"])
 
 type TrackingState = "loading" | "ready" | "unavailable" | "removed";
 
+type OrderStatusRequestLease = {
+  signal: AbortSignal;
+  isCurrent: () => boolean;
+  release: () => boolean;
+};
+
+export function createOrderStatusRequestCoordinator() {
+  let generation = 0;
+  let active:
+    | {
+        controller: AbortController;
+        generation: number;
+        sessionContextId: string;
+      }
+    | null = null;
+
+  return {
+    begin(sessionContextId: string): OrderStatusRequestLease {
+      active?.controller.abort();
+      const controller = new AbortController();
+      const requestGeneration = ++generation;
+      active = {
+        controller,
+        generation: requestGeneration,
+        sessionContextId,
+      };
+
+      return {
+        signal: controller.signal,
+        isCurrent: () =>
+          !controller.signal.aborted &&
+          active?.controller === controller &&
+          active.generation === requestGeneration &&
+          active.sessionContextId === sessionContextId,
+        release: () => {
+          if (
+            active?.controller !== controller ||
+            active.generation !== requestGeneration
+          ) {
+            return false;
+          }
+          active = null;
+          return true;
+        },
+      };
+    },
+    invalidate() {
+      generation += 1;
+      active?.controller.abort();
+      active = null;
+    },
+  };
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -106,9 +160,15 @@ export function OrderStatus({ locale }: { locale: string }) {
   const [copied, setCopied] = useState(false);
   const [announcement, setAnnouncement] = useState("");
   const [visibilityEpoch, setVisibilityEpoch] = useState(0);
+  const [statusRequests] = useState(createOrderStatusRequestCoordinator);
   const latestVersionRef = useRef(0);
   const pollingRef = useRef(false);
   const statusHeadingRef = useRef<HTMLHeadingElement>(null);
+
+  const invalidateStatusRequest = useCallback(() => {
+    statusRequests.invalidate();
+    pollingRef.current = false;
+  }, [statusRequests]);
 
   useLayoutEffect(() => {
     const historyState = isRecord(window.history.state)
@@ -181,6 +241,7 @@ export function OrderStatus({ locale }: { locale: string }) {
       return;
     }
     pollingRef.current = true;
+    const request = statusRequests.begin(session.contextId);
     try {
       const response = await fetch("/api/order/status", {
         method: "POST",
@@ -188,8 +249,11 @@ export function OrderStatus({ locale }: { locale: string }) {
         body: JSON.stringify({ trackingSecret: session.trackingSecret }),
         cache: "no-store",
         referrerPolicy: "no-referrer",
+        signal: request.signal,
       });
+      if (!request.isCurrent()) return;
       const payload = (await response.json().catch(() => null)) as unknown;
+      if (!request.isCurrent()) return;
       if (response.status === 404 && isTrackingUnavailable(payload)) {
         removeOrderStatusSession(window.sessionStorage, session.contextId);
         setProjection(null);
@@ -221,21 +285,25 @@ export function OrderStatus({ locale }: { locale: string }) {
         return next;
       });
     } catch {
+      if (!request.isCurrent()) return;
       setStale(true);
       if (latestVersionRef.current === 0 && !session.receipt) {
         setTrackingState("unavailable");
       }
     } finally {
-      pollingRef.current = false;
+      if (request.release()) pollingRef.current = false;
     }
-  }, [session, t]);
+  }, [session, statusRequests, t]);
 
   useEffect(() => {
     if (!session || terminal || document.visibilityState !== "visible") return;
     void pollStatus();
     const interval = window.setInterval(() => void pollStatus(), 15_000);
-    return () => window.clearInterval(interval);
-  }, [pollStatus, session, terminal, visibilityEpoch]);
+    return () => {
+      window.clearInterval(interval);
+      invalidateStatusRequest();
+    };
+  }, [invalidateStatusRequest, pollStatus, session, terminal, visibilityEpoch]);
 
   useEffect(() => {
     if (trackingState === "ready") statusHeadingRef.current?.focus();
@@ -255,6 +323,7 @@ export function OrderStatus({ locale }: { locale: string }) {
 
   const removePrivateOrder = () => {
     if (!session) return;
+    invalidateStatusRequest();
     removeOrderStatusSession(window.sessionStorage, session.contextId);
     window.history.replaceState(
       {},

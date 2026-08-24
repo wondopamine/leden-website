@@ -3,7 +3,8 @@
 import { spawn } from "node:child_process";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { access, readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
 import { createClient } from "@supabase/supabase-js";
 
@@ -365,14 +366,53 @@ async function verifyForeignRateBucketSurvivedAndRemove(control) {
   if (assertionError) throw assertionError;
 }
 
-process.on("SIGINT", () => {
-  interrupted = true;
-  activeChild?.kill("SIGINT");
-});
-process.on("SIGTERM", () => {
-  interrupted = true;
-  activeChild?.kill("SIGTERM");
-});
+export async function runExactLifecycleCleanup({
+  createForeignControl,
+  runManifestCleanup,
+  verifyAndRemoveForeignControl,
+}) {
+  const errors = [];
+  let foreignControl = null;
+
+  try {
+    foreignControl = await createForeignControl();
+  } catch (error) {
+    errors.push(error);
+  }
+
+  try {
+    await runManifestCleanup();
+  } catch (error) {
+    errors.push(error);
+  }
+
+  if (foreignControl) {
+    try {
+      await verifyAndRemoveForeignControl(foreignControl);
+    } catch (error) {
+      errors.push(error);
+    }
+  }
+
+  if (errors.length === 1) throw errors[0];
+  if (errors.length > 1) {
+    throw new AggregateError(
+      errors,
+      "Lifecycle cleanup and foreign rate control verification failed.",
+    );
+  }
+}
+
+function installInterruptionHandlers() {
+  process.on("SIGINT", () => {
+    interrupted = true;
+    activeChild?.kill("SIGINT");
+  });
+  process.on("SIGTERM", () => {
+    interrupted = true;
+    activeChild?.kill("SIGTERM");
+  });
+}
 
 async function main() {
   const runId = buildRunId();
@@ -498,47 +538,36 @@ async function main() {
   } catch (error) {
     failure = error;
   } finally {
-    let foreignRateBucketControl = null;
     if (
       staffSetupStarted &&
       environment &&
       (await cleanupManifestExists(runId))
     ) {
       try {
-        foreignRateBucketControl = await createForeignRateBucketControl(environment);
-        await run(
-          "npx",
-          [
-            "tsx",
-            "scripts/cleanup-lifecycle-test.mjs",
-            "--run-id",
-            runId,
-            "--execute",
-          ],
-          { label: "exact per-run cleanup and absence verification", env: environment },
-        );
-        const completedControl = foreignRateBucketControl;
-        foreignRateBucketControl = null;
-        await verifyForeignRateBucketSurvivedAndRemove(completedControl);
+        await runExactLifecycleCleanup({
+          createForeignControl: () => createForeignRateBucketControl(environment),
+          runManifestCleanup: () =>
+            run(
+              "npx",
+              [
+                "tsx",
+                "scripts/cleanup-lifecycle-test.mjs",
+                "--run-id",
+                runId,
+                "--execute",
+              ],
+              {
+                label: "exact per-run cleanup and absence verification",
+                env: environment,
+              },
+            ),
+          verifyAndRemoveForeignControl:
+            verifyForeignRateBucketSurvivedAndRemove,
+        });
       } catch (cleanupError) {
         failure = failure
           ? new AggregateError([failure, cleanupError], "Lifecycle proof and cleanup failed.")
           : cleanupError;
-      } finally {
-        if (foreignRateBucketControl) {
-          try {
-            await verifyForeignRateBucketSurvivedAndRemove(
-              foreignRateBucketControl,
-            );
-          } catch (controlCleanupError) {
-            failure = failure
-              ? new AggregateError(
-                  [failure, controlCleanupError],
-                  "Lifecycle cleanup and foreign rate control cleanup failed.",
-                )
-              : controlCleanupError;
-          }
-        }
       }
     }
     if (runtimePreparationStarted) {
@@ -560,9 +589,16 @@ async function main() {
   announce("PASS — clean local lifecycle proof and exact cleanup completed");
 }
 
-main().catch((error) => {
-  console.error(
-    error instanceof Error ? error.message : "Local lifecycle verification failed.",
-  );
-  process.exitCode = 1;
-});
+const invokedModuleUrl = process.argv[1]
+  ? pathToFileURL(resolve(process.argv[1])).href
+  : null;
+
+if (invokedModuleUrl === import.meta.url) {
+  installInterruptionHandlers();
+  main().catch((error) => {
+    console.error(
+      error instanceof Error ? error.message : "Local lifecycle verification failed.",
+    );
+    process.exitCode = 1;
+  });
+}

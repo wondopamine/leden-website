@@ -534,7 +534,10 @@ export async function recoverCheckoutAttempt<Receipt>(
     const recoveryResponse = await fetcher("/api/order/recover", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(attempt),
+      body: JSON.stringify({
+        attemptId: attempt.attemptId,
+        trackingSecret: attempt.trackingSecret,
+      }),
     });
     const recoveryPayload = await safeJson(recoveryResponse);
     if (recoveryResponse.ok) {
