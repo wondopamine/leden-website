@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = extensions, public, pg_catalog;
 
-select plan(74);
+select plan(77);
 
 select has_column('public', 'orders', 'lifecycle_contract_version', 'orders identify the lifecycle contract version');
 select has_column('public', 'orders', 'idempotency_key', 'orders retain the idempotency identity');
@@ -48,6 +48,20 @@ select ok(
     'EXECUTE'
   ),
   'only the server role may execute atomic creation'
+);
+select ok(
+  has_table_privilege('service_role', 'public.cafe_info', 'SELECT')
+  and has_table_privilege('service_role', 'public.menu_items', 'SELECT')
+  and has_table_privilege('service_role', 'public.modifiers', 'SELECT')
+  and has_table_privilege('service_role', 'public.modifier_options', 'SELECT'),
+  'the invoker-role wrapper can read every authoritative pricing and pickup source'
+);
+select ok(
+  not has_table_privilege('service_role', 'public.cafe_info', 'UPDATE')
+  and not has_table_privilege('service_role', 'public.menu_items', 'UPDATE')
+  and not has_table_privilege('service_role', 'public.modifiers', 'UPDATE')
+  and not has_table_privilege('service_role', 'public.modifier_options', 'UPDATE'),
+  'row-lock support does not grant the application server a direct café or menu mutation surface'
 );
 select ok(
   not has_function_privilege(
@@ -145,6 +159,36 @@ select throws_ok(
   'P0001', 'OLH_ATOMIC_CREATE_REQUIRED',
   'a fresh database session cannot exploit an unset internal guard setting'
 );
+
+create temporary table original_cafe_runtime as
+select hours, pickup_lead_time from public.cafe_info;
+update public.cafe_info
+set hours = '[
+  {"day":"Monday","open":"00:00","close":"23:59","closed":false},
+  {"day":"Tuesday","open":"00:00","close":"23:59","closed":false},
+  {"day":"Wednesday","open":"00:00","close":"23:59","closed":false},
+  {"day":"Thursday","open":"00:00","close":"23:59","closed":false},
+  {"day":"Friday","open":"00:00","close":"23:59","closed":false},
+  {"day":"Saturday","open":"00:00","close":"23:59","closed":false},
+  {"day":"Sunday","open":"00:00","close":"23:59","closed":false}
+]'::jsonb,
+pickup_lead_time = 0;
+set local role service_role;
+select lives_ok(
+  $$
+    select public.create_order_v1(
+      'f1000000-0000-4000-8000-000000000014', decode(repeat('14', 32), 'hex'),
+      'Invoker Contract', '(514) 555-0114', 'en', null, 'asap', null,
+      '[{"menu_item_id":"d2000000-0000-4000-8000-000000000001","quantity":1,"option_ids":["d4000000-0000-4000-8000-000000000001"]}]'::jsonb
+    )
+  $$,
+  'the real service-role wrapper reaches authoritative configuration and menu rows'
+);
+reset role;
+update public.cafe_info as config
+set hours = original.hours,
+    pickup_lead_time = original.pickup_lead_time
+from original_cafe_runtime as original;
 
 create temporary table atomic_receipts (receipt jsonb not null) on commit drop;
 

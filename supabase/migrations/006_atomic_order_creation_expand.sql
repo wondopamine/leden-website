@@ -295,6 +295,37 @@ as $$
   end;
 $$;
 
+-- PostgreSQL row-locking SELECTs require an UPDATE privilege. Keep the main
+-- order routines SECURITY INVOKER without granting the application server any
+-- direct update surface by concentrating those locks in two non-data-returning
+-- owner helpers.
+create or replace function private.lock_cafe_configuration_v1()
+returns void
+language plpgsql
+volatile
+security definer
+set search_path = ''
+as $$
+begin
+  perform 1 from public.cafe_info for share;
+end;
+$$;
+
+create or replace function private.lock_menu_item_v1(p_menu_item_id uuid)
+returns void
+language plpgsql
+volatile
+security definer
+set search_path = ''
+as $$
+begin
+  perform 1
+  from public.menu_items
+  where id = p_menu_item_id
+  for share;
+end;
+$$;
+
 create or replace function private.resolve_order_pickup_v1(
   p_pickup_mode text,
   p_scheduled_pickup_local timestamp without time zone,
@@ -315,12 +346,13 @@ declare
   open_at time;
   close_at time;
 begin
+  perform private.lock_cafe_configuration_v1();
   select count(*) into config_count from public.cafe_info;
   if config_count <> 1 then
     raise exception using errcode = 'P0001', message = 'OLH_CONFIGURATION_UNAVAILABLE';
   end if;
 
-  select * into config from public.cafe_info limit 1 for share;
+  select * into config from public.cafe_info limit 1;
   if not config.ordering_enabled then
     raise exception using errcode = 'P0001', message = 'OLH_ORDERING_PAUSED';
   end if;
@@ -638,10 +670,10 @@ begin
     order by value::text
   loop
     line_number := line_number + 1;
+    perform private.lock_menu_item_v1((line ->> 'menu_item_id')::uuid);
     select * into menu_row
     from public.menu_items
-    where id = (line ->> 'menu_item_id')::uuid
-    for share;
+    where id = (line ->> 'menu_item_id')::uuid;
     if not found or menu_row.status <> 'available' then
       raise exception using errcode = 'P0001', message = 'OLH_MENU_CHANGED';
     end if;
@@ -1091,6 +1123,13 @@ revoke update on table public.orders from service_role;
 revoke update, delete on table public.order_items from service_role;
 grant select, insert, delete on table public.orders to service_role;
 grant select, insert on table public.order_items to service_role;
+-- The creation/status wrappers are SECURITY INVOKER by design. The server role
+-- therefore needs read-only access to the authoritative rows those routines
+-- validate; RLS bypass alone does not confer table privileges.
+grant select on table public.cafe_info to service_role;
+grant select on table public.menu_items to service_role;
+grant select on table public.modifiers to service_role;
+grant select on table public.modifier_options to service_role;
 
 revoke all on function public.create_order_v1(uuid,bytea,text,text,text,text,text,timestamp without time zone,jsonb) from public;
 revoke all on function public.create_order_v1(uuid,bytea,text,text,text,text,text,timestamp without time zone,jsonb) from anon;
@@ -1128,6 +1167,11 @@ revoke all on function public.save_menu_item_graph_v1(uuid,jsonb,jsonb) from ser
 grant execute on function public.save_menu_item_graph_v1(uuid,jsonb,jsonb) to authenticated;
 
 revoke all on function private.order_day_name(timestamp without time zone) from public, anon, authenticated, service_role;
+grant execute on function private.order_day_name(timestamp without time zone) to service_role;
+revoke all on function private.lock_cafe_configuration_v1() from public, anon, authenticated;
+grant execute on function private.lock_cafe_configuration_v1() to service_role;
+revoke all on function private.lock_menu_item_v1(uuid) from public, anon, authenticated;
+grant execute on function private.lock_menu_item_v1(uuid) to service_role;
 revoke all on function private.resolve_order_pickup_v1(text,timestamp without time zone,timestamptz) from public, anon, authenticated;
 grant execute on function private.resolve_order_pickup_v1(text,timestamp without time zone,timestamptz) to service_role;
 revoke all on function private.next_order_number_v1(timestamptz) from public, anon, authenticated;
