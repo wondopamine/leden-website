@@ -209,7 +209,7 @@ test("confirmed-not-found enables only a fresh same-attempt retry", async ({ pag
       JSON.stringify({ state: { items: [persistedItem] }, version: 1 }),
     );
   }, item);
-  await page.route("**/api/order", async (route) => {
+  await page.route("**/api/order/v1", async (route) => {
     createBodies.push(route.request().postDataJSON());
     if (createBodies.length === 1) {
       await route.fulfill({
@@ -288,7 +288,7 @@ test("still-uncertain never enables a duplicate submission", async ({ page }) =>
       JSON.stringify({ state: { items: [persistedItem] }, version: 1 }),
     );
   }, item);
-  await page.route("**/api/order", async (route) => {
+  await page.route("**/api/order/v1", async (route) => {
     createCalls += 1;
     await route.abort("failed");
   });
@@ -359,7 +359,7 @@ test("accepted checkout remains non-resubmittable when private session storage f
       return originalSetItem.call(this, key, value);
     };
   }, item);
-  await page.route("**/api/order", async (route) => {
+  await page.route("**/api/order/v1", async (route) => {
     createCalls += 1;
     await route.fulfill({
       status: 200,
@@ -462,7 +462,7 @@ test("checkout mirrors the server input and quantity bounds", async ({ page }) =
       }),
     );
   });
-  await page.route("**/api/order", async (route) => {
+  await page.route("**/api/order/v1", async (route) => {
     createCalls += 1;
     await route.abort("blockedbyclient");
   });
@@ -511,7 +511,7 @@ test("checkout fails honestly when authoritative café configuration is unavaila
       }),
     );
   });
-  await page.route("**/api/order", async (route) => {
+  await page.route("**/api/order/v1", async (route) => {
     createCalls += 1;
     await route.abort("blockedbyclient");
   });
@@ -593,7 +593,7 @@ test("an open checkout follows the authoritative ordering pause in both language
   orderingEnabled = true;
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await expect(page.getByRole("button", { name: "Place order" })).toBeEnabled();
-  await page.route("**/api/order", async (route) => {
+  await page.route("**/api/order/v1", async (route) => {
     await route.fulfill({
       status: 409,
       contentType: "application/json",
@@ -651,7 +651,7 @@ test("a late checkout success cannot clear a newer cart or redirect its page", a
       JSON.stringify({ state: { items: [persistedItem] }, version: 1 }),
     );
   }, submittedItem);
-  await page.route("**/api/order", async (route) => {
+  await page.route("**/api/order/v1", async (route) => {
     createStarted();
     await createGate;
     await route.fulfill({
@@ -1016,7 +1016,7 @@ for (const {
         });
       }, item);
 
-      await page.route("**/api/order", async (route) => {
+      await page.route("**/api/order/v1", async (route) => {
         createCalls += 1;
         boundaryRequests.push({
           url: route.request().url(),
@@ -1282,7 +1282,7 @@ for (const {
 
     await nameInput.fill("Test customer");
     await phoneInput.fill("5145550100");
-    await page.route("**/api/order", async (route) => {
+    await page.route("**/api/order/v1", async (route) => {
       expect(route.request().method()).toBe("POST");
       await route.fulfill({
         status: 503,

@@ -29,7 +29,8 @@ vi.mock("@/lib/orders/repository.server", () => ({
   }),
 }));
 
-import { POST as createOrder } from "../../src/app/api/order/route";
+import { POST as rejectLegacyOrder } from "../../src/app/api/order/route";
+import { POST as createOrder } from "../../src/app/api/order/v1/route";
 import { POST as recoverOrder } from "../../src/app/api/order/recover/route";
 import { POST as getOrderStatus } from "../../src/app/api/order/status/route";
 import { OrderBoundaryError } from "../../src/lib/orders/errors";
@@ -38,6 +39,8 @@ const ATTEMPT = "f1000000-0000-4000-8000-000000000001";
 const ITEM = "d2000000-0000-4000-8000-000000000001";
 const SECRET = "A".repeat(43);
 const RECEIPT = { receipt_id: "receipt", order_number: "LD-1", status: "new" };
+const LEGACY_ORDER_REFRESH_MESSAGE =
+  "Please refresh this page before ordering. Veuillez actualiser cette page avant de commander.";
 
 function request(path: string, body: unknown) {
   return new Request(`http://127.0.0.1${path}`, {
@@ -82,7 +85,7 @@ beforeEach(() => {
 
 describe("create order Route Handler", () => {
   it("returns 201 through the thin validated orchestration path", async () => {
-    const response = await createOrder(request("/api/order", createBody()));
+    const response = await createOrder(request("/api/order/v1", createBody()));
     expect(response.status).toBe(201);
     expect(await response.json()).toEqual({ receipt: RECEIPT });
     expect(mocks.consumeRateLimit).toHaveBeenCalledWith(
@@ -115,7 +118,7 @@ describe("create order Route Handler", () => {
   it("rejects the legacy price-bearing shape before any privileged call", async () => {
     const body = createBody() as ReturnType<typeof createBody> & { total: number };
     body.total = 5.75;
-    const response = await createOrder(request("/api/order", body));
+    const response = await createOrder(request("/api/order/v1", body));
     expect(response.status).toBe(409);
     expect(await response.json()).toEqual({
       error: { code: "CLIENT_REFRESH_REQUIRED" },
@@ -128,7 +131,7 @@ describe("create order Route Handler", () => {
 
   it("returns a committed replay before requesting a fresh challenge", async () => {
     mocks.findCommittedReplay.mockResolvedValue(RECEIPT);
-    const response = await createOrder(request("/api/order", createBody()));
+    const response = await createOrder(request("/api/order/v1", createBody()));
     expect(response.status).toBe(200);
     expect(mocks.findCommittedReplay.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.verifyTurnstile.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY,
@@ -141,7 +144,7 @@ describe("create order Route Handler", () => {
     mocks.findCommittedReplay.mockRejectedValue(
       new OrderBoundaryError("IDEMPOTENCY_CONFLICT", 409),
     );
-    const response = await createOrder(request("/api/order", createBody()));
+    const response = await createOrder(request("/api/order/v1", createBody()));
     expect(response.status).toBe(409);
     expect(await response.json()).toEqual({
       error: { code: "IDEMPOTENCY_CONFLICT" },
@@ -157,7 +160,7 @@ describe("create order Route Handler", () => {
       }),
     );
     mocks.waitForCommittedReplay.mockResolvedValue(RECEIPT);
-    const response = await createOrder(request("/api/order", createBody()));
+    const response = await createOrder(request("/api/order/v1", createBody()));
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ receipt: RECEIPT });
     expect(mocks.create).not.toHaveBeenCalled();
@@ -167,7 +170,7 @@ describe("create order Route Handler", () => {
     mocks.verifyTurnstile.mockRejectedValue(
       new OrderBoundaryError("CHALLENGE_FAILED", 403),
     );
-    const response = await createOrder(request("/api/order", createBody()));
+    const response = await createOrder(request("/api/order/v1", createBody()));
     expect(response.status).toBe(403);
     expect(mocks.waitForCommittedReplay).not.toHaveBeenCalled();
     expect(mocks.create).not.toHaveBeenCalled();
@@ -180,7 +183,7 @@ describe("create order Route Handler", () => {
         ambiguousChallenge: true,
       }),
     );
-    const response = await createOrder(request("/api/order", createBody()));
+    const response = await createOrder(request("/api/order/v1", createBody()));
     expect(response.status).toBe(503);
     expect(await response.json()).toEqual({
       error: { code: "RECEIPT_UNCERTAIN" },
@@ -193,7 +196,7 @@ describe("create order Route Handler", () => {
     mocks.create.mockRejectedValue(
       new OrderBoundaryError("DEPENDENCY_UNAVAILABLE", 503),
     );
-    const response = await createOrder(request("/api/order", createBody()));
+    const response = await createOrder(request("/api/order/v1", createBody()));
     expect(response.status).toBe(503);
     expect(JSON.stringify(await response.json())).not.toMatch(
       /postgres|supabase|cloudflare|secret|customer/i,
@@ -208,11 +211,74 @@ describe("create order Route Handler", () => {
     mocks.waitForCommittedReplay.mockRejectedValue(
       new OrderBoundaryError("DEPENDENCY_UNAVAILABLE", 503),
     );
-    const response = await createOrder(request("/api/order", createBody()));
+    const response = await createOrder(request("/api/order/v1", createBody()));
     expect(response.status).toBe(503);
     expect(await response.json()).toEqual({
       error: { code: "RECEIPT_UNCERTAIN" },
     });
+  });
+
+  it("keeps a failed create ambiguous when the bounded commit probe finds no receipt", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    mocks.create.mockRejectedValue(
+      new OrderBoundaryError("DEPENDENCY_UNAVAILABLE", 503),
+    );
+    mocks.waitForCommittedReplay.mockResolvedValue(null);
+
+    const response = await createOrder(request("/api/order/v1", createBody()));
+
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({
+      error: { code: "RECEIPT_UNCERTAIN" },
+    });
+  });
+});
+
+describe("legacy order cutover Route Handler", () => {
+  it("rejects a loaded legacy checkout with its string error shape and no database work", async () => {
+    const response = await rejectLegacyOrder(
+      request("/api/order", {
+        items: [{ name: "Latte", price: 5, quantity: 1, modifiers: [] }],
+        customerInfo: { name: "Ada", phone: "5145550101" },
+        pickupTime: null,
+        locale: "en",
+        total: 5.75,
+      }),
+    );
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      error: LEGACY_ORDER_REFRESH_MESSAGE,
+    });
+    expect(response.headers.get("cache-control")).toBe(
+      "private, no-store, max-age=0",
+    );
+    expect(mocks.consumeRateLimit).not.toHaveBeenCalled();
+    expect(mocks.create).not.toHaveBeenCalled();
+  });
+
+  it("settles immediately without consuming a never-closing request body", async () => {
+    const neverClosingBody = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('{"legacy":'));
+      },
+    });
+    const legacyRequest = new Request("http://127.0.0.1/api/order", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: neverClosingBody,
+      duplex: "half",
+    } as RequestInit & { duplex: "half" });
+
+    const response = rejectLegacyOrder(legacyRequest);
+
+    expect(response).toBeInstanceOf(Response);
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      error: LEGACY_ORDER_REFRESH_MESSAGE,
+    });
+    expect(mocks.consumeRateLimit).not.toHaveBeenCalled();
+    expect(mocks.create).not.toHaveBeenCalled();
   });
 });
 

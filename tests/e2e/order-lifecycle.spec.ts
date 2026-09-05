@@ -82,7 +82,7 @@ async function submitCustomerOrder({
   });
   await seedCart(page, locale);
   await page.route(
-    "**/api/order",
+    "**/api/order/v1",
     async (route) => {
       submitted = route.request().postDataJSON() as SubmittedOrder;
       await recordLifecycleAttempt(context.runId, submitted.attemptId);
@@ -313,7 +313,7 @@ lifecycle("real local customer, admin, and tracking lifecycle", () => {
     ))!;
     await expect(customer.getByText(order.order_number, { exact: true })).toBeVisible();
 
-    const replay = await customer.request.post("/api/order", {
+    const replay = await customer.request.post("/api/order/v1", {
       headers: { Origin: new URL(customer.url()).origin },
       data: payload,
     });
@@ -322,7 +322,7 @@ lifecycle("real local customer, admin, and tracking lifecycle", () => {
     assertPiiFreePublicDto(replayDto);
     expect(replayDto.receipt.order_number).toBe(order.order_number);
 
-    const changed = await customer.request.post("/api/order", {
+    const changed = await customer.request.post("/api/order/v1", {
       headers: { Origin: new URL(customer.url()).origin },
       data: {
         ...payload,
@@ -524,7 +524,7 @@ lifecycle("real local customer, admin, and tracking lifecycle", () => {
     const invalid = freshOrderIdentity();
     await recordLifecycleAttempt(context.runId, invalid.attemptId);
     await recordLifecycleTrackingSecret(context.runId, invalid.trackingSecret);
-    const tampered = await customer.request.post("/api/order", {
+    const tampered = await customer.request.post("/api/order/v1", {
       headers: { Origin: new URL(customer.url()).origin },
       data: {
         ...payload,

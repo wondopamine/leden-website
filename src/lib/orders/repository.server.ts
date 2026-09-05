@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { Json } from "../supabase/database.types";
+import { SUPABASE_REQUEST_TIMEOUT_MS } from "../supabase/bounded-fetch.server";
 import { createPrivilegedClient } from "../supabase/privileged.server";
 import {
   OrderBoundaryError,
@@ -213,16 +214,35 @@ async function delay(milliseconds: number) {
   await new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
-async function dependencyCall<T>(operation: () => PromiseLike<T>): Promise<T> {
+async function dependencyCall<T>(
+  operation: (signal: AbortSignal) => PromiseLike<T>,
+  timeoutMs: number,
+): Promise<T> {
+  const controller = new AbortController();
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_, reject) => {
+    timeout = setTimeout(() => {
+      controller.abort();
+      reject(new DOMException("Supabase operation timed out", "TimeoutError"));
+    }, timeoutMs);
+  });
   try {
-    return await operation();
+    return await Promise.race([
+      Promise.resolve().then(() => operation(controller.signal)),
+      deadline,
+    ]);
   } catch {
     throw new OrderBoundaryError("DEPENDENCY_UNAVAILABLE", 503);
+  } finally {
+    if (timeout) clearTimeout(timeout);
   }
 }
 
 export class OrderRepository {
-  constructor(private readonly client: PrivilegedClient = createPrivilegedClient()) {}
+  constructor(
+    private readonly client: PrivilegedClient = createPrivilegedClient(),
+    private readonly requestTimeoutMs = SUPABASE_REQUEST_TIMEOUT_MS,
+  ) {}
 
   async consumeRateLimit(
     purpose: RatePurpose,
@@ -230,13 +250,17 @@ export class OrderRepository {
     limit: number,
     windowSeconds: number,
   ): Promise<void> {
-    const { data, error } = await dependencyCall(() =>
-      this.client.rpc("consume_order_rate_limit_v1", {
-        p_purpose: purpose,
-        p_key_hash: postgresBytea(keyHashHex),
-        p_limit: limit,
-        p_window_seconds: windowSeconds,
-      }),
+    const { data, error } = await dependencyCall(
+      (signal) =>
+        this.client
+          .rpc("consume_order_rate_limit_v1", {
+            p_purpose: purpose,
+            p_key_hash: postgresBytea(keyHashHex),
+            p_limit: limit,
+            p_window_seconds: windowSeconds,
+          })
+          .abortSignal(signal),
+      this.requestTimeoutMs,
     );
     if (error || !isRecord(data)) throw mapDatabaseError(error);
     if (
@@ -256,13 +280,18 @@ export class OrderRepository {
     attemptId: string,
     trackingHashHex: string,
     material: CanonicalCreateMaterial,
+    requestTimeoutMs = this.requestTimeoutMs,
   ): Promise<OrderReceipt | null> {
-    const { data, error } = await dependencyCall(() =>
-      this.client
-        .from("orders")
-        .select("request_fingerprint, tracking_token_hash")
-        .eq("idempotency_key", attemptId)
-        .maybeSingle(),
+    const operationDeadline = Date.now() + requestTimeoutMs;
+    const { data, error } = await dependencyCall(
+      (signal) =>
+        this.client
+          .from("orders")
+          .select("request_fingerprint, tracking_token_hash")
+          .eq("idempotency_key", attemptId)
+          .abortSignal(signal)
+          .maybeSingle(),
+      requestTimeoutMs,
     );
     if (error) throw mapDatabaseError(error);
     if (!data) return null;
@@ -278,7 +307,12 @@ export class OrderRepository {
     ) {
       throw new OrderBoundaryError("IDEMPOTENCY_CONFLICT", 409);
     }
-    return this.recover(attemptId, trackingHashHex, "RECEIPT_UNCERTAIN");
+    return this.recover(
+      attemptId,
+      trackingHashHex,
+      "RECEIPT_UNCERTAIN",
+      Math.max(1, operationDeadline - Date.now()),
+    );
   }
 
   async waitForCommittedReplay(
@@ -289,13 +323,17 @@ export class OrderRepository {
   ): Promise<OrderReceipt | null> {
     const deadline = Date.now() + waitMilliseconds;
     do {
+      const remainingMilliseconds = deadline - Date.now();
+      if (remainingMilliseconds <= 0) return null;
       const receipt = await this.findCommittedReplay(
         attemptId,
         trackingHashHex,
         material,
+        Math.min(this.requestTimeoutMs, remainingMilliseconds),
       );
       if (receipt) return receipt;
-      if (Date.now() < deadline) await delay(75);
+      const delayMilliseconds = Math.min(75, deadline - Date.now());
+      if (delayMilliseconds > 0) await delay(delayMilliseconds);
     } while (Date.now() < deadline);
     return null;
   }
@@ -306,28 +344,37 @@ export class OrderRepository {
       quantity: item.quantity,
       option_ids: item.optionIds,
     })) as Json;
-    const { data, error } = await dependencyCall(() =>
-      this.client.rpc("create_order_v1", {
-        p_idempotency_key: input.attemptId,
-        p_tracking_token_hash: postgresBytea(trackingHashHex),
-        p_customer_name: input.customer.name,
-        p_customer_phone: input.customer.phone,
-        p_locale: input.locale,
-        p_notes: input.notes,
-        p_pickup_mode: input.pickup.mode,
-        p_scheduled_pickup_local: input.pickup.scheduledLocal as unknown as string,
-        p_items: items,
-      }),
+    const { data, error } = await dependencyCall(
+      (signal) =>
+        this.client
+          .rpc("create_order_v1", {
+            p_idempotency_key: input.attemptId,
+            p_tracking_token_hash: postgresBytea(trackingHashHex),
+            p_customer_name: input.customer.name,
+            p_customer_phone: input.customer.phone,
+            p_locale: input.locale,
+            p_notes: input.notes,
+            p_pickup_mode: input.pickup.mode,
+            p_scheduled_pickup_local: input.pickup
+              .scheduledLocal as unknown as string,
+            p_items: items,
+          })
+          .abortSignal(signal),
+      this.requestTimeoutMs,
     );
     if (error) throw mapDatabaseError(error);
     return parseReceipt(data);
   }
 
   async status(trackingHashHex: string): Promise<OrderStatusProjection | null> {
-    const { data, error } = await dependencyCall(() =>
-      this.client.rpc("get_order_status_v1", {
-        p_tracking_token_hash: postgresBytea(trackingHashHex),
-      }),
+    const { data, error } = await dependencyCall(
+      (signal) =>
+        this.client
+          .rpc("get_order_status_v1", {
+            p_tracking_token_hash: postgresBytea(trackingHashHex),
+          })
+          .abortSignal(signal),
+      this.requestTimeoutMs,
     );
     if (error) throw mapDatabaseError(error);
     return data === null ? null : parseStatusProjection(data);
@@ -338,12 +385,17 @@ export class OrderRepository {
     trackingHashHex: string,
     absentCode: "TRACKING_UNAVAILABLE" | "RECEIPT_UNCERTAIN" =
       "TRACKING_UNAVAILABLE",
+    requestTimeoutMs = this.requestTimeoutMs,
   ): Promise<OrderReceipt> {
-    const { data, error } = await dependencyCall(() =>
-      this.client.rpc("recover_order_v1", {
-        p_idempotency_key: attemptId,
-        p_tracking_token_hash: postgresBytea(trackingHashHex),
-      }),
+    const { data, error } = await dependencyCall(
+      (signal) =>
+        this.client
+          .rpc("recover_order_v1", {
+            p_idempotency_key: attemptId,
+            p_tracking_token_hash: postgresBytea(trackingHashHex),
+          })
+          .abortSignal(signal),
+      requestTimeoutMs,
     );
     if (error) throw mapDatabaseError(error);
     if (data === null) {

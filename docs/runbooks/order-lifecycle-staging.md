@@ -83,6 +83,8 @@ The current `verify:order-lifecycle:local` and staff-setup scripts intentionally
 
 Apply committed expand migrations in order, then run the same production components used in local proof:
 
+- Deploy the build whose new checkout posts only to `POST /api/order/v1`. Keep the unversioned `POST /api/order` rejection shim active for already-loaded pre-deploy checkouts; do not route it to either the old writer or the v1 handler.
+- Before creating an order, send a legacy request with a body that remains open to unversioned `/api/order`. Require an immediate old-shaped `{ error: string }` response with the EN/FR refresh instruction, prove the shim did not consume or parse the body, require no new order/item/event row, and confirm the old checkout preserves its cart.
 - EN: create, deliberately lose the HTTP response, recover one receipt, prove identical replay, advance `new → preparing → ready → picked_up`, and observe customer versions `0 → 1 → 2 → 3`.
 - FR: create, cancel from an allowed active state with the call-before-cancel confirmation, and observe localized terminal status.
 - Prove one complete item set and initial event, exact actor/version event order, changed-payload conflict, modifier ownership rejection, anonymous/unlisted denial, one-winner concurrency, and no partial rows.
@@ -90,7 +92,14 @@ Apply committed expand migrations in order, then run the same production compone
 - Prove raw tracking material is absent from URLs after bootstrap, referrers, reports, traces, server/access logs, and database plaintext.
 - Prove terminal retry or an invalid transition cannot create another event.
 
-Failure leaves ordering paused. Do not proceed to U8 or deploy the old application after a contract change.
+Failure leaves ordering paused. Do not proceed to U8 or deploy the old application after a contract change. Keep the legacy rejection shim until the separate U8 release has hosted canary evidence, deployment-cache-age evidence, and owner approval to remove it.
+
+### Deadline evidence
+
+- Record that every server-side Supabase request aborts within 2 seconds against a deliberately hanging staging-safe transport probe.
+- Record that `/api/order/v1` settles inside the 15-second client deadline on the worst bounded path: 2-second rate call + 2-second replay lookup + up to two 2-second Turnstile attempts + 2-second create call + 900 ms committed-replay recovery.
+- Record that recovery settles inside 5 seconds, routine status inside 8 seconds, and staff authorization plus the parallel canonical board/settings read inside the 8-second admin refresh deadline.
+- A create dependency timeout must return `RECEIPT_UNCERTAIN` and use only the same attempt for bounded recovery. Rate, status, admin, and settings timeouts must fail closed without raw dependency text.
 
 ## Phase 5: actual staging hostname and edge
 

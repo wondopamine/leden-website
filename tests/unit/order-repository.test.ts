@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
@@ -13,6 +13,10 @@ const ITEM = "d2000000-0000-4000-8000-000000000001";
 const SECRET = "A".repeat(43);
 const TRACKING_HASH = "ab".repeat(32);
 const FINGERPRINT = "806673bffc4f40c44ae6a66fa974bc1d6773a7d2f6e684a6cef751e8f6e2abaa";
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 function input() {
   return parseCreateOrderRequest({
@@ -56,10 +60,13 @@ const RECEIPT = {
 
 function fakeClient(row: unknown, rpcResult: unknown = RECEIPT) {
   const maybeSingle = vi.fn().mockResolvedValue({ data: row, error: null });
-  const eq = vi.fn(() => ({ maybeSingle }));
+  const queryAbortSignal = vi.fn(() => ({ maybeSingle }));
+  const eq = vi.fn(() => ({ abortSignal: queryAbortSignal }));
   const select = vi.fn(() => ({ eq }));
   const from = vi.fn(() => ({ select }));
-  const rpc = vi.fn().mockResolvedValue({ data: rpcResult, error: null });
+  const rpc = vi.fn(() => ({
+    abortSignal: vi.fn().mockResolvedValue({ data: rpcResult, error: null }),
+  }));
   return { client: { from, rpc }, rpc };
 }
 
@@ -105,11 +112,85 @@ describe("OrderRepository committed replay", () => {
 
   it("collapses raw transport rejection to dependency unavailability", async () => {
     const { client } = fakeClient(null);
-    client.rpc.mockRejectedValue(new Error("raw connection and secret details"));
+    client.rpc.mockReturnValue({
+      abortSignal: vi
+        .fn()
+        .mockRejectedValue(new Error("raw connection and secret details")),
+    });
     const repository = new OrderRepository(client as never);
     await expect(repository.status(TRACKING_HASH)).rejects.toMatchObject({
       code: "DEPENDENCY_UNAVAILABLE",
       status: 503,
     });
+  });
+
+  it.each(["create", "status"] as const)(
+    "aborts a hanging %s operation at the repository deadline",
+    async (operation) => {
+      vi.useFakeTimers();
+      let signal: AbortSignal | undefined;
+      const never = {
+        abortSignal: vi.fn((nextSignal: AbortSignal) => {
+          signal = nextSignal;
+          return new Promise<never>(() => undefined);
+        }),
+      };
+      const client = {
+        from: vi.fn(),
+        rpc: vi.fn(() => never),
+      };
+      const repository = new OrderRepository(client as never, 40);
+      const pending =
+        operation === "create"
+          ? repository.create(input(), TRACKING_HASH)
+          : repository.status(TRACKING_HASH);
+      const assertion = expect(pending).rejects.toMatchObject({
+        code: "DEPENDENCY_UNAVAILABLE",
+        status: 503,
+      });
+
+      await vi.advanceTimersByTimeAsync(40);
+
+      await assertion;
+      expect(signal?.aborted).toBe(true);
+    },
+  );
+
+  it("keeps the committed-replay wait bounded when one lookup never settles", async () => {
+    vi.useFakeTimers();
+    let signal: AbortSignal | undefined;
+    const client = {
+      from: vi.fn(() => ({
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            abortSignal: vi.fn((nextSignal: AbortSignal) => {
+              signal = nextSignal;
+              return {
+                maybeSingle: vi.fn(
+                  () => new Promise<never>(() => undefined),
+                ),
+              };
+            }),
+          })),
+        })),
+      })),
+      rpc: vi.fn(),
+    };
+    const repository = new OrderRepository(client as never, 2_000);
+    const pending = repository.waitForCommittedReplay(
+      ATTEMPT,
+      TRACKING_HASH,
+      canonicalizeCreateMaterial(input(), TRACKING_HASH),
+      90,
+    );
+    const assertion = expect(pending).rejects.toMatchObject({
+      code: "DEPENDENCY_UNAVAILABLE",
+      status: 503,
+    });
+
+    await vi.advanceTimersByTimeAsync(90);
+
+    await assertion;
+    expect(signal?.aborted).toBe(true);
   });
 });

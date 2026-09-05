@@ -38,6 +38,15 @@ Every transition compares the expected state/version, increments the canonical v
 - Customer status/recovery responses contain no customer PII, staff identity, internal UUID, idempotency key, or raw database row.
 - Status is pull-only and polls while visible. Realtime is not exposed anonymously.
 
+## HTTP cutover and deadline contract
+
+- The authoritative IDs-only create contract is versioned at `POST /api/order/v1`.
+- The unversioned `POST /api/order` is a temporary rejection-only shim for JavaScript loaded before deployment. It does not consume or parse the request body, performs no validation or database work, and returns the old `{ error: string }` shape immediately with an EN/FR refresh instruction. The old client therefore preserves its cart and tells the customer how to recover instead of retrying forever. The versioned endpoint remains responsible for bounded streamed-body validation.
+- Keep that shim through the hosted U7 canary. Its removal belongs to the separate U8 contract release after cache-age evidence and owner sign-off; it must never be changed back into a legacy writer.
+- Server-side Supabase Auth/PostgREST calls have a two-second hard abort deadline. The bounded, staff-authorized menu-image upload uses a separate 10-second transfer deadline for files up to 5 MB. Order creation also enforces the remaining portion of its 900 ms committed-replay window on each probe, so one hung query cannot exceed the advertised wait.
+- The client create deadline is 15 seconds. Its maximum server-side dependency chain is 10.9 seconds: rate limit 2 s + initial replay 2 s + two Turnstile attempts 4 s + create 2 s + commit recovery 0.9 s. Recovery is 5 seconds for a 4-second rate-plus-recover path; status and admin refresh remain 8 seconds for maximum 4-second and 6-second server paths respectively.
+- A create transport/deadline failure is receipt ambiguity, not proof of absence. It returns `RECEIPT_UNCERTAIN` after only a bounded same-attempt recovery probe. Status, rate, staff, settings, and admin reads or mutations fail closed with their existing unavailable outcomes.
+
 ## Staff and degraded operation
 
 - Only allowlisted staff can read order PII or mutate café data. Layouts, handlers, actions, RLS policies, and transition routines reauthorize independently.

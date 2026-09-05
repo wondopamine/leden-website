@@ -406,7 +406,7 @@ describe("ambiguous checkout recovery", () => {
     await vi.advanceTimersByTimeAsync(50);
 
     await expect(submission).resolves.toEqual({ kind: "recovered", receipt });
-    expect(urls).toEqual(["/api/order", "/api/order/recover"]);
+    expect(urls).toEqual(["/api/order/v1", "/api/order/recover"]);
     expect(signals[0]?.aborted).toBe(true);
     expect(phases).toEqual(["submitting", "checking", "recovered"]);
     expect(JSON.parse(bodies[1] ?? "null")).toEqual(attempt);
@@ -446,7 +446,7 @@ describe("ambiguous checkout recovery", () => {
     expect(result).toEqual({ kind: "still-uncertain" });
     expect("attempt" in result).toBe(false);
     expect("canRetry" in result).toBe(false);
-    expect(urls).toEqual(["/api/order", "/api/order/recover"]);
+    expect(urls).toEqual(["/api/order/v1", "/api/order/recover"]);
   });
 
   it("keeps the attempt uncertain when the recovery deadline expires", async () => {
@@ -458,7 +458,7 @@ describe("ambiguous checkout recovery", () => {
     const signals: AbortSignal[] = [];
     const fetcher = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
       if (init?.signal) signals.push(init.signal);
-      if (String(input) === "/api/order") {
+      if (String(input) === "/api/order/v1") {
         return Promise.reject(new TypeError("response dropped"));
       }
       return new Promise<Response>(() => undefined);

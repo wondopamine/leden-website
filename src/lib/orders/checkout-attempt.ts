@@ -4,7 +4,12 @@ export const CHECKOUT_ATTEMPT_SESSION_KEY = "cafe-leden-checkout-attempt-v1";
 export const STATUS_SESSION_PREFIX = "cafe-leden-order-status-v1:";
 const PENDING_STATUS_CONTEXT_KEY = "cafe-leden-order-status-pending-v1";
 const ACTIVE_STATUS_CONTEXT_KEY = "cafe-leden-order-status-active-v1";
-export const CHECKOUT_CREATE_TIMEOUT_MS = 8_000;
+export const ORDER_CREATE_ENDPOINT = "/api/order/v1";
+// The server's longest bounded path is: create rate limit (2s), replay probe
+// (2s), two Turnstile attempts (4s), create RPC (2s), and commit recovery
+// (0.9s). Fifteen seconds preserves useful network/rendering margin while all
+// dependency waits still settle first.
+export const CHECKOUT_CREATE_TIMEOUT_MS = 15_000;
 export const CHECKOUT_RECOVERY_TIMEOUT_MS = 5_000;
 
 export type StorageLike = Pick<Storage, "getItem" | "setItem" | "removeItem">;
@@ -673,7 +678,7 @@ export async function runCheckoutSubmission<Receipt>({
     const { response: createResponse, payload: createPayload } =
       await requestJsonWithDeadline(
         fetcher,
-        "/api/order",
+        ORDER_CREATE_ENDPOINT,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

@@ -3,8 +3,14 @@ import "server-only";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./database.types";
 import { OrderBoundaryError } from "../orders/errors";
+import {
+  SUPABASE_REQUEST_TIMEOUT_MS,
+  createBoundedSupabaseFetch,
+} from "./bounded-fetch.server";
 
-export function createPrivilegedClient() {
+export function createPrivilegedClient(
+  requestTimeoutMs = SUPABASE_REQUEST_TIMEOUT_MS,
+) {
   const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) {
@@ -15,6 +21,9 @@ export function createPrivilegedClient() {
       autoRefreshToken: false,
       detectSessionInUrl: false,
       persistSession: false,
+    },
+    global: {
+      fetch: createBoundedSupabaseFetch(requestTimeoutMs),
     },
   });
 }
