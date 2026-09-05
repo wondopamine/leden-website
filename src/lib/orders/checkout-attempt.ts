@@ -4,6 +4,8 @@ export const CHECKOUT_ATTEMPT_SESSION_KEY = "cafe-leden-checkout-attempt-v1";
 export const STATUS_SESSION_PREFIX = "cafe-leden-order-status-v1:";
 const PENDING_STATUS_CONTEXT_KEY = "cafe-leden-order-status-pending-v1";
 const ACTIVE_STATUS_CONTEXT_KEY = "cafe-leden-order-status-active-v1";
+export const CHECKOUT_CREATE_TIMEOUT_MS = 8_000;
+export const CHECKOUT_RECOVERY_TIMEOUT_MS = 5_000;
 
 export type StorageLike = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
@@ -492,6 +494,33 @@ async function safeJson(response: Response): Promise<unknown> {
   }
 }
 
+async function requestJsonWithDeadline(
+  fetcher: typeof fetch,
+  input: RequestInfo | URL,
+  init: RequestInit,
+  timeoutMs: number,
+): Promise<{ response: Response; payload: unknown }> {
+  const controller = new AbortController();
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_, reject) => {
+    timeout = setTimeout(() => {
+      controller.abort();
+      reject(new DOMException("Checkout request timed out", "TimeoutError"));
+    }, timeoutMs);
+  });
+
+  try {
+    const response = await Promise.race([
+      fetcher(input, { ...init, signal: controller.signal }),
+      deadline,
+    ]);
+    const payload = await Promise.race([safeJson(response), deadline]);
+    return { response, payload };
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
+}
+
 function readError(value: unknown): SafeBoundaryError | null {
   if (typeof value !== "object" || value === null || !("error" in value)) {
     return null;
@@ -587,17 +616,23 @@ export type CheckoutRecoveryResult<Receipt = unknown> =
 export async function recoverCheckoutAttempt<Receipt>(
   fetcher: typeof fetch,
   attempt: CheckoutAttempt,
+  timeoutMs = CHECKOUT_RECOVERY_TIMEOUT_MS,
 ): Promise<CheckoutRecoveryResult<Receipt>> {
   try {
-    const recoveryResponse = await fetcher("/api/order/recover", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        attemptId: attempt.attemptId,
-        trackingSecret: attempt.trackingSecret,
-      }),
-    });
-    const recoveryPayload = await safeJson(recoveryResponse);
+    const { response: recoveryResponse, payload: recoveryPayload } =
+      await requestJsonWithDeadline(
+        fetcher,
+        "/api/order/recover",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            attemptId: attempt.attemptId,
+            trackingSecret: attempt.trackingSecret,
+          }),
+        },
+        timeoutMs,
+      );
     if (recoveryResponse.ok) {
       const recovered = readReceipt<Receipt>(recoveryPayload);
       return recovered
@@ -622,21 +657,30 @@ export async function runCheckoutSubmission<Receipt>({
   attempt,
   createBody,
   onPhase,
+  createTimeoutMs = CHECKOUT_CREATE_TIMEOUT_MS,
+  recoveryTimeoutMs = CHECKOUT_RECOVERY_TIMEOUT_MS,
 }: {
   fetcher: typeof fetch;
   attempt: CheckoutAttempt;
   createBody: Record<string, unknown>;
   onPhase?: (phase: SubmissionPhase) => void;
+  createTimeoutMs?: number;
+  recoveryTimeoutMs?: number;
 }): Promise<CheckoutSubmissionResult<Receipt>> {
   onPhase?.("submitting");
   let shouldRecover = false;
   try {
-    const createResponse = await fetcher("/api/order", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...createBody, ...attempt }),
-    });
-    const createPayload = await safeJson(createResponse);
+    const { response: createResponse, payload: createPayload } =
+      await requestJsonWithDeadline(
+        fetcher,
+        "/api/order",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...createBody, ...attempt }),
+        },
+        createTimeoutMs,
+      );
     if (createResponse.ok) {
       const accepted = readReceipt<Receipt>(createPayload);
       if (accepted) return { kind: "accepted", receipt: accepted };
@@ -657,9 +701,18 @@ export async function runCheckoutSubmission<Receipt>({
 
   if (!shouldRecover) return { kind: "still-uncertain" };
   onPhase?.("checking");
-  const recovery = await recoverCheckoutAttempt<Receipt>(fetcher, attempt);
+  const recovery = await recoverCheckoutAttempt<Receipt>(
+    fetcher,
+    attempt,
+    recoveryTimeoutMs,
+  );
   if (recovery.kind === "recovered") {
     onPhase?.("recovered");
+  }
+  if (recovery.kind === "confirmed-not-found") {
+    // An immediate probe cannot prove an aborted or timed-out create will not
+    // still commit. Only a later, explicit recovery cycle may unlock retry.
+    return { kind: "still-uncertain" };
   }
   return recovery;
 }

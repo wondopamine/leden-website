@@ -13,11 +13,11 @@ import { setOnlineOrderingEnabled } from "@/app/admin/(dashboard)/actions";
 import {
   ADMIN_STALE_AFTER_MS,
   canTransitionOrders,
+  createAdminRefreshCoordinator,
   getAdminConnectionState,
   getAdminPollInterval,
   parseAdminOrdersSnapshot,
   reconcileAdminOrders,
-  shouldApplyAdminSnapshot,
   sortAdminOrders,
   type AdminConnectionState,
   type AdminOrder,
@@ -128,7 +128,9 @@ export function OrdersDashboard({
     sortAdminOrders(initialOrders.map(normalizeInitialOrder)),
   );
   const ordersRef = useRef(orders);
-  const [transport, setTransport] = useState<AdminTransportState>("reconnecting");
+  const [transport, setTransport] = useState<AdminTransportState>(() =>
+    networkEnabled ? "reconnecting" : "polling",
+  );
   const [lastSuccessfulAt, setLastSuccessfulAt] = useState<number | null>(() => {
     if (initialError || !initialRefreshedAt) return null;
     const parsed = Date.parse(initialRefreshedAt);
@@ -145,10 +147,11 @@ export function OrdersDashboard({
   const soundEnabledRef = useRef(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   const [now, setNow] = useState(() => Date.now());
-  const requestSequenceRef = useRef(0);
-  const appliedSequenceRef = useRef(0);
   const mountedRef = useRef(true);
   const hasCanonicalRefreshRef = useRef(!initialError);
+  const refreshCoordinatorRef = useRef<ReturnType<
+    typeof createAdminRefreshCoordinator
+  > | null>(null);
 
   useEffect(() => {
     ordersRef.current = orders;
@@ -162,6 +165,8 @@ export function OrdersDashboard({
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      refreshCoordinatorRef.current?.dispose();
+      refreshCoordinatorRef.current = null;
       void audioContextRef.current?.close();
     };
   }, []);
@@ -212,51 +217,46 @@ export function OrdersDashboard({
     }
   }, []);
 
-  const refreshOrders = useCallback(async () => {
-    const requestSequence = ++requestSequenceRef.current;
-    setIsRefreshing(true);
-    try {
-      const response = await fetch("/api/admin/orders", {
-        method: "GET",
-        cache: "no-store",
-        credentials: "same-origin",
-        headers: { Accept: "application/json" },
+  const refreshOrders = useCallback(() => {
+    if (!refreshCoordinatorRef.current) {
+      refreshCoordinatorRef.current = createAdminRefreshCoordinator({
+        load: async (signal) => {
+          const response = await fetch("/api/admin/orders", {
+            method: "GET",
+            cache: "no-store",
+            credentials: "same-origin",
+            headers: { Accept: "application/json" },
+            signal,
+          });
+          if (!response.ok) throw new Error("Admin refresh failed.");
+          return parseAdminOrdersSnapshot(await response.json());
+        },
+        onSnapshot: (snapshot) => {
+          if (!mountedRef.current) return;
+          const existingIds = new Set(ordersRef.current.map((order) => order.id));
+          const newlyVisible = snapshot.orders.filter(
+            (order) =>
+              !existingIds.has(order.id) &&
+              !ORDER_TERMINAL.includes(order.status),
+          );
+          setOrders((current) => reconcileAdminOrders(current, snapshot.orders));
+          setOrderingEnabled(snapshot.orderingEnabled);
+          setLastSuccessfulAt(Date.now());
+          setLastRefreshedAt(snapshot.refreshedAt);
+          setShowInitialError(false);
+          setRefreshError(false);
+          if (hasCanonicalRefreshRef.current) playNewOrderCue(newlyVisible);
+          hasCanonicalRefreshRef.current = true;
+        },
+        onFailure: () => {
+          if (mountedRef.current) setRefreshError(true);
+        },
+        onRunningChange: (running) => {
+          if (mountedRef.current) setIsRefreshing(running);
+        },
       });
-      if (!response.ok) throw new Error("Admin refresh failed.");
-      const snapshot = parseAdminOrdersSnapshot(await response.json());
-      if (
-        !mountedRef.current ||
-        !shouldApplyAdminSnapshot(appliedSequenceRef.current, requestSequence)
-      ) {
-        return false;
-      }
-      appliedSequenceRef.current = requestSequence;
-      const existingIds = new Set(ordersRef.current.map((order) => order.id));
-      const newlyVisible = snapshot.orders.filter(
-        (order) => !existingIds.has(order.id) && !ORDER_TERMINAL.includes(order.status),
-      );
-      setOrders((current) => reconcileAdminOrders(current, snapshot.orders));
-      setOrderingEnabled(snapshot.orderingEnabled);
-      setLastSuccessfulAt(Date.now());
-      setLastRefreshedAt(snapshot.refreshedAt);
-      setShowInitialError(false);
-      setRefreshError(false);
-      if (hasCanonicalRefreshRef.current) playNewOrderCue(newlyVisible);
-      hasCanonicalRefreshRef.current = true;
-      return true;
-    } catch {
-      if (
-        mountedRef.current &&
-        shouldApplyAdminSnapshot(appliedSequenceRef.current, requestSequence)
-      ) {
-        setRefreshError(true);
-      }
-      return false;
-    } finally {
-      if (mountedRef.current && requestSequence === requestSequenceRef.current) {
-        setIsRefreshing(false);
-      }
     }
+    return refreshCoordinatorRef.current.request();
   }, [playNewOrderCue]);
 
   const toggleSound = useCallback(async () => {
@@ -281,15 +281,12 @@ export function OrdersDashboard({
   }, []);
 
   useEffect(() => {
-    if (!networkEnabled) {
-      setTransport("polling");
-      return;
-    }
+    if (!networkEnabled) return;
+    let effectActive = true;
     let supabase: ReturnType<typeof createClient> | undefined;
     let channel:
       | ReturnType<ReturnType<typeof createClient>["channel"]>
       | undefined;
-    setTransport("reconnecting");
     try {
       supabase = createClient();
       channel = supabase
@@ -298,10 +295,11 @@ export function OrdersDashboard({
           "postgres_changes",
           { event: "*", schema: "public", table: "orders" },
           () => {
-            void refreshOrders();
+            if (effectActive) void refreshOrders();
           },
         )
         .subscribe((status) => {
+          if (!effectActive) return;
           if (status === "SUBSCRIBED") {
             setTransport("live");
             void refreshOrders();
@@ -317,10 +315,13 @@ export function OrdersDashboard({
           }
         });
     } catch {
-      setTransport("polling");
+      queueMicrotask(() => {
+        if (effectActive) setTransport("polling");
+      });
     }
     void refreshOrders();
     return () => {
+      effectActive = false;
       try {
         if (channel) void supabase?.removeChannel(channel);
       } catch {

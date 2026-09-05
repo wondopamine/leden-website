@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   CHECKOUT_ATTEMPT_SESSION_KEY,
   STATUS_SESSION_PREFIX,
@@ -32,6 +32,10 @@ class MemoryStorage implements StorageLike {
     this.values.delete(key);
   }
 }
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 const material = (overrides: Partial<CheckoutMaterial> = {}): CheckoutMaterial => ({
   customer: { name: "Mina Test", phone: "5145550199" },
@@ -299,7 +303,7 @@ describe("ambiguous checkout recovery", () => {
     expect(fetcher).toHaveBeenCalledTimes(2);
   });
 
-  it("keeps the same attempt retryable only after recovery confirms no order", async () => {
+  it("keeps an ambiguous create uncertain when its immediate recovery finds no order", async () => {
     const attempt = {
       attemptId: "33333333-3333-4333-8333-333333333333",
       trackingSecret: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -325,7 +329,27 @@ describe("ambiguous checkout recovery", () => {
       createBody: {},
     });
 
-    expect(result).toEqual({ kind: "confirmed-not-found", attempt });
+    expect(result).toEqual({ kind: "still-uncertain" });
+    expect("attempt" in result).toBe(false);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+  });
+
+  it("allows a later explicit recovery cycle to confirm no order", async () => {
+    const attempt = {
+      attemptId: "33333333-3333-4333-8333-333333333333",
+      trackingSecret: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    };
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ error: { code: "TRACKING_UNAVAILABLE" } }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    await expect(recoverCheckoutAttempt(fetcher, attempt)).resolves.toEqual({
+      kind: "confirmed-not-found",
+      attempt,
+    });
   });
 
   it("never exposes a resubmit action while recovery is still uncertain", async () => {
@@ -346,5 +370,133 @@ describe("ambiguous checkout recovery", () => {
 
     expect(result).toEqual({ kind: "still-uncertain" });
     expect("canRetry" in result).toBe(false);
+  });
+
+  it("times out create into same-attempt recovery without issuing another create", async () => {
+    vi.useFakeTimers();
+    const attempt = {
+      attemptId: "33333333-3333-4333-8333-333333333333",
+      trackingSecret: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    };
+    const urls: string[] = [];
+    const signals: AbortSignal[] = [];
+    const bodies: string[] = [];
+    const fetcher = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      urls.push(String(input));
+      if (init?.signal) signals.push(init.signal);
+      if (init?.body) bodies.push(String(init.body));
+      if (urls.length === 1) return new Promise<Response>(() => undefined);
+      return Promise.resolve(
+        new Response(JSON.stringify({ receipt }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    }) as unknown as typeof fetch;
+    const phases: string[] = [];
+
+    const submission = runCheckoutSubmission({
+      fetcher,
+      attempt,
+      createBody: { example: "ids-only" },
+      onPhase: (phase) => phases.push(phase),
+      createTimeoutMs: 50,
+      recoveryTimeoutMs: 50,
+    });
+    await vi.advanceTimersByTimeAsync(50);
+
+    await expect(submission).resolves.toEqual({ kind: "recovered", receipt });
+    expect(urls).toEqual(["/api/order", "/api/order/recover"]);
+    expect(signals[0]?.aborted).toBe(true);
+    expect(phases).toEqual(["submitting", "checking", "recovered"]);
+    expect(JSON.parse(bodies[1] ?? "null")).toEqual(attempt);
+  });
+
+  it("does not unlock retry when a timed-out create gets an immediate recovery 404", async () => {
+    vi.useFakeTimers();
+    const attempt = {
+      attemptId: "33333333-3333-4333-8333-333333333333",
+      trackingSecret: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    };
+    const urls: string[] = [];
+    const fetcher = vi.fn((input: RequestInfo | URL) => {
+      urls.push(String(input));
+      if (urls.length === 1) return new Promise<Response>(() => undefined);
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({ error: { code: "TRACKING_UNAVAILABLE" } }),
+          {
+            status: 404,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      );
+    }) as unknown as typeof fetch;
+
+    const submission = runCheckoutSubmission({
+      fetcher,
+      attempt,
+      createBody: {},
+      createTimeoutMs: 50,
+      recoveryTimeoutMs: 50,
+    });
+    await vi.advanceTimersByTimeAsync(50);
+    const result = await submission;
+
+    expect(result).toEqual({ kind: "still-uncertain" });
+    expect("attempt" in result).toBe(false);
+    expect("canRetry" in result).toBe(false);
+    expect(urls).toEqual(["/api/order", "/api/order/recover"]);
+  });
+
+  it("keeps the attempt uncertain when the recovery deadline expires", async () => {
+    vi.useFakeTimers();
+    const attempt = {
+      attemptId: "33333333-3333-4333-8333-333333333333",
+      trackingSecret: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    };
+    const signals: AbortSignal[] = [];
+    const fetcher = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.signal) signals.push(init.signal);
+      if (String(input) === "/api/order") {
+        return Promise.reject(new TypeError("response dropped"));
+      }
+      return new Promise<Response>(() => undefined);
+    }) as unknown as typeof fetch;
+
+    const submission = runCheckoutSubmission({
+      fetcher,
+      attempt,
+      createBody: {},
+      createTimeoutMs: 50,
+      recoveryTimeoutMs: 50,
+    });
+    await Promise.resolve();
+    await vi.advanceTimersByTimeAsync(50);
+
+    await expect(submission).resolves.toEqual({ kind: "still-uncertain" });
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(signals[1]?.aborted).toBe(true);
+  });
+
+  it("returns a definitive rejection without starting ambiguity recovery", async () => {
+    const attempt = {
+      attemptId: "33333333-3333-4333-8333-333333333333",
+      trackingSecret: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    };
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(JSON.stringify({ error: { code: "MENU_CHANGED" } }), {
+        status: 409,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    await expect(
+      runCheckoutSubmission({ fetcher, attempt, createBody: {} }),
+    ).resolves.toEqual({
+      kind: "rejected",
+      error: { code: "MENU_CHANGED" },
+    });
+    expect(fetcher).toHaveBeenCalledTimes(1);
   });
 });

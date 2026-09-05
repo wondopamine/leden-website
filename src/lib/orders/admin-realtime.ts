@@ -4,6 +4,7 @@ export const ADMIN_STALE_AFTER_MS = 45_000;
 // queue as actionable.
 export const ADMIN_LIVE_POLL_MS = 30_000;
 export const ADMIN_DEGRADED_POLL_MS = 15_000;
+export const ADMIN_REFRESH_TIMEOUT_MS = 8_000;
 
 export type AdminOrderStatus =
   | "new"
@@ -53,6 +54,91 @@ export type AdminOrdersSnapshot = {
 
 export type AdminTransportState = "live" | "reconnecting" | "polling";
 export type AdminConnectionState = AdminTransportState | "stale";
+
+type AdminRefreshCoordinator = {
+  request: () => Promise<boolean>;
+  dispose: () => void;
+};
+
+export function createAdminRefreshCoordinator({
+  load,
+  onSnapshot,
+  onFailure,
+  onRunningChange,
+  timeoutMs = ADMIN_REFRESH_TIMEOUT_MS,
+}: {
+  load: (signal: AbortSignal) => Promise<AdminOrdersSnapshot>;
+  onSnapshot: (snapshot: AdminOrdersSnapshot) => void;
+  onFailure: () => void;
+  onRunningChange: (running: boolean) => void;
+  timeoutMs?: number;
+}): AdminRefreshCoordinator {
+  let disposed = false;
+  let running = false;
+  let pending = false;
+  let activeController: AbortController | null = null;
+  let activeCycle: Promise<boolean> | null = null;
+
+  const runOnce = async (): Promise<boolean> => {
+    const controller = new AbortController();
+    activeController = controller;
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    const deadline = new Promise<never>((_, reject) => {
+      timeout = setTimeout(() => {
+        controller.abort();
+        reject(new DOMException("Admin refresh timed out", "TimeoutError"));
+      }, timeoutMs);
+    });
+
+    try {
+      const snapshot = await Promise.race([load(controller.signal), deadline]);
+      if (disposed || controller.signal.aborted) return false;
+      onSnapshot(snapshot);
+      return true;
+    } catch {
+      if (!disposed) onFailure();
+      return false;
+    } finally {
+      if (timeout) clearTimeout(timeout);
+      if (activeController === controller) activeController = null;
+    }
+  };
+
+  const drain = async (): Promise<boolean> => {
+    if (!disposed) onRunningChange(true);
+    let lastResult = false;
+    try {
+      do {
+        pending = false;
+        lastResult = await runOnce();
+      } while (pending && !disposed);
+      return lastResult;
+    } finally {
+      running = false;
+      activeCycle = null;
+      if (!disposed) onRunningChange(false);
+    }
+  };
+
+  return {
+    request() {
+      if (disposed) return Promise.resolve(false);
+      if (running) {
+        pending = true;
+        return activeCycle ?? Promise.resolve(false);
+      }
+      running = true;
+      activeCycle = drain();
+      return activeCycle;
+    },
+    dispose() {
+      disposed = true;
+      pending = false;
+      activeController?.abort();
+      activeController = null;
+    },
+  };
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);

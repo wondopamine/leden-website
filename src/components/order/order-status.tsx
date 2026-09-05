@@ -31,43 +31,73 @@ import type {
 
 const HISTORY_CONTEXT_KEY = "cafeLedenOrderStatusContext";
 const TERMINAL_STATUSES = new Set<PublicOrderStatus>(["picked_up", "cancelled"]);
+export const ORDER_STATUS_REQUEST_TIMEOUT_MS = 8_000;
+export const ORDER_STATUS_POLL_INTERVAL_MS = 15_000;
 
 type TrackingState = "loading" | "ready" | "unavailable" | "removed";
 
 type OrderStatusRequestLease = {
   signal: AbortSignal;
   isCurrent: () => boolean;
+  waitFor: <T>(operation: Promise<T>) => Promise<T>;
   release: () => boolean;
 };
 
-export function createOrderStatusRequestCoordinator() {
+export function createOrderStatusRequestCoordinator(
+  timeoutMs = ORDER_STATUS_REQUEST_TIMEOUT_MS,
+) {
   let generation = 0;
   let active:
     | {
         controller: AbortController;
         generation: number;
         sessionContextId: string;
+        timeout: ReturnType<typeof setTimeout>;
+        deadline: Promise<never>;
+        rejectDeadline: (reason?: unknown) => void;
       }
     | null = null;
 
   return {
-    begin(sessionContextId: string): OrderStatusRequestLease {
-      active?.controller.abort();
+    begin(sessionContextId: string): OrderStatusRequestLease | null {
+      if (active?.sessionContextId === sessionContextId) return null;
+      if (active) {
+        clearTimeout(active.timeout);
+        active.controller.abort();
+        active.rejectDeadline(
+          new DOMException("Order status request replaced", "AbortError"),
+        );
+      }
       const controller = new AbortController();
       const requestGeneration = ++generation;
+      let rejectDeadline!: (reason?: unknown) => void;
+      const deadline = new Promise<never>((_, reject) => {
+        rejectDeadline = reject;
+      });
+      void deadline.catch(() => undefined);
+      const timeout = setTimeout(() => {
+        controller.abort();
+        rejectDeadline(
+          new DOMException("Order status request timed out", "TimeoutError"),
+        );
+      }, timeoutMs);
       active = {
         controller,
         generation: requestGeneration,
         sessionContextId,
+        timeout,
+        deadline,
+        rejectDeadline,
       };
 
       return {
         signal: controller.signal,
         isCurrent: () =>
-          !controller.signal.aborted &&
           active?.controller === controller &&
           active.generation === requestGeneration &&
           active.sessionContextId === sessionContextId,
+        waitFor: <T,>(operation: Promise<T>) =>
+          Promise.race([operation, deadline]),
         release: () => {
           if (
             active?.controller !== controller ||
@@ -75,6 +105,7 @@ export function createOrderStatusRequestCoordinator() {
           ) {
             return false;
           }
+          clearTimeout(active.timeout);
           active = null;
           return true;
         },
@@ -82,7 +113,13 @@ export function createOrderStatusRequestCoordinator() {
     },
     invalidate() {
       generation += 1;
-      active?.controller.abort();
+      if (active) {
+        clearTimeout(active.timeout);
+        active.controller.abort();
+        active.rejectDeadline(
+          new DOMException("Order status request cancelled", "AbortError"),
+        );
+      }
       active = null;
     },
   };
@@ -162,12 +199,10 @@ export function OrderStatus({ locale }: { locale: string }) {
   const [visibilityEpoch, setVisibilityEpoch] = useState(0);
   const [statusRequests] = useState(createOrderStatusRequestCoordinator);
   const latestVersionRef = useRef(0);
-  const pollingRef = useRef(false);
   const statusHeadingRef = useRef<HTMLHeadingElement>(null);
 
   const invalidateStatusRequest = useCallback(() => {
     statusRequests.invalidate();
-    pollingRef.current = false;
   }, [statusRequests]);
 
   useLayoutEffect(() => {
@@ -237,22 +272,26 @@ export function OrderStatus({ locale }: { locale: string }) {
   const terminal = effectiveStatus ? TERMINAL_STATUSES.has(effectiveStatus) : false;
 
   const pollStatus = useCallback(async () => {
-    if (!session || pollingRef.current || document.visibilityState !== "visible") {
+    if (!session || document.visibilityState !== "visible") {
       return;
     }
-    pollingRef.current = true;
     const request = statusRequests.begin(session.contextId);
+    if (!request) return;
     try {
-      const response = await fetch("/api/order/status", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ trackingSecret: session.trackingSecret }),
-        cache: "no-store",
-        referrerPolicy: "no-referrer",
-        signal: request.signal,
-      });
+      const response = await request.waitFor(
+        fetch("/api/order/status", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ trackingSecret: session.trackingSecret }),
+          cache: "no-store",
+          referrerPolicy: "no-referrer",
+          signal: request.signal,
+        }),
+      );
       if (!request.isCurrent()) return;
-      const payload = (await response.json().catch(() => null)) as unknown;
+      const payload = (await request.waitFor(
+        response.json().catch(() => null),
+      )) as unknown;
       if (!request.isCurrent()) return;
       if (response.status === 404 && isTrackingUnavailable(payload)) {
         removeOrderStatusSession(window.sessionStorage, session.contextId);
@@ -291,14 +330,17 @@ export function OrderStatus({ locale }: { locale: string }) {
         setTrackingState("unavailable");
       }
     } finally {
-      if (request.release()) pollingRef.current = false;
+      request.release();
     }
   }, [session, statusRequests, t]);
 
   useEffect(() => {
     if (!session || terminal || document.visibilityState !== "visible") return;
     void pollStatus();
-    const interval = window.setInterval(() => void pollStatus(), 15_000);
+    const interval = window.setInterval(
+      () => void pollStatus(),
+      ORDER_STATUS_POLL_INTERVAL_MS,
+    );
     return () => {
       window.clearInterval(interval);
       invalidateStatusRequest();

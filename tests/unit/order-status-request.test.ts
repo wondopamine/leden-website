@@ -1,6 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createOrderStatusRequestCoordinator } from "@/components/order/order-status";
+import {
+  ORDER_STATUS_POLL_INTERVAL_MS,
+  ORDER_STATUS_REQUEST_TIMEOUT_MS,
+  createOrderStatusRequestCoordinator,
+} from "@/components/order/order-status";
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -11,8 +15,8 @@ function deferred<T>() {
 }
 
 async function applyDeferredCompletion(
-  lease: ReturnType<
-    ReturnType<typeof createOrderStatusRequestCoordinator>["begin"]
+  lease: NonNullable<
+    ReturnType<ReturnType<typeof createOrderStatusRequestCoordinator>["begin"]>
   >,
   completion: Promise<"ready" | "unavailable">,
   apply: (state: "ready" | "unavailable") => void,
@@ -22,23 +26,38 @@ async function applyDeferredCompletion(
   lease.release();
 }
 
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 describe("order status request coordination", () => {
+  it("bounds each request before the next production poll", () => {
+    expect(ORDER_STATUS_REQUEST_TIMEOUT_MS).toBeLessThan(
+      ORDER_STATUS_POLL_INTERVAL_MS,
+    );
+  });
+
   it.each(["ready", "unavailable"] as const)(
     "ignores a deferred %s completion after the private order is removed",
     async (responseState) => {
       const coordinator = createOrderStatusRequestCoordinator();
       const lease = coordinator.begin("private-session");
+      expect(lease).not.toBeNull();
       const response = deferred<"ready" | "unavailable">();
       let visibleState: "removed" | "ready" | "unavailable" = "removed";
-      const completion = applyDeferredCompletion(lease, response.promise, (state) => {
-        visibleState = state;
-      });
+      const completion = applyDeferredCompletion(
+        lease!,
+        response.promise,
+        (state) => {
+          visibleState = state;
+        },
+      );
 
       coordinator.invalidate();
       response.resolve(responseState);
       await completion;
 
-      expect(lease.signal.aborted).toBe(true);
+      expect(lease?.signal.aborted).toBe(true);
       expect(visibleState).toBe("removed");
     },
   );
@@ -48,9 +67,37 @@ describe("order status request coordination", () => {
     const previous = coordinator.begin("previous-session");
     const current = coordinator.begin("current-session");
 
-    expect(previous.signal.aborted).toBe(true);
-    expect(previous.isCurrent()).toBe(false);
-    expect(current.signal.aborted).toBe(false);
-    expect(current.isCurrent()).toBe(true);
+    expect(previous?.signal.aborted).toBe(true);
+    expect(previous?.isCurrent()).toBe(false);
+    expect(current?.signal.aborted).toBe(false);
+    expect(current?.isCurrent()).toBe(true);
+    current?.release();
+  });
+
+  it("times out a hung poll, releases its gate, and permits a later recovery", async () => {
+    vi.useFakeTimers();
+    const coordinator = createOrderStatusRequestCoordinator(50);
+    const hung = coordinator.begin("private-session");
+    expect(hung).not.toBeNull();
+    expect(coordinator.begin("private-session")).toBeNull();
+
+    let visibleState: "fresh" | "stale" | "ready" = "fresh";
+    const firstPoll = hung!
+      .waitFor(new Promise<"ready">(() => undefined))
+      .catch(() => {
+        if (hung?.isCurrent()) visibleState = "stale";
+      })
+      .finally(() => hung?.release());
+
+    await vi.advanceTimersByTimeAsync(50);
+    await firstPoll;
+    expect(hung?.signal.aborted).toBe(true);
+    expect(visibleState).toBe("stale");
+
+    const recovered = coordinator.begin("private-session");
+    expect(recovered).not.toBeNull();
+    visibleState = await recovered!.waitFor(Promise.resolve("ready" as const));
+    recovered?.release();
+    expect(visibleState).toBe("ready");
   });
 });

@@ -1,10 +1,12 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   ADMIN_DEGRADED_POLL_MS,
   ADMIN_LIVE_POLL_MS,
+  ADMIN_REFRESH_TIMEOUT_MS,
   ADMIN_STALE_AFTER_MS,
   canTransitionOrders,
+  createAdminRefreshCoordinator,
   getAdminConnectionState,
   getAdminPollInterval,
   reconcileAfterAdminMutation,
@@ -12,6 +14,18 @@ import {
   shouldApplyAdminSnapshot,
   type AdminOrder,
 } from "../../src/lib/orders/admin-realtime";
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((next) => {
+    resolve = next;
+  });
+  return { promise, resolve };
+}
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 function order(
   id: string,
@@ -97,6 +111,7 @@ describe("admin connection and freshness contract", () => {
 
   it("uses healthy and degraded polling bounds and locks stale/reconnecting transitions", () => {
     expect(ADMIN_LIVE_POLL_MS).toBeLessThan(ADMIN_STALE_AFTER_MS);
+    expect(ADMIN_REFRESH_TIMEOUT_MS).toBeLessThan(ADMIN_DEGRADED_POLL_MS);
     expect(getAdminPollInterval("live")).toBe(ADMIN_LIVE_POLL_MS);
     expect(getAdminPollInterval("polling")).toBe(ADMIN_DEGRADED_POLL_MS);
     expect(getAdminPollInterval("reconnecting")).toBe(ADMIN_DEGRADED_POLL_MS);
@@ -118,3 +133,102 @@ describe("admin connection and freshness contract", () => {
     expect(routeRefresh).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("admin refresh coordination", () => {
+  it("coalesces a burst into one active request and one trailing refresh", async () => {
+    const first = deferred<ReturnType<typeof snapshot>>();
+    const second = deferred<ReturnType<typeof snapshot>>();
+    const load = vi
+      .fn<(signal: AbortSignal) => Promise<ReturnType<typeof snapshot>>>()
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(second.promise);
+    const applied: string[] = [];
+    const coordinator = createAdminRefreshCoordinator({
+      load,
+      onSnapshot: (value) => applied.push(value.refreshedAt),
+      onFailure: vi.fn(),
+      onRunningChange: vi.fn(),
+    });
+
+    const cycle = coordinator.request();
+    const coalesced = coordinator.request();
+    void coordinator.request();
+    expect(load).toHaveBeenCalledTimes(1);
+
+    first.resolve(snapshot("2026-08-24T15:00:01.000Z", [order("one", 1)]));
+    await vi.waitFor(() => expect(load).toHaveBeenCalledTimes(2));
+
+    second.resolve(snapshot("2026-08-24T15:00:02.000Z", [order("one", 2)]));
+    await expect(cycle).resolves.toBe(true);
+    await expect(coalesced).resolves.toBe(true);
+    expect(load).toHaveBeenCalledTimes(2);
+    expect(applied).toEqual([
+      "2026-08-24T15:00:01.000Z",
+      "2026-08-24T15:00:02.000Z",
+    ]);
+  });
+
+  it("times out a hung refresh, reports failure, and permits recovery", async () => {
+    vi.useFakeTimers();
+    const first = deferred<ReturnType<typeof snapshot>>();
+    const recovered = snapshot("2026-08-24T15:00:03.000Z", [order("one", 3)]);
+    const signals: AbortSignal[] = [];
+    const load = vi.fn((signal: AbortSignal) => {
+      signals.push(signal);
+      return signals.length === 1 ? first.promise : Promise.resolve(recovered);
+    });
+    const onSnapshot = vi.fn();
+    const onFailure = vi.fn();
+    const running: boolean[] = [];
+    const coordinator = createAdminRefreshCoordinator({
+      load,
+      onSnapshot,
+      onFailure,
+      onRunningChange: (value) => running.push(value),
+      timeoutMs: 50,
+    });
+
+    const timedOut = coordinator.request();
+    await vi.advanceTimersByTimeAsync(50);
+    await expect(timedOut).resolves.toBe(false);
+    expect(signals[0]?.aborted).toBe(true);
+    expect(onFailure).toHaveBeenCalledTimes(1);
+    expect(running).toEqual([true, false]);
+
+    await expect(coordinator.request()).resolves.toBe(true);
+    expect(onSnapshot).toHaveBeenCalledWith(recovered);
+    expect(running).toEqual([true, false, true, false]);
+  });
+
+  it("aborts and ignores an active refresh after disposal", async () => {
+    const active = deferred<ReturnType<typeof snapshot>>();
+    let signal: AbortSignal | undefined;
+    const onSnapshot = vi.fn();
+    const coordinator = createAdminRefreshCoordinator({
+      load: (nextSignal) => {
+        signal = nextSignal;
+        return active.promise;
+      },
+      onSnapshot,
+      onFailure: vi.fn(),
+      onRunningChange: vi.fn(),
+    });
+
+    const cycle = coordinator.request();
+    coordinator.dispose();
+    active.resolve(snapshot("2026-08-24T15:00:04.000Z", []));
+    await expect(cycle).resolves.toBe(false);
+
+    expect(signal?.aborted).toBe(true);
+    expect(onSnapshot).not.toHaveBeenCalled();
+  });
+});
+
+function snapshot(refreshedAt: string, orders: AdminOrder[]) {
+  return {
+    orders,
+    orderingEnabled: true,
+    localDate: "2026-08-24",
+    refreshedAt,
+  };
+}
