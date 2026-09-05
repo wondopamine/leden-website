@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { requireStaff } from "@/lib/supabase/admin.server";
 
 type CategoryInput = {
   id?: string;
@@ -18,11 +18,7 @@ function friendlyError(msg: string): string {
 }
 
 export async function saveCategory(input: CategoryInput) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
+  const { supabase } = await requireStaff();
 
   if (input.id) {
     const { error } = await supabase
@@ -52,11 +48,7 @@ export async function saveCategory(input: CategoryInput) {
 }
 
 export async function deleteCategory(id: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
+  const { supabase } = await requireStaff();
 
   const { error } = await supabase.from("categories").delete().eq("id", id);
   if (error) throw new Error(friendlyError(error.message));

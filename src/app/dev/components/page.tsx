@@ -11,6 +11,7 @@
 // and cannot cross the RSC serialization boundary as the `as` prop. Icon demos
 // are wrapped in a thin client-boundary file (icon-demos.tsx) in the same directory.
 
+import type { Metadata } from "next";
 import type * as React from "react";
 
 import { notFound } from "next/navigation";
@@ -25,6 +26,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -41,6 +43,17 @@ import {
   IconIntentsDemo,
   IconSizesDemo,
 } from "./icon-demos";
+import {
+  DropdownMenuDemo,
+  DropdownSelectionDemo,
+  LineTabsDemo,
+  TabsDemo,
+} from "./interactive-demos";
+
+export const metadata: Metadata = {
+  title: "Component gallery | Café Le Den",
+  description: "Development reference for Café Le Den interface components.",
+};
 
 export default function DevComponentsGalleryPage() {
   if (process.env.NODE_ENV === "production") {
@@ -48,9 +61,16 @@ export default function DevComponentsGalleryPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-12">
+    <>
+      <a
+        href="#component-gallery"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-primary focus:px-4 focus:py-3 focus:text-sm focus:font-medium focus:text-primary-foreground focus:shadow-lg"
+      >
+        Skip to component gallery
+      </a>
+      <main id="component-gallery" className="mx-auto w-full min-w-0 max-w-5xl overflow-x-clip px-4 py-12">
       <header className="border-b border-border pb-8">
-        <h1 className="text-h1">Component Gallery</h1>
+        <h1 className="text-h1">Component gallery</h1>
         <p className="mt-2 text-body text-muted-foreground">
           Dev-only — not shipped to production. Every example uses explicit
           <code className="text-caption"> variant </code> and
@@ -159,24 +179,33 @@ export default function DevComponentsGalleryPage() {
       <Section title="Input">
         <ComponentExample
           title="Empty placeholder"
-          code={`<Input placeholder="Email address" />`}
+          code={`<Label htmlFor="email">Email address</Label>
+<Input id="email" placeholder="name@example.com" />`}
         >
-          <Input placeholder="Email address" />
+          <div className="space-y-2">
+            <Label htmlFor="gallery-email">Email address</Label>
+            <Input id="gallery-email" placeholder="name@example.com" />
+          </div>
         </ComponentExample>
 
         <ComponentExample
           title="With default value"
-          code={`<Input defaultValue="hello@cafeleden.com" />`}
+          code={`<Label htmlFor="contact-email">Contact email</Label>
+<Input id="contact-email" defaultValue="hello@cafeleden.com" />`}
         >
-          <Input defaultValue="hello@cafeleden.com" />
+          <div className="space-y-2">
+            <Label htmlFor="gallery-contact-email">Contact email</Label>
+            <Input id="gallery-contact-email" defaultValue="hello@cafeleden.com" />
+          </div>
         </ComponentExample>
       </Section>
 
       <Section title="Select">
         <ComponentExample
           title="Default trigger (size=default)"
-          code={`<Select>
-  <SelectTrigger className="w-48">
+          code={`<Label htmlFor="default-option">Default option</Label>
+<Select>
+  <SelectTrigger id="default-option" className="w-48">
     <SelectValue placeholder="Pick one" />
   </SelectTrigger>
   <SelectContent>
@@ -185,21 +214,25 @@ export default function DevComponentsGalleryPage() {
   </SelectContent>
 </Select>`}
         >
-          <Select>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Pick one" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="a">Option A</SelectItem>
-              <SelectItem value="b">Option B</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="space-y-2">
+            <Label htmlFor="gallery-default-option">Default option</Label>
+            <Select>
+              <SelectTrigger id="gallery-default-option" className="w-48">
+                <SelectValue placeholder="Pick one" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="a">Option A</SelectItem>
+                <SelectItem value="b">Option B</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </ComponentExample>
 
         <ComponentExample
           title="Compact trigger (size=sm)"
-          code={`<Select>
-  <SelectTrigger size="sm" className="w-40">
+          code={`<Label htmlFor="compact-option">Compact option</Label>
+<Select>
+  <SelectTrigger id="compact-option" size="sm" className="w-40">
     <SelectValue placeholder="Compact" />
   </SelectTrigger>
   <SelectContent>
@@ -208,15 +241,18 @@ export default function DevComponentsGalleryPage() {
   </SelectContent>
 </Select>`}
         >
-          <Select>
-            <SelectTrigger size="sm" className="w-40">
-              <SelectValue placeholder="Compact" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="x">Option X</SelectItem>
-              <SelectItem value="y">Option Y</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="space-y-2">
+            <Label htmlFor="gallery-compact-option">Compact option</Label>
+            <Select>
+              <SelectTrigger id="gallery-compact-option" size="sm" className="w-40">
+                <SelectValue placeholder="Compact" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="x">Option X</SelectItem>
+                <SelectItem value="y">Option Y</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </ComponentExample>
       </Section>
 
@@ -272,13 +308,62 @@ export default function DevComponentsGalleryPage() {
           title="Count variations (size=md)"
           code={`<Stars count={1} max={5} size="md" />
 <Stars count={3} max={5} size="md" />
-<Stars count={5} max={5} size="md" />`}
+<Stars count={5} max={5} size="md" label="5 out of 5 stars" />`}
         >
           <div className="flex flex-wrap items-center gap-4">
             <Stars count={1} max={5} size="md" />
             <Stars count={3} max={5} size="md" />
-            <Stars count={5} max={5} size="md" />
+            <Stars count={5} max={5} size="md" label="5 out of 5 stars" />
           </div>
+        </ComponentExample>
+      </Section>
+
+      <Section title="Dropdown menu">
+        <ComponentExample
+          title="Action menu"
+          code={`<DropdownMenu>
+  <DropdownMenuTrigger render={<Button variant="outline" />}>Order actions</DropdownMenuTrigger>
+  <DropdownMenuContent>
+    <DropdownMenuItem>View details</DropdownMenuItem>
+    <DropdownMenuItem variant="destructive">Cancel order</DropdownMenuItem>
+  </DropdownMenuContent>
+</DropdownMenu>`}
+        >
+          <DropdownMenuDemo />
+        </ComponentExample>
+        <ComponentExample
+          title="Selection menu"
+          code={`<DropdownMenuCheckboxItem checked={showUnavailable}>
+  Show sold-out items
+</DropdownMenuCheckboxItem>`}
+        >
+          <DropdownSelectionDemo />
+        </ComponentExample>
+      </Section>
+
+      <Section title="Tabs">
+        <ComponentExample
+          title="Operational filter"
+          code={`<Tabs defaultValue="active">
+  <TabsList>
+    <TabsTrigger value="active">Active</TabsTrigger>
+    <TabsTrigger value="ready">Ready</TabsTrigger>
+    <TabsTrigger value="complete">Complete</TabsTrigger>
+  </TabsList>
+  <TabsContent value="active">Orders waiting for the café team.</TabsContent>
+</Tabs>`}
+        >
+          <TabsDemo />
+        </ComponentExample>
+        <ComponentExample
+          title="Line tabs with disabled state"
+          code={`<TabsList variant="line">
+  <TabsTrigger value="menu">Menu</TabsTrigger>
+  <TabsTrigger value="hours">Hours</TabsTrigger>
+  <TabsTrigger value="settings" disabled>Settings</TabsTrigger>
+</TabsList>`}
+        >
+          <LineTabsDemo />
         </ComponentExample>
       </Section>
 
@@ -329,7 +414,8 @@ export default function DevComponentsGalleryPage() {
           </FadeIn>
         </ComponentExample>
       </Section>
-    </div>
+      </main>
+    </>
   );
 }
 
@@ -341,9 +427,9 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="mt-12">
+    <section className="mt-12 min-w-0 scroll-mt-6">
       <h2 className="text-h2">{title}</h2>
-      <div className="mt-4 space-y-6">{children}</div>
+      <div className="mt-4 min-w-0 space-y-8">{children}</div>
     </section>
   );
 }
@@ -358,10 +444,10 @@ function ComponentExample({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-lg border border-border bg-card p-6">
+    <div className="min-w-0 border-t border-border pt-6">
       <h3 className="text-h3">{title}</h3>
       <div className="mt-4">{children}</div>
-      <pre className="mt-4 overflow-x-auto rounded bg-muted p-4 text-caption">
+      <pre className="mt-4 max-w-full overflow-x-auto rounded-lg bg-muted p-4 text-caption">
         <code>{code}</code>
       </pre>
     </div>

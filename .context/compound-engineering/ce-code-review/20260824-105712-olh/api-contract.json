@@ -1,0 +1,68 @@
+{
+  "reviewer": "api-contract",
+  "findings": [
+    {
+      "title": "Persisted recovery sends an undeclared field",
+      "severity": "P1",
+      "file": "src/lib/orders/checkout-attempt.ts",
+      "line": 537,
+      "why_it_matters": "Every reload recovery serializes the client-only acceptanceKnown flag, while the recovery endpoint accepts only attemptId and trackingSecret. The endpoint therefore returns INVALID_REQUEST instead of recovering an accepted order, leaving the customer in the manual-contact uncertainty state.",
+      "autofix_class": "safe_auto",
+      "owner": "review-fixer",
+      "requires_verification": true,
+      "suggested_fix": "Serialize an explicit recovery request DTO containing only attemptId and trackingSecret, and add a reload recovery test that passes the object returned by getCheckoutRecoveryAttempt through the strict route parser.",
+      "confidence": 100,
+      "evidence": [
+        "src/lib/orders/checkout-attempt.ts:243-252 returns CheckoutRecoveryAttempt with attemptId, trackingSecret, and acceptanceKnown.",
+        "src/components/order/order-content.tsx:238-244 passes that persisted object directly to recoverCheckoutAttempt.",
+        "src/lib/orders/checkout-attempt.ts:529-537 serializes the entire attempt object, but src/lib/orders/contracts.ts:249-259 strictly allows only attemptId and trackingSecret."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "Modifier snapshots break the old admin contract",
+      "severity": "P1",
+      "file": "supabase/migrations/006_atomic_order_creation_expand.sql",
+      "line": 728,
+      "why_it_matters": "During the promised expand compatibility window, orders created by the new RPC store only snake_case modifier keys. The old deployed admin reads name, option, and priceAdjustment, so new modified orders render undefined labels and NaN totals even though the old admin update path remains allowlisted.",
+      "autofix_class": "gated_auto",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "suggested_fix": "Keep the persisted modifier snapshot backward compatible during expand by also storing the camelCase name, option, and priceAdjustment keys, or provide an equivalent compatibility projection; verify a new RPC-created modified order with the base admin consumer before canary.",
+      "confidence": 100,
+      "evidence": [
+        "supabase/migrations/006_atomic_order_creation_expand.sql:727-735 builds modifier JSON with modifier_name, option_name, and price_adjustment, and lines 786-800 persists it unchanged.",
+        "At base 17e7623, src/components/admin/order-card.tsx:36-42 declares only name, option, and priceAdjustment, while lines 172-186 uses those keys for arithmetic and rendering.",
+        "The explicit plan defers removal of the old admin/direct shape until U8, so this is a forward-compatibility violation inside the planned expand window rather than the intended contract phase."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "Order endpoint cutover strands loaded clients",
+      "severity": "P1",
+      "file": "src/lib/orders/contracts.ts",
+      "line": 149,
+      "why_it_matters": "An already-loaded pre-deployment checkout posts the legacy payload to the same unversioned endpoint, receives CLIENT_REFRESH_REQUIRED, and treats it as a generic retryable failure because that client neither parses the new error envelope nor knows how to refresh. Retrying can never succeed, so normal rolling deployment strands active carts.",
+      "autofix_class": "manual",
+      "owner": "human",
+      "requires_verification": true,
+      "suggested_fix": "Choose and test an explicit cutover strategy before enabling the route: version the IDs-only create endpoint while retaining a bounded legacy path, or stage a compatibility-aware client before server enforcement and document a paused-ordering or forced-refresh deployment. Do not trust legacy browser prices.",
+      "confidence": 100,
+      "evidence": [
+        "At base 17e7623, src/components/order/order-content.tsx:171-188 posts items with name, price, modifiers, menuItemId plus customerInfo, pickupTime, locale, and total to /api/order.",
+        "src/lib/orders/contracts.ts:147-162 rejects those legacy keys on the same endpoint with CLIENT_REFRESH_REQUIRED.",
+        "At base 17e7623, src/components/order/order-content.tsx:190-200 treats every non-2xx response as the same generic error and only understands the old success field orderNumber."
+      ],
+      "pre_existing": false
+    }
+  ],
+  "residual_risks": [
+    "RPC/PostgREST serialization and old-app expand compatibility remain unverified on hosted Supabase; the plan correctly keeps the hosted canary and U8 contract migration owner-gated.",
+    "The separately gated U8 contract migration is not in this diff, so final privilege revocation and removal of compatibility paths remain outside this review scope."
+  ],
+  "testing_gaps": [
+    "No test passes the persisted object returned by getCheckoutRecoveryAttempt into recoverCheckoutAttempt and through parseRecoveryRequest.",
+    "No expand compatibility test renders or recalculates a newly RPC-created modified order using the base admin component contract.",
+    "No deployment contract test exercises a base checkout client against the new unversioned /api/order request, error, and success envelopes."
+  ]
+}

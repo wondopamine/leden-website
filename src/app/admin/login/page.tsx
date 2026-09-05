@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -19,37 +19,47 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
 
-    const supabase = createClient();
-    const { error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const supabase = createClient();
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (authError) {
-      setError(authError.message);
+      if (authError) {
+        setError("Sign-in failed. Check your email and password, then try again.");
+        return;
+      }
+
+      router.push("/admin");
+      router.refresh();
+    } catch {
+      setError("Sign-in failed. Check your email and password, then try again.");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    router.push("/admin");
-    router.refresh();
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-sm">
+    <main className="flex min-h-screen items-center justify-center bg-background p-4">
+      <Card className="w-full max-w-sm shadow-sm">
         <CardHeader className="text-center">
-          <CardTitle className="font-display text-2xl font-semibold">
+          <CardTitle as="h1" className="font-display text-2xl font-semibold">
             Café Le Den
           </CardTitle>
-          <CardDescription>Sign in to your admin dashboard</CardDescription>
+          <CardDescription>Sign in to the admin workspace</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -61,6 +71,8 @@ export default function AdminLoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="admin@cafeleden.com"
+                autoComplete="email"
+                disabled={!hydrated || loading}
                 required
               />
             </div>
@@ -71,18 +83,34 @@ export default function AdminLoginPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+                disabled={!hydrated || loading}
                 required
               />
             </div>
             {error && (
-              <p className="text-sm text-destructive">{error}</p>
+              <p role="alert" className="text-sm text-destructive">
+                {error}
+              </p>
             )}
-            <Button type="submit" variant="default" size="default" className="w-full" disabled={loading}>
-              {loading ? "Signing in..." : "Sign In"}
+            <Button
+              type="submit"
+              variant="default"
+              size="default"
+              className="w-full"
+              disabled={!hydrated || loading}
+              aria-busy={loading}
+            >
+              {loading ? "Signing in…" : "Sign in"}
             </Button>
+            {loading ? (
+              <span role="status" className="sr-only">
+                Signing in…
+              </span>
+            ) : null}
           </form>
         </CardContent>
       </Card>
-    </div>
+    </main>
   );
 }

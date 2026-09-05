@@ -1,0 +1,93 @@
+{
+  "reviewer": "adversarial",
+  "findings": [
+    {
+      "title": "Paused café still invites customer checkout",
+      "severity": "P1",
+      "file": "src/lib/supabase/queries.ts",
+      "line": 124,
+      "why_it_matters": "When staff pauses online ordering, customers still see an open café, a usable challenge, and an enabled Place order button; submission only fails later with a generic temporary-unavailability message. The customer data contract drops `ordering_enabled`, while checkout derives availability from hours alone and collapses `ORDERING_PAUSED` into `errorService`, so the operational capacity gate does not propagate to the customer surface as promised. Carry the authoritative gate into customer availability, refresh it for already-open checkout pages, and present explicit bilingual pause recovery.",
+      "autofix_class": "manual",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "suggested_fix": "Add orderingEnabled to CafeInfo/getCafeInfo, derive checkout availability from both hours and the gate, refresh that no-store availability on open pages, and map ORDERING_PAUSED to dedicated EN/FR recovery copy.",
+      "confidence": 100,
+      "evidence": [
+        "src/lib/supabase/queries.ts:114-134 selects the full cafe_info row but returns hours/contact/lead-time fields without data.ordering_enabled.",
+        "src/lib/types.ts:96-108 defines CafeInfo with no ordering-enabled state, so the omission propagates across the server/client boundary.",
+        "src/components/order/order-content.tsx:206-219 sets cafeOpen only from getOpenStatus(cafeInfo.hours) and uses it to keep submission unlocked.",
+        "src/components/order/order-content.tsx:150-155 maps ORDERING_PAUSED to the same generic errorService message as a dependency outage, after the customer has already attempted checkout.",
+        "src/app/admin/(dashboard)/actions.ts:23-31 revalidates routes after a pause, but no current or newly rendered checkout can observe the omitted database field."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "Closing-time checkout offers an impossible ASAP promise",
+      "severity": "P2",
+      "file": "src/components/order/order-content.tsx",
+      "line": 206,
+      "why_it_matters": "During the final pickup-lead-time window before closing, the page says ordering is open and leaves ASAP enabled even though the database cannot produce a same-day promise before close. For example, at 14:50 with a 15:00 close and 15-minute lead time, the browser invites checkout while the atomic RPC computes 15:05 and rejects it. Customers complete contact entry and abuse verification only to receive an avoidable hours error.",
+      "autofix_class": "safe_auto",
+      "owner": "review-fixer",
+      "requires_verification": true,
+      "suggested_fix": "Derive a checkout-specific acceptance window from Toronto-local time, close time, and pickupLeadTime; disable ASAP and the submit path when no valid promise remains, while retaining the general cafe open indicator separately.",
+      "confidence": 100,
+      "evidence": [
+        "src/components/order/order-content.tsx:95-119 applies lead time only when generating scheduled slots; ASAP remains available independently.",
+        "src/components/order/order-content.tsx:206-219 treats the café as orderable for the entire hours-only open interval and uses that boolean to lock submission.",
+        "supabase/migrations/006_atomic_order_creation_expand.sql:389-417 adds pickup_lead_time to the ASAP promise and rejects any promise at or after close, mechanically producing the late-window refusal."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "Cleanup-control failure strands synthetic lifecycle data",
+      "severity": "P1",
+      "file": "scripts/verify-order-lifecycle-local.mjs",
+      "line": 508,
+      "why_it_matters": "A transient failure while creating the foreign rate-bucket control prevents the aggregate verifier from invoking exact lifecycle cleanup at all. The exception jumps directly to the catch around the combined control-plus-cleanup block, so synthetic Auth users, allowlist rows, orders, events, buckets, credentials, and the manifest can remain after a failed proof. Making cleanup unconditional and treating the foreign-control assertion as an independent verification preserves the harness's interruption-safety contract.",
+      "autofix_class": "safe_auto",
+      "owner": "review-fixer",
+      "requires_verification": true,
+      "suggested_fix": "Run cleanup-lifecycle-test in its own unconditional try whenever a manifest exists; create/check/remove the foreign control in a separate optional verification block so its setup failure cannot bypass cleanup.",
+      "confidence": 100,
+      "evidence": [
+        "scripts/verify-order-lifecycle-local.mjs:501-506 enters cleanup whenever staff setup started and the manifest exists.",
+        "scripts/verify-order-lifecycle-local.mjs:508 creates the foreign control before line 509 invokes the cleanup command.",
+        "scripts/verify-order-lifecycle-local.mjs:523-526 catches either failure but does not retry or invoke cleanup when line 508 was the failing operation.",
+        "scripts/verify-order-lifecycle-local.mjs:528-541 only removes an already-created foreign control; it does not clean the recorded lifecycle run."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "Cascade: polling fills unpruned rate buckets",
+      "severity": "P2",
+      "file": "src/lib/orders/repository.server.ts",
+      "line": 233,
+      "why_it_matters": "Normal customer status polling creates a durable rate-bucket row for every client, purpose, and minute, but expiry only marks rows and no application path deletes them. Long-lived tracking pages and repeated checkout/recovery traffic therefore grow the table indefinitely; on the intended free database tier, that eventually consumes storage and degrades the same create/status calls the limiter is meant to protect. Wire a bounded runtime pruning strategy to the request path or an explicitly owned scheduler so expiry actually bounds retained state.",
+      "autofix_class": "manual",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "suggested_fix": "Choose and implement a bounded pruning policy (for example, opportunistic indexed deletion with controlled cadence or an owner-approved scheduled job), then prove expired rows are removed during normal runtime without making request latency unbounded.",
+      "confidence": 100,
+      "evidence": [
+        "src/lib/orders/repository.server.ts:227-253 consumes a rate bucket on every create/status/recovery request but has no pruning call.",
+        "src/components/order/order-status.tsx:233-238 polls every 15 seconds while visible, continually exercising the durable status limiter.",
+        "supabase/migrations/006_atomic_order_creation_expand.sql:963-976 creates a distinct fixed-window row and sets expires_at, but expiry does not delete it.",
+        "supabase/migrations/006_atomic_order_creation_expand.sql:1004-1018 defines prune_order_rate_buckets_v1; repository and application searches contain no caller outside tests/cleanup tooling."
+      ],
+      "pre_existing": false
+    }
+  ],
+  "residual_risks": [
+    "Hosted Supabase Auth/RLS/RPC/Realtime, the actual staging edge, and U8 contract migrations remain intentionally owner-gated; local proof cannot validate those deployment compositions.",
+    "The deterministic local Turnstile preload proves the application seam, not real widget action/hostname enforcement or trusted Cloudflare identity behavior at the staging edge.",
+    "Expand migrations preserve legacy mutation compatibility until U8, so rollback/cutover safety still depends on the documented pause, canary, and forward-only contract sequence."
+  ],
+  "testing_gaps": [
+    "No real lifecycle case pauses ordering and proves both an already-open and a newly opened EN/FR checkout immediately become explicitly unavailable while accepted orders remain operable.",
+    "No boundary test exercises the final pickup-lead-time interval before closing and asserts the UI never offers an ASAP promise the database must reject.",
+    "No fault injection makes createForeignRateBucketControl fail and proves exact per-run cleanup still executes.",
+    "The pruning RPC is tested directly, but no runtime retention test proves ordinary traffic keeps expired rate-bucket storage bounded.",
+    "The hosted non-production canary, staging hostname/edge proof, backup/restore rehearsal, and U8 denial proof have not run and remain explicit release gates."
+  ]
+}

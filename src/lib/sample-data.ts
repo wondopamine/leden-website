@@ -1,4 +1,9 @@
-import type { MenuItem, Category, CafeInfo } from "./types";
+import type {
+  MenuItem,
+  Category,
+  CafeInfo,
+  LocalizedString,
+} from "./types";
 
 export const sampleCategories: Category[] = [
   { _id: "cat-1", name: { en: "Coffee & Lattes", fr: "Café et lattés" }, slug: "coffee", order: 1 },
@@ -8,7 +13,17 @@ export const sampleCategories: Category[] = [
   { _id: "cat-5", name: { en: "Pastries", fr: "Pâtisseries" }, slug: "pastries", order: 5 },
 ];
 
-export const sampleMenuItems: MenuItem[] = [
+type RawSampleMenuItem = Omit<MenuItem, "modifiers"> & {
+  modifiers: Array<{
+    name: LocalizedString;
+    options: Array<{
+      name: LocalizedString;
+      priceAdjustment: number;
+    }>;
+  }>;
+};
+
+const rawSampleMenuItems: RawSampleMenuItem[] = [
   {
     _id: "item-1",
     name: { en: "Pistachio Latte", fr: "Latté pistache" },
@@ -176,7 +191,7 @@ export const sampleMenuItems: MenuItem[] = [
     _id: "item-8",
     name: { en: "Hot & Sour Soup", fr: "Soupe aigre-piquante" },
     description: {
-      en: "Our famous homemade hot and sour soup — a customer favorite",
+      en: "Our famous homemade hot and sour soup — a customer favourite",
       fr: "Notre célèbre soupe aigre-piquante maison — un favori des clients",
     },
     price: 8.50,
@@ -189,7 +204,7 @@ export const sampleMenuItems: MenuItem[] = [
     _id: "item-9",
     name: { en: "Wonton Soup", fr: "Soupe wonton" },
     description: {
-      en: "Handmade wontons in a savory broth — comfort in a bowl",
+      en: "Handmade wontons in a savoury broth — comfort in a bowl",
       fr: "Wontons faits main dans un bouillon savoureux — réconfort dans un bol",
     },
     price: 9.50,
@@ -239,6 +254,34 @@ export const sampleMenuItems: MenuItem[] = [
   },
 ];
 
+function sampleUuid(namespace: number, item: number, child = 0): string {
+  const suffix = `${namespace}${item.toString().padStart(5, "0")}${child
+    .toString()
+    .padStart(6, "0")}`;
+  return `10000000-0000-4000-8000-${suffix}`;
+}
+
+export const sampleMenuItems: MenuItem[] = rawSampleMenuItems.map(
+  (item, itemIndex) => ({
+    ...item,
+    _id: sampleUuid(1, itemIndex + 1),
+    modifiers: item.modifiers.map((modifier, modifierIndex) => ({
+      ...modifier,
+      _id: sampleUuid(2, itemIndex + 1, modifierIndex + 1),
+      minSelections: modifier.name.en === "Add-on" ? 0 : 1,
+      maxSelections: 1,
+      options: modifier.options.map((option, optionIndex) => ({
+        ...option,
+        _id: sampleUuid(
+          3,
+          itemIndex + 1,
+          (modifierIndex + 1) * 100 + optionIndex + 1,
+        ),
+      })),
+    })),
+  }),
+);
+
 export const sampleCafeInfo: CafeInfo = {
   hours: [
     { day: "Monday", open: "07:30", close: "15:00", closed: false },
@@ -251,6 +294,7 @@ export const sampleCafeInfo: CafeInfo = {
   ],
   address: "121 Donegani, Pointe-Claire, QC",
   phone: "(514) 000-0000",
+  orderingEnabled: true,
   pickupLeadTime: 15,
   maxAdvanceOrderDays: 3,
 };

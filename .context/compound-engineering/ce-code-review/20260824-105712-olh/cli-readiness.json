@@ -1,0 +1,73 @@
+{
+  "reviewer": "cli-readiness",
+  "findings": [
+    {
+      "title": "Verifier ignores flags and starts destructive reset",
+      "severity": "P1",
+      "file": "scripts/verify-order-lifecycle-local.mjs",
+      "line": 377,
+      "why_it_matters": "An agent probing the command with `--help`, requesting an unsupported format, or misspelling a flag will unknowingly start the complete verifier, including `supabase db reset --local`. The script never inspects `process.argv`, so every argument is silently accepted and execution proceeds. Strict argument parsing with a side-effect-free help path makes discovery and automation safe before the local reset begins.",
+      "autofix_class": "manual",
+      "owner": "human",
+      "requires_verification": true,
+      "suggested_fix": "Use Node's `parseArgs` with strict parsing, define `--help` and the supported output flags, reject unknown or positional arguments with a usage error, and complete all argument validation before `main` invokes prerequisites or `supabase db reset --local`. Add a CLI contract test proving help and invalid flags perform no child-process or database work.",
+      "confidence": 100,
+      "evidence": [
+        "scripts/verify-order-lifecycle-local.mjs:377-384 enters main and immediately starts prerequisite execution without parsing or validating process.argv.",
+        "scripts/verify-order-lifecycle-local.mjs:388-394 starts Supabase and runs `supabase db reset --local` for every invocation, regardless of supplied flags.",
+        "scripts/verify-order-lifecycle-local.mjs:563-568 calls main unconditionally; repository-wide process.argv references show none in this verifier.",
+        "package.json:24 exposes the script as `verify:order-lifecycle:local`, so arguments supplied through `npm run ... -- --help` reach a command that ignores them rather than a parent CLI parser."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "Verifier output is unbounded and not machine-readable",
+      "severity": "P2",
+      "file": "scripts/verify-order-lifecycle-local.mjs",
+      "line": 58,
+      "why_it_matters": "An agent or CI wrapper must parse a long mixture of lifecycle labels, npm output, database TAP, builds, lint, and browser logs to determine which stage ran, which run needs cleanup, and whether cleanup succeeded. The command offers no JSON mode, does not adapt when stdout is piped, and writes its own progress messages to stdout alongside inherited child output. A stable summary channel lets automation consume bounded results without ingesting the full proof transcript.",
+      "autofix_class": "manual",
+      "owner": "human",
+      "requires_verification": true,
+      "suggested_fix": "Define a plain-Node `--format=auto|json|text` and `--quiet` contract. In non-TTY/JSON mode, send progress and child diagnostics to stderr or an artifact file and emit one bounded JSON object on stdout containing runId, result, failedStage, cleanupAttempted, cleanupVerified, runtimeRestored, and safe artifact paths; preserve text streaming for interactive use.",
+      "confidence": 100,
+      "evidence": [
+        "scripts/verify-order-lifecycle-local.mjs:58-64 writes every stage announcement to stdout as free-form text.",
+        "scripts/verify-order-lifecycle-local.mjs:65-81 inherits stdout/stderr for most children and captures only selected commands, so database, test, build, lint, and TypeScript output is streamed without a bound or structured envelope.",
+        "scripts/verify-order-lifecycle-local.mjs:378 creates the cleanup-critical runId but never emits a stable final result containing it.",
+        "scripts/verify-order-lifecycle-local.mjs:560 prints only a prose PASS label, while lines 563-567 print only a prose error on failure; no `--json`, `--format`, `--quiet`, or `isTTY` behavior exists.",
+        "package.json:24 defines only the fixed aggregate command and no machine-oriented companion entry point."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "Fixture failures lack stable retry semantics",
+      "severity": "P2",
+      "file": "scripts/cleanup-lifecycle-test.mjs",
+      "line": 631,
+      "why_it_matters": "An agent cannot reliably decide whether a failed mutation should be corrected, retried, or escalated because usage errors, target-safety denials, dependency failures, and partial cleanup verification all become free-form stderr plus exit code 1. This is especially costly for cleanup: automation needs to distinguish a retryable dependency outage from an unsafe-target stop and know whether exact cleanup was verified. Stable error codes and structured stderr preserve the current fail-closed behavior while making retries explicit and auditable.",
+      "autofix_class": "manual",
+      "owner": "human",
+      "requires_verification": true,
+      "suggested_fix": "Design a shared error contract for the setup and cleanup CLIs, for example JSON on stderr with `ok:false`, command, runId, stable code, retryable, stage, and cleanupVerified, plus documented distinct exit classes for usage, safety denial, dependency failure, and incomplete verification. Add concise `--help` examples for dry-run and `--execute`, while keeping success data alone on stdout.",
+      "confidence": 100,
+      "evidence": [
+        "scripts/cleanup-lifecycle-test.mjs:529-587 raises materially different missing-manifest, target, dependency, deletion, and verification errors from the mutating cleanup path.",
+        "scripts/cleanup-lifecycle-test.mjs:631-635 collapses every failure to an unstructured message and process.exitCode 1.",
+        "scripts/setup-lifecycle-staff.mjs:125-229 has distinct target, existing-run, Auth-create, membership, and credential-journal failure modes, but lines 265-270 likewise collapse them to prose and exit code 1.",
+        "scripts/setup-lifecycle-staff.mjs:238-258 and scripts/cleanup-lifecycle-test.mjs:596-624 already emit JSON on success, making the prose-only failure surface inconsistent for an agent parser.",
+        "scripts/setup-lifecycle-staff.mjs:23-46 and scripts/cleanup-lifecycle-test.mjs:78-101 define only `--run-id` and `--execute`; neither exposes built-in help or a machine-readable error/output mode."
+      ],
+      "pre_existing": false
+    }
+  ],
+  "residual_risks": [
+    "The hosted canary CLI adapter is intentionally absent and owner-gated; no finding recommends weakening the local-only target guards or inventing hosted mutation flags before that design is approved.",
+    "Underlying Supabase, npm, Vitest, Playwright, Next, ESLint, and TypeScript tools retain their own output and exit conventions; a wrapper-level format contract must decide how much raw diagnostic output is preserved as an artifact rather than stdout."
+  ],
+  "testing_gaps": [
+    "No CLI contract test proves `--help`, unknown flags, and malformed arguments exit before spawning any child process or resetting the local database.",
+    "No non-TTY test asserts bounded JSON stdout, diagnostic stderr separation, stable stage/result fields, and inclusion of the lifecycle run ID and cleanup outcome.",
+    "No setup/cleanup command test asserts stable structured error codes and retryability across usage, unsafe-target, dependency, and incomplete-cleanup failures."
+  ]
+}

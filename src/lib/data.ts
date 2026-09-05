@@ -10,38 +10,59 @@ import {
 } from "./sample-data";
 import type { MenuItem, Category, CafeInfo } from "./types";
 
-// Single source of truth: Supabase when configured, otherwise sample data.
-const useSupabase = !!process.env.NEXT_PUBLIC_SUPABASE_URL;
+export class StorefrontDataUnavailableError extends Error {
+  constructor() {
+    super("Authoritative storefront data is unavailable.");
+    this.name = "StorefrontDataUnavailableError";
+  }
+}
+
+type StorefrontDataSource = "supabase" | "sample" | "unavailable";
+
+export function resolveStorefrontDataSource(
+  environment: Partial<NodeJS.ProcessEnv> = process.env,
+): StorefrontDataSource {
+  if (
+    environment.NEXT_PUBLIC_SUPABASE_URL ||
+    environment.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  ) {
+    return "supabase";
+  }
+  if (
+    environment.NODE_ENV === "development" ||
+    environment.PLAYWRIGHT_STOREFRONT_PREVIEW === "1"
+  ) {
+    return "sample";
+  }
+  return "unavailable";
+}
+
+function requireSampleData() {
+  if (resolveStorefrontDataSource() !== "sample") {
+    throw new StorefrontDataUnavailableError();
+  }
+}
 
 export async function fetchCategories(): Promise<Category[]> {
-  if (useSupabase) {
-    try {
-      return await getSupabaseCategories();
-    } catch {
-      // fall through to sample data
-    }
+  if (resolveStorefrontDataSource() === "supabase") {
+    return getSupabaseCategories();
   }
+  requireSampleData();
   return sampleCategories;
 }
 
 export async function fetchMenuItems(): Promise<MenuItem[]> {
-  if (useSupabase) {
-    try {
-      return await getSupabaseMenuItems();
-    } catch {
-      // fall through to sample data
-    }
+  if (resolveStorefrontDataSource() === "supabase") {
+    return getSupabaseMenuItems();
   }
+  requireSampleData();
   return sampleMenuItems;
 }
 
 export async function fetchCafeInfo(): Promise<CafeInfo> {
-  if (useSupabase) {
-    try {
-      return await getSupabaseCafeInfo();
-    } catch {
-      // fall through to sample data
-    }
+  if (resolveStorefrontDataSource() === "supabase") {
+    return getSupabaseCafeInfo();
   }
+  requireSampleData();
   return sampleCafeInfo;
 }

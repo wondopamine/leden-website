@@ -1,0 +1,74 @@
+{
+  "reviewer": "julik-frontend-races",
+  "findings": [
+    {
+      "title": "Pending poll undoes private-order removal",
+      "severity": "P1",
+      "file": "src/components/order/order-status.tsx",
+      "line": 256,
+      "why_it_matters": "A customer can remove the private order and see the removal confirmation, then have an already-running poll switch the page back to Ready and render the order again. Removing the session stops future intervals, but it neither aborts nor invalidates the fetch that captured the old session; its success and failure branches still mutate tracking state afterward. Invalidating that poll generation at removal preserves the explicit manual-removal contract.",
+      "autofix_class": "safe_auto",
+      "owner": "review-fixer",
+      "requires_verification": true,
+      "suggested_fix": "Track the active status context/generation and an AbortController for the current poll. On removal, session change, or unmount, increment the generation and abort; after every await, ignore results whose captured context/generation is no longer active. Add a deferred-response test that removes the order before a 200 and before a 404 settle and keeps the Removed state in both cases.",
+      "confidence": 100,
+      "evidence": [
+        "src/components/order/order-status.tsx:179-192 starts a poll that closes over the current session, but records no context generation or abort handle.",
+        "src/components/order/order-status.tsx:193-228 lets the captured request set unavailable, stale, ready, announcements, and projection whenever it later settles.",
+        "src/components/order/order-status.tsx:256-267 removes storage and sets trackingState to removed without invalidating pollingRef or the in-flight request.",
+        "src/components/order/order-status.tsx:287-299 renders the removal confirmation solely from trackingState, so a late setTrackingState('ready' or 'unavailable') visibly replaces the customer's chosen result.",
+        "docs/plans/2026-08-24-001-feat-order-lifecycle-hardening-plan.md:496 explicitly retains tracking only until terminal, expiry, or manual removal."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "Older admin snapshot can overwrite newer invalidation",
+      "severity": "P1",
+      "file": "src/components/admin/orders-dashboard.tsx",
+      "line": 227,
+      "why_it_matters": "A late response from an older refresh can mark pre-mutation queue and ordering-gate data Fresh after a newer Realtime or post-mutation refresh has already started and failed. The guard compares the response only with the last successful response, not the newest request issued, so the older snapshot applies, clears the newer refresh error, and resets the freshness clock. This can temporarily hide a new order or visually undo a successful pause while staff controls remain enabled.",
+      "autofix_class": "gated_auto",
+      "owner": "review-fixer",
+      "requires_verification": true,
+      "suggested_fix": "Use a latest-issued invalidation epoch, or make canonical refresh single-flight with one trailing invalidation. Never let a response from before a newer event/mutation mark the board fresh; if the newest attempt fails, retain last-known data and the error/stale trajectory. Add deferred fetch tests for older-success/newer-failure around both a new order and ordering pause.",
+      "confidence": 75,
+      "evidence": [
+        "src/components/admin/orders-dashboard.tsx:215-217 assigns increasing request sequences while permitting many refreshes to overlap.",
+        "src/components/admin/orders-dashboard.tsx:227-245 applies any response accepted against appliedSequenceRef, then overwrites orders and orderingEnabled, advances lastSuccessfulAt, and clears refreshError.",
+        "src/lib/orders/admin-realtime.ts:211-216 defines shouldApplyAdminSnapshot as responseRequest >= lastAppliedRequest; it does not compare against requestSequenceRef.current or any newer invalidation that has started.",
+        "src/components/admin/orders-dashboard.tsx:297-322 and 332-360 can start newer refreshes from Realtime, subscribe, focus, online, visibility, and polling while an older request remains pending; post-mutation callers add the same overlap.",
+        "docs/plans/2026-08-24-001-feat-order-lifecycle-hardening-plan.md:562-564 and 596 require late responses not to regress state and stale data never to be presented as live."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "Stale checkout completion clears a newer cart",
+      "severity": "P1",
+      "file": "src/components/order/order-content.tsx",
+      "line": 244,
+      "why_it_matters": "A customer can leave checkout while create or recovery is slow, add items for another order from the menu, then lose that new cart and be redirected when the dead checkout component finally receives the old receipt. Both async paths retain global Zustand actions and call `clearCart()` plus `window.location.assign()` without a component-lifetime or cart-ownership check. Associating the clear with the submitted cart/attempt prevents stale completion from deleting newer intent while preserving idempotent receipt recovery.",
+      "autofix_class": "gated_auto",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "suggested_fix": "Give the cart a monotonic revision or attempt ownership token and capture it with the submitted material. On acceptance/recovery, clear only when the current cart is still the cart owned by that attempt; suppress route navigation from an inactive component while leaving the persisted recovery attempt/receipt available for the next mount. Cover submit and mount-time recovery with deferred responses, route exit, new item addition, and late completion.",
+      "confidence": 75,
+      "evidence": [
+        "src/components/order/order-content.tsx:237-287 starts mount-time recovery in an effect with no cleanup, active-generation guard, or abort path.",
+        "src/components/order/order-content.tsx:259-270 lets that stale recovery clear the global cart and perform location.assign after the component has left the route.",
+        "src/components/order/order-content.tsx:438-479 repeats the same unguarded global clear and navigation after an ordinary create/recovery promise settles.",
+        "src/lib/cart-store.ts:40-70 exposes a global persisted cart whose clearCart action unconditionally replaces every current item with an empty array; it has no attempt association or revision check.",
+        "docs/plans/2026-08-24-001-feat-order-lifecycle-hardening-plan.md:496 and 516 require attempt-safe recovery and one cart clear for the recovered submission, not deletion of a later order's cart."
+      ],
+      "pre_existing": false
+    }
+  ],
+  "residual_risks": [
+    "Supabase channel removal is asynchronous; the current callbacks have no disposed-generation guard, so a late channel status can still trigger work during teardown. The production effect dependencies are stable, making the user-visible consequence less certain than the reported races.",
+    "The optional Web Audio enable path awaits resume before storing the context, so immediate route exit can leave a resumed context outside the unmount cleanup; this is lower impact than queue correctness and should be covered when sound behavior is hardened."
+  ],
+  "testing_gaps": [
+    "No controlled deferred-poll test removes a private order before the old response settles and asserts that neither success nor revocation can resurrect or replace the Removed state.",
+    "No admin test resolves overlapping canonical requests out of order, especially older success after newer failure following a Realtime hint or ordering mutation.",
+    "No checkout test navigates away, changes the global cart, and then resolves an earlier create/recovery response to prove newer cart intent and the chosen route survive stale async completion."
+  ]
+}

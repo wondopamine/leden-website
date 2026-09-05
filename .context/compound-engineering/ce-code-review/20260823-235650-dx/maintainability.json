@@ -1,0 +1,81 @@
+{
+  "reviewer": "maintainability",
+  "findings": [
+    {
+      "title": "Catch-all wrapper swallows successful create redirects",
+      "severity": "P1",
+      "file": "src/components/admin/menu-item-form.tsx",
+      "line": 177,
+      "why_it_matters": "Creating a menu item can insert the row successfully and then leave the editor showing a failure message. The new generic action wrapper catches every exception, but its create caller ends with Next.js `redirect(\"/admin/menu\")`, which is implemented as a framework-thrown `NEXT_REDIRECT`; the wrapper therefore mistakes successful create control flow for an ordinary save error and resumes the unsaved-change guard. Separating the redirecting create path from the returning update path, or changing the action contract to return a discriminated result and navigating client-side, removes the hidden coupling.",
+      "autofix_class": "gated_auto",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "suggested_fix": "Give create and update explicit success contracts: let the create action's redirect propagate outside the catch, or return a typed result from both actions and perform router navigation only after a successful create.",
+      "confidence": 100,
+      "evidence": [
+        "src/components/admin/menu-item-form.tsx:170-190 -- handleSubmit now awaits the opaque action inside try/catch, and the catch always resumes protection and reports that the item was not saved.",
+        "src/app/admin/(dashboard)/menu/new/page.tsx:36-39 passes createMenuItem into that wrapper, while src/app/admin/(dashboard)/menu/actions.ts:46-47 ends createMenuItem with redirect(\"/admin/menu\").",
+        "node_modules/next/dist/docs/01-app/03-api-reference/04-functions/redirect.md:50-61 -- this installed Next.js version documents that redirect throws NEXT_REDIRECT and must be outside try/catch."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "Static analytics mirror has already drifted",
+      "severity": "P2",
+      "file": "src/app/dev/admin/analytics-preview.tsx",
+      "line": 101,
+      "why_it_matters": "The admin regression gallery can pass while the production analytics UI renders different content and states. This refactor changes production labels to “Submitted value”, “Average order”, “Submitted order value”, and sentence-case headings, while the separately copied preview still renders “Revenue”, “Avg Order”, “Revenue Trend”, and title-case headings. Rendering shared analytics presentation from fixture data would make the gallery exercise the code it claims to verify instead of a second implementation that developers must manually synchronize.",
+      "autofix_class": "manual",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "suggested_fix": "Extract the AnalyticsData presentation into a shared component used by AnalyticsDashboard and AnalyticsPreview, leaving fetching/loading/error ownership in AnalyticsDashboard, then point the gallery fixture at that shared renderer.",
+      "confidence": 100,
+      "evidence": [
+        "src/app/dev/admin/analytics-preview.tsx:3-10 explicitly says it mirrors the same chart JSX and must stay in sync with analytics-dashboard.tsx.",
+        "src/components/admin/analytics-dashboard.tsx:105-116,129-155,183-184,223-224 now renders the updated production labels, while src/app/dev/admin/analytics-preview.tsx:77-88,101-124,147-148,182-183 retains the old labels.",
+        "tests/e2e/admin-design.spec.ts:98-122 drives /dev/admin and asserts the copied preview surface rather than rendering AnalyticsDashboard with fixture data."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "Checkout recovery flag has no reachable true state",
+      "severity": "P3",
+      "file": "src/components/order/order-content.tsx",
+      "line": 23,
+      "why_it_matters": "No customer can reach the newly added menu-link recovery branch because every SubmitError constructor hard-codes `showMenuLink: false`. The boolean therefore advertises a recovery mode that the submit pipeline does not produce, and maintainers can incorrectly assume the fallback is exercised while its JSX and translation dependency remain dead. Removing the unused mode keeps the error contract truthful until a real classified error needs it.",
+      "autofix_class": "safe_auto",
+      "owner": "review-fixer",
+      "requires_verification": false,
+      "suggested_fix": "Remove showMenuLink from SubmitError and delete the unreachable conditional Link block; reintroduce a discriminated error variant only when a concrete response path produces it.",
+      "confidence": 100,
+      "evidence": [
+        "src/components/order/order-content.tsx:21-24 adds showMenuLink to SubmitError.",
+        "src/components/order/order-content.tsx:174-183 contains both and all SubmitError construction sites, and each sets showMenuLink to false.",
+        "src/components/order/order-content.tsx:363-373 is the only read of showMenuLink, so the View menu branch is unreachable in the reviewed application."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "Menu status metadata includes an unused dot API",
+      "severity": "P3",
+      "file": "src/components/admin/status.ts",
+      "line": 84,
+      "why_it_matters": "Every menu-status addition or token rename now has to maintain a `dot` class that no menu consumer reads. The reviewed code uses menu labels, badges, and icons, while dot rendering is limited to order-status consumers, so the new menu field is dead API surface and its three utility strings are scanned into generated styling without producing UI. Removing it makes the shared status vocabulary reflect its actual consumers.",
+      "autofix_class": "safe_auto",
+      "owner": "review-fixer",
+      "requires_verification": false,
+      "suggested_fix": "Remove dot from MENU_STATUS's value type and from the available, sold_out, and hidden entries; keep dot only on OrderStatusMeta where it is rendered.",
+      "confidence": 100,
+      "evidence": [
+        "src/components/admin/status.ts:82-105 introduces dot in the MENU_STATUS value type and populates it for all three menu states.",
+        "Repository-wide consumers read MENU_STATUS label, badge, and icon in menu-item-row.tsx and the dev preview; no consumer reads MENU_STATUS[...].dot.",
+        "src/components/admin/orders-dashboard.tsx:165 and src/components/admin/order-card.tsx:102 show that existing .dot reads belong exclusively to ORDER_STATUS metadata."
+      ],
+      "pre_existing": false
+    }
+  ],
+  "residual_risks": [],
+  "testing_gaps": [
+    "No enabled test covers a successful new-menu-item submission through createMenuItem's redirecting Server Action, so the catch/redirect interaction is not exercised by the current design regression suite."
+  ]
+}

@@ -1,0 +1,212 @@
+{
+  "run_id": "20260824-105712-olh",
+  "mode": "autofix",
+  "scope": {
+    "base_ref": "17e7623",
+    "base_sha": "17e762312e8e8132dbb4fd41728a9bdbeebb2bd5",
+    "dispatch_sha": "9ae9ffcee39cb67865e7c2bb0699ab4a23216ea4",
+    "branch": "codex/harden-order-lifecycle-expand",
+    "plan": "docs/plans/2026-08-24-001-feat-order-lifecycle-hardening-plan.md"
+  },
+  "intent": "Harden the customer and staff order lifecycle with authoritative pricing, private recovery, least-privilege administration, deterministic local proof, and an owner-gated hosted canary without adding paid infrastructure.",
+  "reviewers": [
+    "correctness",
+    "testing",
+    "maintainability",
+    "project-standards",
+    "security",
+    "performance",
+    "api-contract",
+    "data-migrations",
+    "reliability",
+    "adversarial",
+    "cli-readiness",
+    "kieran-typescript",
+    "julik-frontend-races",
+    "agent-native",
+    "learnings",
+    "schema-drift",
+    "deployment-verification"
+  ],
+  "applied_fixes": [
+    {
+      "title": "Cleanup-control failure strands synthetic lifecycle data",
+      "files": [
+        "scripts/verify-order-lifecycle-local.mjs",
+        "tests/unit/verify-order-lifecycle-local.test.mjs"
+      ],
+      "verification": ["Focused Vitest", "TypeScript", "ESLint", "independent bounded re-review"]
+    },
+    {
+      "title": "Pending poll undoes private-order removal",
+      "files": [
+        "src/components/order/order-status.tsx",
+        "tests/unit/order-status-request.test.ts"
+      ],
+      "verification": ["Focused Vitest", "TypeScript", "ESLint", "independent bounded re-review"]
+    },
+    {
+      "title": "Persisted recovery sends an undeclared field",
+      "files": [
+        "src/lib/orders/checkout-attempt.ts",
+        "tests/unit/checkout-attempt.test.ts"
+      ],
+      "verification": ["Focused Vitest", "TypeScript", "ESLint", "independent bounded re-review"]
+    }
+  ],
+  "residual_actionable_work": [
+    {
+      "severity": "P1",
+      "title": "Ordering pause leaves customer checkout enabled",
+      "file": "src/lib/supabase/queries.ts",
+      "line": 124,
+      "autofix_class": "gated_auto",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "tracker_url": "https://github.com/wondopamine/leden-website/issues/7"
+    },
+    {
+      "severity": "P1",
+      "title": "Admin refresh races can stall the order board",
+      "file": "src/components/admin/orders-dashboard.tsx",
+      "line": 227,
+      "autofix_class": "gated_auto",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "tracker_url": "https://github.com/wondopamine/leden-website/issues/8"
+    },
+    {
+      "severity": "P1",
+      "title": "Stale checkout completion can clear a newer cart",
+      "file": "src/components/order/order-content.tsx",
+      "line": 244,
+      "autofix_class": "gated_auto",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "tracker_url": "https://github.com/wondopamine/leden-website/issues/9"
+    },
+    {
+      "severity": "P1",
+      "title": "Hung status poll blocks every later refresh",
+      "file": "src/components/order/order-status.tsx",
+      "line": 185,
+      "autofix_class": "gated_auto",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "tracker_url": "https://github.com/wondopamine/leden-website/issues/10"
+    },
+    {
+      "severity": "P1",
+      "title": "Checkout requests need ambiguity-safe deadlines",
+      "file": "src/lib/orders/checkout-attempt.ts",
+      "line": 573,
+      "autofix_class": "gated_auto",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "tracker_url": "https://github.com/wondopamine/leden-website/issues/11"
+    },
+    {
+      "severity": "P1",
+      "title": "Loaded clients need an order endpoint cutover",
+      "file": "src/lib/orders/contracts.ts",
+      "line": 149,
+      "autofix_class": "manual",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "tracker_url": "https://github.com/wondopamine/leden-website/issues/12"
+    },
+    {
+      "severity": "P1",
+      "title": "Supabase operations need bounded request deadlines",
+      "file": "src/lib/orders/repository.server.ts",
+      "line": 216,
+      "autofix_class": "gated_auto",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "tracker_url": "https://github.com/wondopamine/leden-website/issues/13"
+    },
+    {
+      "severity": "P1",
+      "title": "Sample fixtures must fail closed outside preview",
+      "file": "src/lib/sample-data.ts",
+      "line": 267,
+      "autofix_class": "gated_auto",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "tracker_url": "https://github.com/wondopamine/leden-website/issues/14"
+    },
+    {
+      "severity": "P1",
+      "title": "Modifier backfill makes paid add-ons mandatory",
+      "file": "supabase/migrations/006_atomic_order_creation_expand.sql",
+      "line": 59,
+      "autofix_class": "manual",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "tracker_url": "https://github.com/wondopamine/leden-website/issues/15"
+    },
+    {
+      "severity": "P1",
+      "title": "Raw hosted migration leaves ordering configuration unusable",
+      "file": "supabase/migrations/006_atomic_order_creation_expand.sql",
+      "line": 361,
+      "autofix_class": "gated_auto",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "tracker_url": "https://github.com/wondopamine/leden-website/issues/16"
+    },
+    {
+      "severity": "P1",
+      "title": "Modifier snapshots break the old admin contract",
+      "file": "supabase/migrations/006_atomic_order_creation_expand.sql",
+      "line": 728,
+      "autofix_class": "gated_auto",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "tracker_url": "https://github.com/wondopamine/leden-website/issues/17"
+    },
+    {
+      "severity": "P1",
+      "title": "Expired rate buckets require bounded pruning",
+      "file": "supabase/migrations/006_atomic_order_creation_expand.sql",
+      "line": 969,
+      "autofix_class": "manual",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "tracker_url": "https://github.com/wondopamine/leden-website/issues/18"
+    }
+  ],
+  "residual_risks": [
+    "Hosted Auth, RLS, RPC, Realtime, backup ownership, platform hostname, and Turnstile edge behavior remain owner-gated and unverified.",
+    "U8 contract revocation must not begin until a successful hosted canary and owner-approved observation window.",
+    "A local unknown IPv6 listener on port 3210 was intentionally left untouched; the verifier allocates dual-stack-free loopback ports instead."
+  ],
+  "requirements_completeness": {
+    "complete": ["U1", "U2", "U7-local"],
+    "partial": ["U3", "U4", "U5", "U6"],
+    "blocked_by_owner_gate": ["U7-hosted", "U8"]
+  },
+  "agent_native": {
+    "verdict": "not-applicable",
+    "summary": "The product has no runtime agent integration. Human flows expose server/RPC seams that can support future agent interfaces without pretending current parity exists."
+  },
+  "schema_drift": {
+    "verdict": "clean",
+    "summary": "Generated database types align with the migrations in scope; no unrelated generated schema drift was found."
+  },
+  "deployment": {
+    "verdict": "no-go",
+    "summary": "Do not apply hosted migrations or start cutover until all local P1 findings are resolved and target, backup, key, staff, hostname, cleanup, and café-rehearsal owners are explicit."
+  },
+  "coverage": {
+    "structured_reviewer_artifacts": 13,
+    "validator_dispatches": 15,
+    "validator_accepts": 15,
+    "validator_rejects": 0,
+    "validator_over_budget_drops": 14,
+    "autofix_rounds": 1,
+    "autofix_findings_cleared": 3,
+    "failed_reviewers": 0
+  },
+  "verdict": "Not ready"
+}

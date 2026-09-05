@@ -1,0 +1,68 @@
+{
+  "reviewer": "kieran-typescript",
+  "findings": [
+    {
+      "title": "Recovery accepts wider objects than it serializes",
+      "severity": "P1",
+      "file": "src/lib/orders/checkout-attempt.ts",
+      "line": 537,
+      "why_it_matters": "Reload recovery receives a CheckoutRecoveryAttempt, which structurally satisfies CheckoutAttempt while retaining the extra acceptanceKnown property at runtime. Serializing the whole structurally wider value sends that undeclared property to the strict endpoint, so recovery is rejected and an accepted order remains uncertain. Constructing the exact wire DTO inside the helper makes its runtime behavior match its TypeScript signature.",
+      "autofix_class": "safe_auto",
+      "owner": "review-fixer",
+      "requires_verification": true,
+      "suggested_fix": "Construct and serialize an exact { attemptId, trackingSecret } request object inside recoverCheckoutAttempt instead of serializing the caller-owned object.",
+      "confidence": 100,
+      "evidence": [
+        "src/lib/orders/checkout-attempt.ts:44-46 defines CheckoutRecoveryAttempt as CheckoutAttempt plus acceptanceKnown, so it is assignable to the narrower parameter without dropping the extra runtime key.",
+        "src/components/order/order-content.tsx:238-244 passes the persisted CheckoutRecoveryAttempt directly to recoverCheckoutAttempt.",
+        "src/lib/orders/checkout-attempt.ts:529-537 serializes the entire caller value, while src/lib/orders/contracts.ts:249-259 accepts only attemptId and trackingSecret."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "Cart migration asserts unvalidated items are safe",
+      "severity": "P2",
+      "file": "src/lib/cart-store.ts",
+      "line": 116,
+      "why_it_matters": "Any persisted value with an items array is asserted to CartItem[] without validating its elements. A stale, partial, or corrupted cart can therefore hydrate invalid values that TypeScript treats as complete; the order UI then dereferences quantity and modifiers and can crash before the customer can repair or clear the cart. Parsing each item or dropping invalid entries keeps the persisted-data boundary honest.",
+      "autofix_class": "safe_auto",
+      "owner": "review-fixer",
+      "requires_verification": true,
+      "suggested_fix": "Replace the CartItem[] assertion with an element validator/migrator that returns only complete cart items, while deliberately allowing the documented legacy absence of modifierId and optionId.",
+      "confidence": 100,
+      "evidence": [
+        "src/lib/cart-store.ts:104-117 checks only that items is an array and then casts every element to CartItem.",
+        "tests/unit/checkout-attempt.test.ts:101-110 currently proves that an item containing only id and menuItemId is accepted as the migrated CartState shape.",
+        "src/lib/cart-store.ts:72-79 and src/components/order/order-content.tsx:317-320 immediately perform numeric and nested-array operations on hydrated items."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "Receipt generic bypasses its runtime validator",
+      "severity": "P2",
+      "file": "src/lib/orders/checkout-attempt.ts",
+      "line": 463,
+      "why_it_matters": "The code validates one concrete PublicOrderReceipt shape and then casts it through unknown to any caller-selected Receipt type. A caller can instantiate runCheckoutSubmission or recoverCheckoutAttempt with an unrelated type and receive a value TypeScript incorrectly certifies, defeating the boundary validator and hiding consumer drift. Returning PublicOrderReceipt directly, or accepting a caller-supplied type guard, restores the checker as the source of truth.",
+      "autofix_class": "safe_auto",
+      "owner": "review-fixer",
+      "requires_verification": true,
+      "suggested_fix": "Remove the unconstrained Receipt generics and return PublicOrderReceipt from the checkout helpers, since all production callers already use that type; alternatively require an explicit type guard for generic decoding.",
+      "confidence": 100,
+      "evidence": [
+        "src/lib/orders/checkout-attempt.ts:458-463 checks isPublicOrderReceipt and then uses the explicit receipt as unknown as Receipt escape.",
+        "src/lib/orders/checkout-attempt.ts:524-569 exposes that unconstrained Receipt generic through both recovery and submission result types.",
+        "All production call sites in src/components/order/order-content.tsx:244 and 438 instantiate the helpers with PublicOrderReceipt, so a concrete safe return type already matches current behavior."
+      ],
+      "pre_existing": false
+    }
+  ],
+  "residual_risks": [
+    "src/lib/orders/repository.server.ts still uses as unknown as string to pass the valid SQL null for ASAP pickup through generated RPC types that model the timestamp argument as string; runtime database tests mitigate this, but the TypeScript database contract cannot verify nullability.",
+    "The large hook-driven checkout state machine has substantial behavioral coverage, but its compile-time contracts do not prevent caller-owned request objects from carrying extra runtime keys unless wire DTOs are constructed at the boundary."
+  ],
+  "testing_gaps": [
+    "No recovery test passes the actual CheckoutRecoveryAttempt returned by getCheckoutRecoveryAttempt and asserts the serialized request has only the declared wire keys.",
+    "No cart migration test rejects null, partial, or wrong-typed item elements and proves the order page remains usable after malformed persisted data.",
+    "No compile-time contract test prevents checkout helpers from being instantiated with a receipt type unrelated to PublicOrderReceipt."
+  ]
+}

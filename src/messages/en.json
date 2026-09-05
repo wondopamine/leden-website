@@ -1,10 +1,10 @@
 {
   "common": {
-    "orderNow": "Order Now",
-    "orderForPickup": "Order for Pickup",
-    "viewMenu": "View Menu",
-    "viewFullMenu": "See Full Menu",
-    "ourStory": "Our Story",
+    "orderNow": "Order now",
+    "orderForPickup": "Order for pickup",
+    "viewMenu": "View menu",
+    "viewFullMenu": "View menu",
+    "ourStory": "Our story",
     "language": "Language",
     "cart": "Cart",
     "home": "Home",
@@ -14,10 +14,11 @@
     "back": "Back",
     "add": "Add",
     "remove": "Remove",
-    "total": "Estimated Total",
+    "undo": "Undo",
+    "total": "Estimated total",
     "subtotal": "Subtotal",
     "tax": "Tax",
-    "continueShopping": "Continue Shopping",
+    "continueShopping": "Continue shopping",
     "emptyCart": "Your cart is empty",
     "phone": "Phone",
     "name": "Name",
@@ -45,6 +46,8 @@
     }
   },
   "landing": {
+    "unavailableTitle": "The café website is temporarily unavailable",
+    "unavailableBody": "We can’t confirm today’s hours, menu, or online ordering right now. Please try again in a few minutes.",
     "hero": {
       "tag": "Valois Village, Pointe-Claire",
       "title": "Café Le Den",
@@ -53,70 +56,170 @@
       "since": "Serving since 1994"
     },
     "reviews": {
-      "title": "What Our Guests Say",
+      "title": "What our guests say",
       "subtitle": "Real reviews from our community",
       "onGoogle": "on Google"
     },
     "about": {
-      "title": "Our Story",
+      "title": "Our story",
       "description": "For over 30 years, Café Le Den has been the neighbourhood's living room in Valois Village. Run by Gina and Josh, we bake our bread fresh every morning, simmer our soups from scratch, and craft specialty drinks with care. From the pistachio latte to our famous hot and sour soup, every item is made by hand with the finest ingredients.",
       "panel": "Baked fresh, served warm",
       "years": "Years",
       "ranking": "in Pointe-Claire"
     },
     "hours": {
-      "title": "Visit Us",
+      "title": "Visit us",
       "address": "121 Donegani, Pointe-Claire, QC",
       "openDaily": "Hours",
       "closed": "Closed",
-      "findUs": "Find Us"
+      "findUs": "Find us"
     },
     "featured": {
-      "title": "Customer Favourites",
+      "title": "Customer favourites",
       "subtitle": "The dishes and drinks people keep coming back for"
     }
   },
   "menu": {
-    "title": "Our Menu",
+    "title": "Our menu",
     "allCategories": "All",
-    "soldOut": "Sold Out",
-    "addToOrder": "Add to Order",
+    "soldOut": "Sold out",
+    "addToOrder": "Add to order",
     "customize": "Customize",
+    "required": "· Required",
+    "optional": "· Optional",
+    "cartLimit": "Your cart has reached the online order limit. Review it before adding more.",
+    "unavailableTitle": "The menu is temporarily unavailable",
+    "unavailableBody": "We can’t confirm the café’s current items or prices right now. Please try again in a few minutes.",
     "search": "Search menu..."
   },
   "order": {
-    "title": "Your Order",
-    "pickupTime": "Pickup Time",
+    "title": "Your order",
+    "pickupTime": "Pickup time",
     "pickupTimeDescription": "Choose when you'd like to pick up your order",
     "asap": "As soon as possible",
     "scheduleFor": "Schedule for later",
     "selectTime": "Select a time",
-    "customerInfo": "Your Information",
-    "nameRequired": "Name is required for pickup",
-    "phoneRequired": "Phone number for order updates",
-    "placeOrder": "Place Order",
-    "processing": "Submitting...",
+    "customerInfo": "Your information",
+    "nameRequired": "Enter a pickup name (up to 100 characters)",
+    "phoneRequired": "Enter 7–15 phone digits (up to 32 characters)",
+    "placeOrder": "Place order",
+    "processing": "Submitting…",
+    "checkingReceipt": "Checking receipt…",
+    "removedItem": "{item} removed from your order",
+    "estimatedSubtotal": "Estimated subtotal",
+    "estimatedTotal": "Estimated total",
+    "estimateNotice": "This is an estimate. The café verifies current items, options, taxes, and total before accepting your order.",
     "payInPerson": "Payment is collected in person at pickup.",
-    "errorSubmitting": "Something went wrong. Please try again.",
+    "errorSubmitting": "We couldn’t place your order. Your cart is saved. Check your connection and try again.",
+    "errorService": "Ordering is temporarily unavailable. Your cart is saved. Please try again in a few minutes.",
+    "errorOrderingPaused": "Online ordering has been paused. Your cart is saved. Please try again later.",
+    "errorOrderDetails": "Your order may have been received, but we couldn’t confirm its details. Keep your cart and call the cafe before trying again.",
+    "errorHours": "Pickup is no longer available at that time. Choose another available time and try again.",
+    "errorMenuChanged": "A menu item or price changed. Review the menu and update your cart before trying again.",
+    "errorChallenge": "We could not verify this request. Complete a fresh verification and try the same order again.",
+    "errorInputLimits": "Review your contact details and cart limits: up to 50 lines, 20 of one line, and 100 items total.",
+    "errorRateLimited": "There have been several attempts. Wait a moment, then verify and try again.",
+    "verificationTitle": "Request verification",
+    "challenge": {
+      "loading": "Loading secure verification…",
+      "checking": "Checking…",
+      "interactive": "Complete the verification below.",
+      "ready": "Verification complete. You can place the order.",
+      "expired": "Verification expired. Start a fresh check.",
+      "unavailable": "Verification is unavailable. Your order details are still saved on this page."
+    },
+    "retryVerification": "Try verification again",
+    "checkingReceiptTitle": "Checking whether your order was accepted",
+    "checkingReceiptBody": "Do not submit again. We’re using your private order key to look for the receipt.",
+    "notFoundTitle": "No accepted order was found",
+    "notFoundBody": "It is safe to retry this same order after completing a fresh verification.",
+    "verifyAndRetry": "Verify and retry the same order",
+    "uncertainTitle": "We still can’t confirm the receipt",
+    "uncertainBody": "Do not submit again. Keep this page open and call the café so staff can check manually.",
+    "acceptedFallbackTitle": "Your order was accepted",
+    "acceptedFallbackBody": "Order {order}, total {total}. This browser could not save the private status link. Do not submit again; keep this page open and call the café if you need help.",
+    "callCafe": "Call the café: {phone}",
     "orderingClosed": "Ordering is currently closed",
+    "orderingPaused": "Online ordering is paused",
+    "pickupUnavailable": "Online ordering has ended for today",
+    "orderingUnavailable": "Online ordering is temporarily unavailable",
     "opensAt": "We open at {time}",
     "itemsInCart": "{count, plural, =0 {No items} =1 {1 item} other {# items}}"
   },
   "confirmation": {
-    "title": "Order Placed!",
-    "thankYou": "Thank you! Your order has been sent to the cafe.",
-    "orderNumber": "Order Number",
-    "pickupTime": "Pickup Time",
+    "title": "Order placed",
+    "thankYou": "Thank you. Your order has been sent to the cafe.",
+    "orderNumber": "Order number",
+    "pickupTime": "Pickup time",
     "asap": "As soon as possible",
     "pickupAt": "Pick up at",
     "items": "Items",
     "subtotal": "Subtotal",
     "total": "Total",
     "paymentNote": "Please pay in person when you pick up your order.",
-    "backToMenu": "Back to Menu"
+    "legacyTitle": "This confirmation link has expired",
+    "legacyBody": "For privacy, an order number alone cannot open an order. Use the private order-status link saved when you placed the order.",
+    "legacyPrivacy": "If you no longer have the private link, call the café. Staff can help without exposing customer details online.",
+    "callCafe": "Call the café: {phone}",
+    "backToMenu": "Back to menu"
+  },
+  "status": {
+    "title": "Your private order status",
+    "loading": "Opening your private order…",
+    "acceptedTruth": "Your accepted order is in the café queue.",
+    "recoveredReceipt": "We recovered the receipt after the original response was interrupted.",
+    "liveStatus": "Current status",
+    "states": {
+      "new": "Received",
+      "preparing": "Being prepared",
+      "ready": "Ready for pickup",
+      "picked_up": "Picked up",
+      "cancelled": "Cancelled"
+    },
+    "checking": "Checking for an update…",
+    "fresh": "Current",
+    "stale": "Last known",
+    "complete": "Complete",
+    "checkedAt": "Last checked at {time}",
+    "staleLastKnown": "We could not refresh. The status shown is the last confirmed update.",
+    "pullOnly": "This page checks for updates while it is open and visible. It does not send push notifications.",
+    "statusChanged": "Order status changed to {status}.",
+    "cancelledCall": "Call the café about this cancellation: {phone}",
+    "saveLinkTitle": "Save your private order link",
+    "saveLinkBody": "Closing this tab without saving the link ends self-service tracking. Anyone with the link can see this order’s PII-free status.",
+    "copyLink": "Copy private order link",
+    "linkCopied": "Private link copied",
+    "phoneCancellation": "The café may call the phone number you submitted if an accepted order must be cancelled.",
+    "remove": "Remove this order from this browser",
+    "removedTitle": "Private order removed",
+    "removedBody": "This browser no longer holds the private tracking key.",
+    "unavailableTitle": "Private order link unavailable",
+    "unavailableBody": "This link is invalid, expired, revoked, or missing. No order details are available."
   },
   "footer": {
     "rights": "All rights reserved.",
     "madeWith": "Made with love in Pointe-Claire"
+  },
+  "metadata": {
+    "home": {
+      "title": "Café Le Den — Café in Pointe-Claire",
+      "description": "Fresh bread, specialty lattes, and homemade meals in Valois Village, Pointe-Claire."
+    },
+    "menu": {
+      "title": "Menu for pickup | Café Le Den",
+      "description": "Browse Café Le Den’s current food and drink menu for pickup in Pointe-Claire."
+    },
+    "order": {
+      "title": "Order for pickup | Café Le Den",
+      "description": "Review your Café Le Den cart, choose a pickup time, and place your order."
+    },
+    "confirmation": {
+      "title": "Order confirmation | Café Le Den",
+      "description": "Review the pickup details for your Café Le Den order."
+    },
+    "status": {
+      "title": "Private order status | Café Le Den",
+      "description": "Check the current status of a Café Le Den pickup order using its private link."
+    }
   }
 }

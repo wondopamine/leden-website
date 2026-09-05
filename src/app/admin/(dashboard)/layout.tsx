@@ -1,4 +1,4 @@
-import { requireAuth } from "@/lib/supabase/auth";
+import { requireAdminPage } from "@/lib/supabase/auth";
 import { AdminSidebar } from "@/components/admin/sidebar";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -7,13 +7,15 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  await requireAuth();
+  await requireAdminPage();
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex min-h-screen bg-background lg:h-screen">
       <AdminSidebar />
-      <main className="flex-1 overflow-auto pt-14 lg:pt-0">
-        <div className="p-6">{children}</div>
+      <main className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto pt-14 lg:pt-0">
+        <div className="mx-auto w-full max-w-[var(--max-content-width,80rem)] p-4 sm:p-6">
+          {children}
+        </div>
       </main>
       <Toaster position="top-right" />
     </div>

@@ -34,15 +34,19 @@ export function ButtonIconSizesDemo() {
   return (
     <div className="flex flex-wrap items-center gap-3">
       <Button variant="ghost" size="icon-xs">
+        <span className="sr-only">Settings, extra small</span>
         <Icon as={Settings} size="sm" />
       </Button>
       <Button variant="ghost" size="icon-sm">
+        <span className="sr-only">Settings, small</span>
         <Icon as={Settings} size="sm" />
       </Button>
       <Button variant="ghost" size="icon">
+        <span className="sr-only">Settings</span>
         <Icon as={Settings} size="md" />
       </Button>
       <Button variant="ghost" size="icon-lg">
+        <span className="sr-only">Settings, large</span>
         <Icon as={Settings} size="lg" />
       </Button>
     </div>

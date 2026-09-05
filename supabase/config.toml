@@ -1,0 +1,52 @@
+# Local-only Supabase stack for lifecycle development and proof.
+# Remote commands must use the independent target handshake documented in
+# docs/order-lifecycle-contract.md; this file never stores a hosted project ref.
+project_id = "leden-website-local"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[db.seed]
+enabled = true
+sql_paths = ["./bootstrap/environment-sentinel.sql", "./seed.sql"]
+
+[realtime]
+enabled = true
+
+[studio]
+enabled = true
+port = 54323
+
+[local_smtp]
+enabled = true
+port = 54324
+
+[storage]
+enabled = true
+file_size_limit = "5MiB"
+
+[auth]
+enabled = true
+site_url = "http://127.0.0.1:3000"
+additional_redirect_urls = ["http://127.0.0.1:3000/**"]
+jwt_expiry = 3600
+enable_signup = false
+
+[auth.email]
+# The provider stays available for Admin-API-created synthetic staff. The global
+# auth.enable_signup flag above still blocks public self-registration.
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = false
+
+[analytics]
+enabled = false

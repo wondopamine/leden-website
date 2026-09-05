@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Phase 1 complete (verified 7/7) — ready for Phase 2
-last_updated: "2026-05-02T15:45:00Z"
+status: Order lifecycle hardening active — U1-U7 local complete; hosted canary owner-gated
+last_updated: "2026-08-24T17:35:00+08:00"
 progress:
   total_phases: 5
   completed_phases: 1
@@ -15,7 +15,7 @@ progress:
 # Project State: Café Le Den — Website Refactor
 
 **Initialized:** 2026-04-26
-**Last updated:** 2026-04-26
+**Last updated:** 2026-08-24
 
 ## Project Reference
 
@@ -23,7 +23,7 @@ progress:
 
 **Milestone:** Comprehensive refactor — same features, rebuilt on a coherent design system + consolidated data layer + major visual lift.
 
-**Current focus:** Phase 01 — design-system-foundation-brand-expression
+**Current focus:** Order Lifecycle Hardening — U7 local proof is complete. Hosted Supabase and actual staging-edge canaries remain explicitly owner-gated before U8 contract work.
 
 ## Current Position
 
@@ -124,13 +124,48 @@ Next: Phase 02 — Data Layer Consolidation + Image Pipeline + RLS Hardening
 - DSY-07 native `<button>` widget gap (13 multi-line elements: header language picker, dismiss banner, sidebar Sign Out, period filter, qty stepper, modifier pills) accepted as-is; will be replaced when Phase 3 (Customer rebuild) and Phase 4 (Admin rebuild) rewrite their containing files. ESLint guardrails enforce token discipline on every file those phases touch.
 - DSY-03 acceptance regex was overbroad — all 9 `(0\.[0-9]+s|ease-(out|in|in-out))` matches in globals.css are token definitions or `var(--ease-*)` references; intent (no bare easing keyword as literal CSS timing value) confirmed met.
 
+### Decisions Logged (Order Lifecycle Hardening)
+
+- The reviewed plan at `docs/plans/2026-08-24-001-feat-order-lifecycle-hardening-plan.md` supersedes the old lifecycle deferrals while preserving guest pay-at-pickup, EN/FR, one café, and the current status vocabulary.
+- U1 establishes a pinned local Supabase stack, deterministic synthetic fixtures, a protected checksum-pinned environment sentinel, production-denying target validation, and exact per-run cleanup manifests.
+- No remote mutation is allowed during U1. Hosted work remains blocked until the U7 owner-approved sentinel bootstrap and the full independent staging handshake.
+- U7, not U1, owns the final aggregate local lifecycle verifier after database, unit, race, browser, and cleanup suites exist.
+- U2 adds one protected `admin_users` capability, revokes anonymous direct order writes, and treats Proxy only as an optimistic session refresh. The dashboard, every Server Action, and the upload handler independently reauthorize live membership.
+- Synthetic local staff is provisioned only through the Admin API behind the U1 target handshake, stored in ignored `0600` credential/manifest files, and removed by exact membership/user ID cleanup.
+- U3 adds versioned lifecycle rows and atomic Postgres routines for authoritative menu snapshots, modifier cardinality, Montréal-local pickup promises, order-level GST/QST rounding, idempotent replay, private tracking, durable rate windows, and optimistic staff transitions with immutable events.
+- U3 keeps legacy null-contract rows compatible during expand, while v1 rows can only be created through the atomic routine. Direct application writes cannot forge totals, items, versions, events, or transitions.
+- U3 cleanup protects the 72-hour receipt/tracking window. Direct deletion of recoverable v1 orders is blocked; exact test cleanup is service-only, sentinel-gated to local/staging, revokes tracking, and deletes through a scoped guard.
+- U3 concurrency proof uses independent PostgreSQL sessions and observed lock waits for identical checkout, price/checkout, modifier-graph/checkout, and advance/cancel races. Generated public database types are now drift-checked.
+- U4 replaces the legacy price-bearing request with a strict IDs-only contract, bounded streamed JSON, canonical PostgreSQL-compatible fingerprints, stable safe error codes, and allowlisted PII-free response DTOs.
+- U4 requires same-origin requests, a trusted deployment identity, versioned HMAC rate keys, independent create/status/recovery buckets, and exact Turnstile action/hostname verification. Committed replay is resolved before a fresh challenge.
+- U4 isolates its non-cookie privileged Supabase client in a server-only module. The three Route Handlers only orchestrate validation, abuse controls, repository calls, and no-store/no-referrer responses; Resend is no longer part of order acceptance.
+- Real local service-role proof now covers create, identical replay, one-order persistence, recovery, and status through the public RPC chain. This exposed and fixed missing invoker read/lock privileges without granting direct café/menu updates.
+- U5 persists cart identity by canonical menu and modifier IDs only; customer PII is excluded from durable browser storage, and accepted or ambiguous attempts remain non-resubmittable across reloads until authoritative recovery resolves them.
+- U5 uses a fresh Turnstile challenge for each bounded submission, consumes private tracking secrets from URL fragments into session-scoped state, removes them from URL/history/referrers, and fails closed for malformed, unknown, or revoked status responses.
+- Customer status polling is visibility-aware, monotonic by order version, explicitly stale-safe, and terminal-state bounded. English/French locale switching, reload, Back/Forward, and copied private links preserve the privacy boundary.
+- U5 browser verification now waits for the language control's real expanded state, avoiding pre-hydration clicks under parallel production-build load without weakening the accessibility assertions.
+- U6 centralizes live, history, and detail reads in one staff-authorized server-only layer. The live board keeps every active order across Toronto midnight plus bounded current-day terminal rows, and dependency failures remain distinct from a valid empty queue.
+- U6 treats Realtime as a refresh hint only. Canonical no-store reconciliation is monotonic and request-sequenced, uses 30-second healthy and 15-second degraded polling, labels Live/Reconnecting/Polling/Stale, and locks transitions after 45 seconds without a successful refresh.
+- Staff transitions now use expected status/version compare-and-set RPC results, reconcile after every outcome, and require contextual confirmation for cancellation and picked-up terminal actions. The ordering gate is confirmation-protected on both the live board and Settings.
+- Menu create/edit now uses atomic graph RPCs and preserves sold-out state, optional modifier cardinality, and unavailable options. The new create RPC landed in the still-local, unapplied expand migration and was reproved from a clean reset.
+- Admin previews inject local ordering and transition actions so design/browser dogfooding cannot mutate a live target. Primary integration review also made malformed actions fail safely, suppressed late failed-refresh regressions, and fixed operational timestamps to the café timezone.
+- U7 now runs one clean-reset aggregate local proof across 220 pgTAP assertions, generated database type drift, 184 unit tests, four observed-lock races, real Auth/RLS/RPC integration, 27 preview browser regressions, profile-isolated production webpack builds, and 3 real lifecycle Playwright cases covering authorization denial plus EN picked-up and FR cancelled paths.
+- U7's EN browser path commits an order whose HTTP response is deliberately lost, recovers the same receipt, proves replay/conflict behavior, blocks Realtime, advances through every legal forward state, observes monotonic customer versions, and proves terminal polling stops. The FR path proves authorized confirmed cancellation and modifier-ownership rejection without a partial order.
+- U7 uses Cloudflare's official deterministic test token/secret only under exact local clean-reset markers. A local Node preload returns the documented action/hostname test response so the production action/hostname checks remain exercised without an external test dependency; production application code is unchanged.
+- U7 cleanup records attempts and tracking-secret digests before each request, journals staff intent before Auth mutation, recovers exact run-tagged identities after ambiguous Auth creation and abrupt post-allowlist interruption, deletes only the run-derived rate buckets, proves a foreign bucket survives, suppresses local credential output, and restores the deterministic café schedule in `finally`.
+- The local all-clock harness exposed PostgreSQL's `24:00` normalization. The pickup resolver now models `24:00` explicitly as the exclusive end of day, and pgTAP covers the real wrapper with that boundary while the committed seed retains its normal 07:30/08:00–15:00 schedule.
+- Hosted staging is deliberately not implemented by weakening the local harness. Its sentinel bootstrap, hosted adapter, backup/key owners, platform edge, and operator rehearsal are documented as separate approval gates in `docs/runbooks/`.
+
 ### Open Todos
 
-- Phase 1 complete. Start Phase 2 with `/gsd-spec-phase 2` (Data Layer Consolidation + Image Pipeline + RLS Hardening). Watch the package.json conflict risk noted in Risks.
+- Obtain explicit owner decisions for the hosted staging project, production denylist ref, sentinel bootstrap, backup/key ownership, test staff, platform hostname, cleanup, and café rehearsal.
+- Add and review a separate hosted lifecycle adapter, run both hosted canary gates with exact cleanup, then execute U8 as its separate contract stack.
+- Resume the legacy Phase 2 roadmap only where it does not conflict with the active lifecycle-hardening units.
 
 ### Blockers
 
-None.
+- Hosted non-production proof requires an owner-confirmed project, exact production denylist ref, checksum-pinned bootstrap authority, backup/key/test-staff owners, and a reviewed hosted adapter. No hosted operation is currently authorized.
+- U8 contract migrations remain blocked until the hosted application canary passes; actual staging edge/Turnstile and owner operational sign-off remain launch gates.
 
 ### Risks Surfaced During Roadmapping
 
@@ -140,9 +175,9 @@ None.
 
 ## Session Continuity
 
-**Last session:** Phase 1 plan 06 complete — Button prop-explicitness pass (DSY-07); 9 files modified; 14 call sites updated with explicit variant= + size= props; full-tree audit exits 0; lint+tsc+build all green; Phase 1 all 7 DSY requirements complete. Commits: `1a5d9f1`, `d0003f2`.
+**Last session:** U7 local proof completed from a clean reset. The aggregate verifier passed 220 pgTAP assertions, database type drift, 184 unit tests, all four observed-lock races, ambiguous-Auth and abrupt-post-allowlist recovery probes, 2 real integration cases, 27 intercepted browser regressions (6 real-only skips), both profile-isolated webpack builds, 3 real lifecycle browser cases, the private-material output scan, lint, TypeScript, exact synthetic cleanup with foreign-bucket isolation, and café-runtime restoration. No hosted target was accessed or mutated.
 
-**Next session entry point:** Phase 1 complete. Run `/gsd-spec-phase 2` to begin Data Layer Consolidation + Image Pipeline + RLS Hardening.
+**Next session entry point:** Review the U7 local changes and runbooks. Stop before any hosted action until the owner supplies every gate in `docs/runbooks/order-lifecycle-staging.md`. After a reviewed hosted adapter and successful hosted application canary, prepare U8 as a separate contract migration stack.
 
 **Files of record:**
 

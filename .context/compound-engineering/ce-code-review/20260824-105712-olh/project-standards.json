@@ -1,0 +1,25 @@
+{
+  "reviewer": "project-standards",
+  "findings": [
+    {
+      "title": "Next upgrade cites stale framework guidance",
+      "severity": "P2",
+      "file": "docs/plans/2026-08-24-001-feat-order-lifecycle-hardening-plan.md",
+      "line": 448,
+      "why_it_matters": "The lifecycle implementation is recorded as following Route Handler and server-only DAL guidance from Next.js 16.2.1, but the same change set upgrades the application and its ESLint integration to Next.js 16.3.1. The repository explicitly treats installed Next.js guidance as version-specific because APIs and conventions can break, so the review record cannot demonstrate that the implemented 16.3.1 code heeded the current documentation or deprecation notices. Reviewing the installed 16.3.1 guides and updating the plan with that evidence restores the required version-aligned implementation trail.",
+      "autofix_class": "manual",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "suggested_fix": "Read the relevant installed Next.js 16.3.1 Route Handler, server-only data-access, upgrade, and deprecation guidance; resolve any resulting changes, then update the plan's framework-guidance record from 16.2.1 to the version actually reviewed.",
+      "confidence": 100,
+      "evidence": [
+        "AGENTS.md:4 requires: 'Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.'",
+        "package.json:35 changes the installed application dependency to `\"next\": \"16.3.1\"` (with eslint-config-next also changed to 16.3.1).",
+        "docs/plans/2026-08-24-001-feat-order-lifecycle-hardening-plan.md:448 explicitly records the implementation pattern as guidance 'read from the installed 16.2.1 docs,' one installed version behind the code under review."
+      ],
+      "pre_existing": false
+    }
+  ],
+  "residual_risks": [],
+  "testing_gaps": []
+}

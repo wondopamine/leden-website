@@ -1,0 +1,65 @@
+{
+  "reviewer": "maintainability",
+  "findings": [
+    {
+      "title": "Public order wire contract has competing owners",
+      "severity": "P2",
+      "file": "src/lib/orders/checkout-attempt.ts",
+      "line": 55,
+      "why_it_matters": "Adding an order state, boundary error, or receipt field requires synchronized edits across independent server, client, and admin declarations, so TypeScript cannot make contract drift a compile failure. The checkout layer compounds that duplication by advertising a generic `Receipt` while always validating `PublicOrderReceipt` and casting it to the caller's arbitrary type parameter. A single client-safe public contract with concrete receipt results would leave boundary-specific parsers intact while giving the wire model one owner.",
+      "autofix_class": "safe_auto",
+      "owner": "review-fixer",
+      "requires_verification": true,
+      "suggested_fix": "Create one client-safe public order contract module for the shared status, receipt/projection DTOs, and public error-code union; import those types from server/client/admin code and replace the receipt generics with concrete `PublicOrderReceipt` results.",
+      "confidence": 100,
+      "evidence": [
+        "src/lib/orders/repository.server.ts:20-66 independently declares OrderStatus, OrderReceipt, and OrderStatusProjection with the same wire shape as src/lib/types.ts:24-70.",
+        "src/lib/orders/errors.ts:1-19 and src/lib/orders/checkout-attempt.ts:55-73 independently list the same public boundary error codes.",
+        "src/lib/orders/admin-realtime.ts:8-14 introduces a third copy of the five-state order union, while server and client parsers each hard-code that union again.",
+        "src/lib/orders/checkout-attempt.ts:458-463 validates only isPublicOrderReceipt(receipt) and then casts through unknown to generic Receipt; production call sites at src/components/order/order-content.tsx:244 and :438 always instantiate PublicOrderReceipt."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "Settings form imports the live dashboard module",
+      "severity": "P2",
+      "file": "src/components/admin/settings-form.tsx",
+      "line": 14,
+      "why_it_matters": "The settings form now depends on the live order-board module and its OrderCard, reconciliation, Web Audio, fetch, dialog, and server-action dependency graph solely to render the shared pause control. Because the control has two real consumers, housing it inside one consumer creates directional coupling: dashboard refactors can force settings changes even though the features are otherwise independent. Extracting the control and its action type into a neutral component gives both screens a stable dependency.",
+      "autofix_class": "safe_auto",
+      "owner": "review-fixer",
+      "requires_verification": true,
+      "suggested_fix": "Move `OnlineOrderingControl` and its action type to a dedicated admin component, then import that component from both `orders-dashboard.tsx` and `settings-form.tsx`.",
+      "confidence": 75,
+      "evidence": [
+        "src/components/admin/settings-form.tsx:14 imports OnlineOrderingControl directly from orders-dashboard.tsx and line 38 derives its prop type from that dashboard export.",
+        "src/components/admin/orders-dashboard.tsx:1-35 imports the order board, Realtime reconciliation, audio/connection UI, and dashboard actions in the same module that exports OnlineOrderingControl at lines 515-613.",
+        "src/components/admin/orders-dashboard.tsx:445 and src/components/admin/settings-form.tsx:151 are the two concrete control consumers, so a neutral shared component has proven reuse rather than being a speculative abstraction."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "Obsolete auth exports preserve the wrong API",
+      "severity": "P3",
+      "file": "src/lib/supabase/auth.ts",
+      "line": 10,
+      "why_it_matters": "Future admin code is presented with three apparent authentication entry points even though only `requireAdminPage` has a consumer, and the legacy `getUser` primitive authenticates without enforcing the staff allowlist. The refactor leaves `getUser`, its client factory import, and the `requireAuth` alias as dead compatibility surface beside the canonical page guard. Removing them makes the intended authorization boundary unambiguous and prevents new code from selecting the weaker obsolete primitive.",
+      "autofix_class": "safe_auto",
+      "owner": "review-fixer",
+      "requires_verification": false,
+      "suggested_fix": "Delete the unused `getUser` function, its `createClient` import, and the unused `requireAuth` alias; keep `requireAdminPage` as the sole exported page guard.",
+      "confidence": 100,
+      "evidence": [
+        "src/lib/supabase/auth.ts:10-16 exports getUser, but repository-wide search finds no import or invocation of that function.",
+        "src/lib/supabase/auth.ts:34 exports requireAuth as an alias, but repository-wide search finds no consumer; src/app/admin/(dashboard)/layout.tsx imports requireAdminPage directly.",
+        "The base implementation used getUser inside requireAuth; this diff replaces that path with requireStaff inside requireAdminPage, making the old function newly dead rather than an unrelated pre-existing issue."
+      ],
+      "pre_existing": false
+    }
+  ],
+  "residual_risks": [],
+  "testing_gaps": [
+    "The current suite exercises each public DTO parser at runtime, but there is no compile-time single-source contract that makes server/client/admin status, error, and receipt drift fail during type checking.",
+    "No static dead-export or dependency-boundary check detects zero-consumer compatibility exports or prevents a shared settings control from being owned by a dashboard feature module."
+  ]
+}

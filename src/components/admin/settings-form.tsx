@@ -1,14 +1,21 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
+import Link from "next/link";
 import { updateCafeInfo } from "@/app/admin/(dashboard)/settings/actions";
 import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { toast } from "sonner";
+import { useUnsavedChanges } from "@/lib/use-unsaved-changes";
+import {
+  parseAdminIntegerInput,
+  SAME_DAY_MAX_ADVANCE_ORDER_DAYS,
+} from "@/lib/admin-settings";
+import { OnlineOrderingControl } from "@/components/admin/orders-dashboard";
 
 type HourEntry = {
   day: string;
@@ -26,13 +33,20 @@ type CafeInfoData = {
   announcement_fr: string | null;
   pickup_lead_time: number;
   max_advance_order_days: number;
+  ordering_enabled: boolean;
 };
 
 type Props = {
   initialData: CafeInfoData | null;
+  action?: typeof updateCafeInfo;
+  orderingAction?: React.ComponentProps<typeof OnlineOrderingControl>["action"];
 };
 
-export function SettingsForm({ initialData }: Props) {
+export function SettingsForm({
+  initialData,
+  action = updateCafeInfo,
+  orderingAction,
+}: Props) {
   const [isPending, startTransition] = useTransition();
   const [hours, setHours] = useState<HourEntry[]>(
     initialData?.hours ?? []
@@ -48,25 +62,39 @@ export function SettingsForm({ initialData }: Props) {
   const [pickupLeadTime, setPickupLeadTime] = useState(
     initialData?.pickup_lead_time ?? 15
   );
-  const [maxAdvanceDays, setMaxAdvanceDays] = useState(
-    initialData?.max_advance_order_days ?? 3
-  );
+  const [isDirty, setIsDirty] = useState(false);
+  const editRevisionRef = useRef(0);
+  const [submissionMessage, setSubmissionMessage] = useState<{
+    tone: "success" | "error";
+    text: string;
+  } | null>(null);
+  const { confirmDiscard, resumeProtection } =
+    useUnsavedChanges(isDirty, () => setIsDirty(false));
+
+  function markDirty() {
+    editRevisionRef.current += 1;
+    setIsDirty(true);
+  }
 
   function updateHour(
     idx: number,
     field: keyof HourEntry,
     value: string | boolean
   ) {
+    markDirty();
     const updated = [...hours];
     (updated[idx] as Record<string, string | boolean>)[field] = value;
     setHours(updated);
   }
 
-  function handleSave() {
+  function handleSave(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     if (!initialData?.id) return;
+    setSubmissionMessage(null);
+    const submittedRevision = editRevisionRef.current;
     startTransition(async () => {
       try {
-        await updateCafeInfo({
+        await action({
           id: initialData.id,
           hours,
           address,
@@ -74,63 +102,115 @@ export function SettingsForm({ initialData }: Props) {
           announcement_en: announcementEn,
           announcement_fr: announcementFr,
           pickup_lead_time: pickupLeadTime,
-          max_advance_order_days: maxAdvanceDays,
+          max_advance_order_days: SAME_DAY_MAX_ADVANCE_ORDER_DAYS,
         });
-        toast.success("Settings saved");
+        const hasNewerEdits = editRevisionRef.current !== submittedRevision;
+        if (hasNewerEdits) {
+          resumeProtection();
+          setIsDirty(true);
+        } else {
+          setIsDirty(false);
+        }
+        setSubmissionMessage({
+          tone: "success",
+          text: hasNewerEdits
+            ? "Settings saved. Newer edits are still unsaved."
+            : "Settings saved.",
+        });
       } catch {
-        toast.error("Failed to save settings");
+        resumeProtection();
+        setIsDirty(true);
+        setSubmissionMessage({
+          tone: "error",
+          text: "Settings were not saved. Check the fields and your connection, then try again.",
+        });
       }
     });
   }
 
   if (!initialData) {
     return (
-      <p className="text-sm text-muted-foreground">
-        No cafe info found. Please run the seed migration.
-      </p>
+      <div className="rounded-xl border border-border bg-card p-4">
+        <h2 className="font-sans text-sm font-semibold text-foreground">
+          Settings unavailable
+        </h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          No café information was found. Run the seed migration, then reload this
+          page.
+        </p>
+      </div>
     );
   }
 
   return (
-    <div className="max-w-2xl space-y-4">
+    <form
+      onSubmit={handleSave}
+      onChange={markDirty}
+      aria-busy={isPending}
+      className="max-w-2xl space-y-4"
+    >
+      <OnlineOrderingControl
+        enabled={initialData.ordering_enabled}
+        action={orderingAction}
+      />
+
       {/* Hours */}
       <Card>
         <CardHeader>
-          <CardTitle className="font-sans text-sm font-semibold">
-            Business Hours
+          <CardTitle as="h2" className="font-sans text-sm font-semibold">
+            Business hours
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           {hours.map((h, idx) => (
-            <div key={h.day} className="flex flex-wrap items-center gap-x-3 gap-y-2">
-              <span className="w-24 text-sm font-medium text-foreground">
+            <div
+              key={h.day}
+              className="grid gap-2 border-b border-border py-3 first:pt-0 last:border-b-0 last:pb-0 sm:grid-cols-[6rem_auto_1fr] sm:items-center"
+            >
+              <span className="text-sm font-medium text-foreground">
                 {h.day}
               </span>
-              <Switch
-                checked={!h.closed}
-                onCheckedChange={(open) => updateHour(idx, "closed", !open)}
-                aria-label={`${h.day} open`}
-              />
+              <div className="flex min-h-11 items-center gap-2 sm:min-h-9">
+                <Switch
+                  id={`hours-${idx}-open`}
+                  checked={!h.closed}
+                  onCheckedChange={(open) => updateHour(idx, "closed", !open)}
+                  aria-label={`${h.day} is open`}
+                />
+                <Label htmlFor={`hours-${idx}-open`} className="font-normal">
+                  {h.closed ? "Closed" : "Open"}
+                </Label>
+              </div>
               {!h.closed ? (
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="time"
-                    value={h.open}
-                    onChange={(e) => updateHour(idx, "open", e.target.value)}
-                    className="w-32 tabular-nums"
-                    aria-label={`${h.day} opening time`}
-                  />
-                  <span className="text-sm text-muted-foreground">to</span>
-                  <Input
-                    type="time"
-                    value={h.close}
-                    onChange={(e) => updateHour(idx, "close", e.target.value)}
-                    className="w-32 tabular-nums"
-                    aria-label={`${h.day} closing time`}
-                  />
+                <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor={`hours-${idx}-start`}>Opens</Label>
+                    <Input
+                      id={`hours-${idx}-start`}
+                      type="time"
+                      value={h.open}
+                      onChange={(e) => updateHour(idx, "open", e.target.value)}
+                      className="tabular-nums"
+                    />
+                  </div>
+                  <span className="pb-3 text-sm text-muted-foreground sm:pb-2">
+                    to
+                  </span>
+                  <div className="space-y-1.5">
+                    <Label htmlFor={`hours-${idx}-end`}>Closes</Label>
+                    <Input
+                      id={`hours-${idx}-end`}
+                      type="time"
+                      value={h.close}
+                      onChange={(e) => updateHour(idx, "close", e.target.value)}
+                      className="tabular-nums"
+                    />
+                  </div>
                 </div>
               ) : (
-                <span className="text-sm text-muted-foreground">Closed</span>
+                <span className="text-sm text-muted-foreground">
+                  No pickup hours
+                </span>
               )}
             </div>
           ))}
@@ -140,18 +220,26 @@ export function SettingsForm({ initialData }: Props) {
       {/* Contact */}
       <Card>
         <CardHeader>
-          <CardTitle className="font-sans text-sm font-semibold">
+          <CardTitle as="h2" className="font-sans text-sm font-semibold">
             Contact
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>Address</Label>
-            <Input value={address} onChange={(e) => setAddress(e.target.value)} />
+            <Label htmlFor="cafe-address">Address</Label>
+            <Input
+              id="cafe-address"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+            />
           </div>
           <div className="space-y-2">
-            <Label>Phone</Label>
-            <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
+            <Label htmlFor="cafe-phone">Phone</Label>
+            <Input
+              id="cafe-phone"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+            />
           </div>
         </CardContent>
       </Card>
@@ -159,14 +247,15 @@ export function SettingsForm({ initialData }: Props) {
       {/* Announcement */}
       <Card>
         <CardHeader>
-          <CardTitle className="font-sans text-sm font-semibold">
+          <CardTitle as="h2" className="font-sans text-sm font-semibold">
             Announcement
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>English</Label>
+            <Label htmlFor="announcement-en">English</Label>
             <Textarea
+              id="announcement-en"
               value={announcementEn}
               onChange={(e) => setAnnouncementEn(e.target.value)}
               rows={2}
@@ -174,8 +263,9 @@ export function SettingsForm({ initialData }: Props) {
             />
           </div>
           <div className="space-y-2">
-            <Label>French</Label>
+            <Label htmlFor="announcement-fr">French</Label>
             <Textarea
+              id="announcement-fr"
               value={announcementFr}
               onChange={(e) => setAnnouncementFr(e.target.value)}
               rows={2}
@@ -188,41 +278,77 @@ export function SettingsForm({ initialData }: Props) {
       {/* Order settings */}
       <Card>
         <CardHeader>
-          <CardTitle className="font-sans text-sm font-semibold">
-            Order Settings
+          <CardTitle as="h2" className="font-sans text-sm font-semibold">
+            Order settings
           </CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label>Pickup Lead Time (minutes)</Label>
+            <Label htmlFor="pickup-lead-time">Pickup lead time (minutes)</Label>
             <Input
+              id="pickup-lead-time"
               type="number"
               min="5"
               value={pickupLeadTime}
               onChange={(e) =>
-                setPickupLeadTime(parseInt(e.target.value) || 15)
+                setPickupLeadTime(parseAdminIntegerInput(e.target.value, 15))
               }
               className="tabular-nums"
             />
           </div>
           <div className="space-y-2">
-            <Label>Max Advance Order Days</Label>
-            <Input
-              type="number"
-              min="0"
-              value={maxAdvanceDays}
-              onChange={(e) =>
-                setMaxAdvanceDays(parseInt(e.target.value) || 3)
-              }
-              className="tabular-nums"
-            />
+            <p className="text-sm font-medium text-foreground">
+              Ordering window
+            </p>
+            <p className="text-sm text-foreground">Same-day pickup only</p>
+            <p className="text-xs text-muted-foreground">
+              Future-day orders are not available in this ordering flow.
+            </p>
           </div>
         </CardContent>
       </Card>
 
-      <Button variant="default" size="default" onClick={handleSave} disabled={isPending}>
-        {isPending ? "Saving..." : "Save Settings"}
-      </Button>
-    </div>
+      {isPending ? (
+        <p role="status" className="text-sm text-muted-foreground">
+          Saving settings…
+        </p>
+      ) : submissionMessage ? (
+        <p
+          role={submissionMessage.tone === "error" ? "alert" : "status"}
+          className={
+            submissionMessage.tone === "error"
+              ? "text-sm text-destructive"
+              : "text-sm text-status-active-foreground"
+          }
+        >
+          {submissionMessage.text}
+        </p>
+      ) : isDirty ? (
+        <p role="status" className="text-sm text-muted-foreground">
+          Unsaved changes
+        </p>
+      ) : null}
+
+      <div className="flex flex-wrap gap-3">
+        <Button
+          type="submit"
+          variant="default"
+          size="default"
+          disabled={isPending}
+          aria-busy={isPending}
+        >
+          {isPending ? "Saving…" : "Save settings"}
+        </Button>
+        <Link
+          href="/admin"
+          className={buttonVariants({ variant: "outline", size: "default" })}
+          onClick={(event) => {
+            if (!confirmDiscard()) event.preventDefault();
+          }}
+        >
+          Cancel
+        </Link>
+      </div>
+    </form>
   );
 }

@@ -1,0 +1,87 @@
+{
+  "reviewer": "reliability",
+  "findings": [
+    {
+      "title": "Create success is caught as failure",
+      "severity": "P1",
+      "file": "src/components/admin/menu-item-form.tsx",
+      "line": 184,
+      "why_it_matters": "Creating a menu item successfully calls the existing Server Action's `redirect(\"/admin/menu\")`, and Next.js 16 rejects the client-side action promise with its handled redirect error. This catch treats that framework control flow as a failed save, restores the dirty guard, and can put a discard prompt or failure state in the path of a write that already committed; retrying then encounters or creates a duplicate. Rethrowing Next's internal redirect before restoring draft/error state preserves the successful navigation while retaining the new recovery UI for real failures.",
+      "autofix_class": "safe_auto",
+      "owner": "review-fixer",
+      "requires_verification": true,
+      "suggested_fix": "Catch the error value, call `unstable_rethrow(error)` at the top of the catch block, and only resume protection/set the error state if it returns. Add a create-action redirect regression test.",
+      "confidence": 100,
+      "evidence": [
+        "src/components/admin/menu-item-form.tsx:176-190 awaits the passed action inside a broad catch and unconditionally runs resumeProtection(), setIsDirty(true), and the failure message on rejection.",
+        "src/app/admin/(dashboard)/menu/actions.ts:46-47 revalidates and calls redirect(\"/admin/menu\") after the database insert and modifier writes succeed.",
+        "The installed Next.js 16.2.1 server-action reducer explicitly rejects a redirecting action promise with a handled redirect error; its unstable_rethrow documentation lists redirect() among framework exceptions that application catches must rethrow."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "Order rejections prescribe an unsafe retry",
+      "severity": "P1",
+      "file": "src/components/order/order-content.tsx",
+      "line": 174,
+      "why_it_matters": "A sold-out item, changed price, closed pickup window, service outage, and the partial-write case where the order header exists but item persistence failed all become the same 'check your connection and try again' response. Some retries can never succeed without returning to the menu, while retrying after `Failed to save order details` can create another order header. The new localized recovery messages and `showMenuLink` field already model these distinctions, but this branch never selects them.",
+      "autofix_class": "gated_auto",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "suggested_fix": "Without changing the API shape, parse the authored JSON error on non-2xx responses and map an allowlist of existing order-route messages/prefixes to `errorHours`, `errorMenuChanged`, `errorService`, or `errorOrderDetails`; keep raw server text hidden and set `showMenuLink` for menu changes.",
+      "confidence": 100,
+      "evidence": [
+        "src/components/order/order-content.tsx:174-176 assigns errorSubmitting with showMenuLink:false for every non-2xx response and does not read the response body.",
+        "src/app/api/order/route.ts:96-105 returns actionable item-removed, unavailable, and price-changed errors; lines 216-220 return `Failed to save order details` only after the order row was already inserted at lines 176-192.",
+        "src/messages/en.json:103-106 and src/messages/fr.json:103-106 add distinct service, partial-order, hours, and menu-change recovery copy, but none is referenced by the non-2xx branch.",
+        "tests/e2e/storefront-design.spec.ts:244-260 covers only a generic mocked 500 and therefore cannot detect the menu-change or partial-write retry behavior."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "Save completion drops newer draft edits",
+      "severity": "P2",
+      "file": "src/components/admin/settings-form.tsx",
+      "line": 93,
+      "why_it_matters": "On a slow save, staff can continue editing because the fields remain enabled. The request contains the values captured at submit time, but its eventual success unconditionally clears `isDirty`, so later edits look saved and navigation no longer warns before discarding them. The same completion-order race exists in the menu-item and category editors, undermining the newly claimed draft-safety behavior across all three admin forms.",
+      "autofix_class": "safe_auto",
+      "owner": "review-fixer",
+      "requires_verification": true,
+      "suggested_fix": "Track an edit revision captured at submit and clear dirty state only when no newer edit occurred; apply the same guard to MenuItemForm and CategoriesManager, then test an edit made while the action promise is pending.",
+      "confidence": 100,
+      "evidence": [
+        "src/components/admin/settings-form.tsx:79-93 suspends protection/clears dirty before awaiting updateCafeInfo and clears it again on success, while the inputs at lines 135-280 are not disabled by isPending.",
+        "src/components/admin/menu-item-form.tsx:174-183 follows the same unconditional dirty reset after awaiting the action while editable controls remain enabled.",
+        "src/components/admin/categories-manager.tsx:69-76 deletes the category ID from editedIds after the request resolves even if handleFieldChange added newer edits during the pending request; its inputs remain enabled.",
+        "tests/e2e/admin-design.spec.ts:124-148 verifies explicit discard/cancel only and never edits during a pending save."
+      ],
+      "pre_existing": false
+    },
+    {
+      "title": "Error recovery link opens a missing route",
+      "severity": "P2",
+      "file": "src/app/admin/(dashboard)/orders/error.tsx",
+      "line": 37,
+      "why_it_matters": "When order history rendering fails, the secondary recovery action sends staff to `/admin/dashboard`, which has no route or rewrite. Instead of reaching the promised live-order dashboard, the user lands on a 404 from the error state. Pointing the link at the existing `/admin` dashboard restores a working escape path when retry is not appropriate.",
+      "autofix_class": "safe_auto",
+      "owner": "review-fixer",
+      "requires_verification": true,
+      "suggested_fix": "Change the recovery href from `/admin/dashboard` to `/admin` and add an assertion that the error-state link resolves to the live dashboard route.",
+      "confidence": 100,
+      "evidence": [
+        "src/app/admin/(dashboard)/orders/error.tsx:37 hard-codes href=\"/admin/dashboard\" while the link label promises 'Return to live orders'.",
+        "The admin route tree contains src/app/admin/(dashboard)/page.tsx at `/admin` and no `src/app/admin/**/dashboard/page.tsx`; src/proxy.ts contains no rewrite for `/admin/dashboard`."
+      ],
+      "pre_existing": false
+    }
+  ],
+  "residual_risks": [
+    "By explicit plan deferral, Supabase query errors in order history and analytics still resolve to valid-looking empty/zero data because those loaders ignore the SDK `error` field; the new route/analytics error surfaces cover thrown runtime failures, not this dependency-failure class."
+  ],
+  "testing_gaps": [
+    "The fixture-gated authenticated mutation suite does not exercise any mutation even when enabled; tests/e2e/admin-design.spec.ts:165-169 only validates the configured URL, leaving create redirects, failed saves, status transitions, and deletes unverified.",
+    "Draft tests cover explicit Cancel/Discard only; there is no sidebar/back/reload guard test, Server Action failure test, create redirect test, or edit-during-pending test.",
+    "Checkout coverage mocks only a generic 500. It does not cover 400 hours/menu validation, the partial order-items write response, or a successful submission through cart clear and confirmation navigation.",
+    "The new orders route error component is not rendered in Playwright, so its Retry action and return link are not exercised."
+  ]
+}

@@ -1,174 +1,88 @@
-import { setRequestLocale, getTranslations } from "next-intl/server";
+import type { Metadata } from "next";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import { use } from "react";
-import { useTranslations } from "next-intl";
-import { Check } from "lucide-react";
+import { CircleAlert, Phone } from "lucide-react";
 import { Link } from "@/i18n/navigation";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { Watermelon } from "@/components/brand/watermelon";
-import { createClient } from "@supabase/supabase-js";
+import { getCafeInfo } from "@/lib/supabase/queries";
 
 type Props = {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ order?: string }>;
 };
 
-async function getOrderDetails(orderNumber: string) {
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    return null;
-  }
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-  );
-  const { data } = await supabase
-    .from("orders")
-    .select("*, order_items(*)")
-    .eq("order_number", orderNumber)
-    .single();
-  return data;
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({
+    locale,
+    namespace: "metadata.confirmation",
+  });
+  return {
+    title: t("title"),
+    description: t("description"),
+    robots: { index: false, follow: false },
+  };
 }
 
-export default function ConfirmationPage({ params, searchParams }: Props) {
+export default function ConfirmationPage({ params }: Props) {
   const { locale } = use(params);
-  const { order } = use(searchParams);
   setRequestLocale(locale);
-
-  return (
-    <section className="mx-auto max-w-lg px-5 py-20">
-      {order ? <ConfirmationContent orderNumber={order} locale={locale} /> : <FallbackContent />}
-    </section>
-  );
+  return <LegacyConfirmation />;
 }
 
-function SuccessHeader({ title, subtitle }: { title: string; subtitle: string }) {
-  return (
-    <div className="flex flex-col items-center text-center">
-      <div className="relative">
-        <span className="flex size-16 items-center justify-center rounded-full bg-forest-9 text-cream-1">
-          <Check aria-hidden className="size-8" strokeWidth={2.5} />
-        </span>
-        <Watermelon size={40} className="absolute -right-4 -top-3 rotate-[18deg]" />
-      </div>
-      <h1 className="mt-5 font-display text-h1 text-forest-12">{title}</h1>
-      <p className="mt-2 text-body text-muted-foreground">{subtitle}</p>
-    </div>
-  );
-}
-
-async function ConfirmationContent({ orderNumber, locale }: { orderNumber: string; locale: string }) {
+async function LegacyConfirmation() {
   const t = await getTranslations("confirmation");
-  const order = await getOrderDetails(orderNumber);
-
-  const pickupDisplay = order?.pickup_time
-    ? new Date(order.pickup_time).toLocaleTimeString(locale === "fr" ? "fr-CA" : "en-CA", {
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : t("asap");
-
+  const cafePhone = await getCafeInfo()
+    .then((cafe) => cafe.phone.trim() || null)
+    .catch(() => null);
   return (
-    <>
-      <SuccessHeader title={t("title")} subtitle={t("thankYou")} />
-
-      <div className="mt-8 rounded-2xl border border-cream-6 bg-card p-6">
-        <div className="grid grid-cols-2 gap-4">
-          <Field label={t("orderNumber")}>
-            <span className="font-mono text-body font-bold text-forest-12">{orderNumber}</span>
-          </Field>
-          <Field label={t("pickupTime")}>
-            <span className="text-body font-semibold text-forest-12">{pickupDisplay}</span>
-          </Field>
+    <section className="mx-auto max-w-lg px-5 py-14 sm:py-20">
+      <div className="flex flex-col items-center text-center">
+        <div className="relative">
+          <span className="flex size-16 items-center justify-center rounded-full bg-accent-surface text-accent-text">
+            <CircleAlert aria-hidden className="size-8" />
+          </span>
+          <Watermelon
+            size={40}
+            className="absolute -right-4 -top-3 rotate-[18deg]"
+          />
         </div>
-        <Field label={t("pickupAt")} className="mt-4">
-          <span className="text-body font-semibold text-forest-12">121 Donegani, Pointe-Claire, QC</span>
-        </Field>
+        <h1 className="mt-5 font-display text-h1 text-forest-12">
+          {t("legacyTitle")}
+        </h1>
+        <p className="mt-2 text-body text-muted-foreground">
+          {t("legacyBody")}
+        </p>
+      </div>
 
-        {order?.order_items && order.order_items.length > 0 && (
-          <>
-            <Separator className="my-5" />
-            <p className="mb-2 text-label uppercase tracking-wide text-muted-foreground">{t("items")}</p>
-            <div className="space-y-2">
-              {order.order_items.map(
-                (item: {
-                  id: string;
-                  menu_item_name: string;
-                  quantity: number;
-                  price: number;
-                  modifiers: { name: string; option: string }[];
-                }) => (
-                  <div key={item.id} className="flex justify-between gap-3 text-caption">
-                    <span className="text-forest-12">
-                      {item.quantity}× {item.menu_item_name}
-                      {item.modifiers?.length > 0 && (
-                        <span className="text-muted-foreground"> ({item.modifiers.map((m) => m.option).join(", ")})</span>
-                      )}
-                    </span>
-                    <span className="shrink-0 font-medium tabular-nums text-forest-12">
-                      ${(Number(item.price) * item.quantity).toFixed(2)}
-                    </span>
-                  </div>
-                )
-              )}
-            </div>
-
-            <Separator className="my-5" />
-            <div className="space-y-1 text-caption">
-              <SummaryRow label={t("subtotal")} value={`$${Number(order.subtotal).toFixed(2)}`} muted />
-              <SummaryRow label="GST" value={`$${Number(order.tax_gst).toFixed(2)}`} muted />
-              <SummaryRow label="QST" value={`$${Number(order.tax_qst).toFixed(2)}`} muted />
-              <div className="flex justify-between pt-1 text-body font-bold text-forest-12">
-                <span>{t("total")}</span>
-                <span className="tabular-nums">${Number(order.total).toFixed(2)}</span>
-              </div>
-            </div>
-          </>
+      <div className="mt-8 rounded-2xl border border-border bg-card p-5 text-center sm:p-6">
+        <p className="text-caption text-muted-foreground">
+          {t("legacyPrivacy")}
+        </p>
+        {cafePhone && (
+          <a
+            href={`tel:${cafePhone.replace(/[^+\d]/g, "")}`}
+            className={buttonVariants({
+              variant: "default",
+              size: "lg",
+              className: "mt-5 h-12 w-full rounded-full",
+            })}
+          >
+            <Phone aria-hidden className="size-4" />
+            {t("callCafe", { phone: cafePhone })}
+          </a>
         )}
-
-        <p className="mt-5 text-caption text-muted-foreground">{t("paymentNote")}</p>
-      </div>
-
-      <div className="mt-8 text-center">
-        <Link href="/menu">
-          <Button variant="outline" size="lg" className="h-12 rounded-full px-8">
-            {t("backToMenu")}
-          </Button>
+        <Link
+          href="/menu"
+          className={buttonVariants({
+            variant: "outline",
+            size: "lg",
+            className: "mt-3 h-12 w-full rounded-full",
+          })}
+        >
+          {t("backToMenu")}
         </Link>
       </div>
-    </>
-  );
-}
-
-function Field({ label, children, className = "" }: { label: string; children: React.ReactNode; className?: string }) {
-  return (
-    <div className={className}>
-      <p className="text-label uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="mt-1">{children}</p>
-    </div>
-  );
-}
-
-function SummaryRow({ label, value, muted }: { label: string; value: string; muted?: boolean }) {
-  return (
-    <div className={`flex justify-between ${muted ? "text-muted-foreground" : "text-forest-12"}`}>
-      <span>{label}</span>
-      <span className="tabular-nums">{value}</span>
-    </div>
-  );
-}
-
-function FallbackContent() {
-  const t = useTranslations("confirmation");
-  return (
-    <>
-      <SuccessHeader title={t("title")} subtitle={t("thankYou")} />
-      <div className="mt-8 text-center">
-        <Link href="/menu">
-          <Button variant="outline" size="lg" className="h-12 rounded-full px-8">
-            {t("backToMenu")}
-          </Button>
-        </Link>
-      </div>
-    </>
+    </section>
   );
 }

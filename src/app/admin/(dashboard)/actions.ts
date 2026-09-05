@@ -1,32 +1,33 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import {
+  transitionAdminOrder,
+  updateOnlineOrdering,
+  type AdminTransitionInput,
+} from "@/lib/orders/admin.server";
+import type { AdminOrderStatus } from "@/lib/orders/admin-realtime";
 
-export type OrderStatus =
-  | "new"
-  | "preparing"
-  | "ready"
-  | "picked_up"
-  | "cancelled";
+export type OrderStatus = AdminOrderStatus;
 
-export async function updateOrderStatus(
-  orderId: string,
-  newStatus: OrderStatus
-) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
+export async function updateOrderStatus(input: AdminTransitionInput) {
+  const result = await transitionAdminOrder(input);
+  if (result.ok) {
+    revalidatePath("/admin");
+    revalidatePath("/admin/orders");
+    revalidatePath(`/admin/orders/${input.orderId}`);
+  }
+  return result;
+}
 
-  const { error } = await supabase
-    .from("orders")
-    .update({ status: newStatus })
-    .eq("id", orderId);
-
-  if (error) throw new Error(error.message);
-
-  revalidatePath("/admin");
-  revalidatePath("/admin/orders");
+export async function setOnlineOrderingEnabled(enabled: boolean) {
+  const result = await updateOnlineOrdering(enabled);
+  if (result.ok) {
+    revalidatePath("/admin");
+    revalidatePath("/admin/settings");
+    revalidatePath("/");
+    revalidatePath("/en/order");
+    revalidatePath("/fr/order");
+  }
+  return result;
 }
