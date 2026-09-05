@@ -129,6 +129,7 @@ export async function getCafeInfo(): Promise<CafeInfo> {
       data.announcement_en || data.announcement_fr
         ? { en: data.announcement_en ?? "", fr: data.announcement_fr ?? "" }
         : undefined,
+    orderingEnabled: data.ordering_enabled,
     pickupLeadTime: data.pickup_lead_time,
     maxAdvanceOrderDays: data.max_advance_order_days,
   };

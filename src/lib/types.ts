@@ -1,6 +1,6 @@
 // Domain data types for the storefront + admin. Previously defined in the Sanity
-// layer; now vendor-neutral. Data is sourced from Supabase (with a sample-data
-// fallback) via src/lib/data.ts — these types are the shared contract.
+// layer; now vendor-neutral. Data is sourced from Supabase, with sample data
+// restricted to explicit development/preview modes in src/lib/data.ts.
 
 export type LocalizedString = {
   en: string;
@@ -103,6 +103,12 @@ export type CafeInfo = {
   address: string;
   phone: string;
   announcement?: LocalizedString;
+  orderingEnabled: boolean;
   pickupLeadTime: number;
   maxAdvanceOrderDays: number;
 };
+
+export type OrderAvailability = Pick<
+  CafeInfo,
+  "hours" | "orderingEnabled" | "pickupLeadTime"
+>;

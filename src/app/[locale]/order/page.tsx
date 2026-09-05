@@ -56,6 +56,7 @@ async function OrderData({
       locale={locale}
       cafeInfo={cafeInfo}
       recoveryPhone={preview ? null : cafeInfo?.phone.trim() || null}
+      availabilityRefreshDisabled={forceUnavailable}
     />
   );
 }

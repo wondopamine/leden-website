@@ -24,6 +24,7 @@ import { Separator } from "@/components/ui/separator";
 import { Watermelon } from "@/components/brand/watermelon";
 import { formatPrice } from "@/lib/utils/format";
 import {
+  canAcceptAsapOrder,
   getCafeMinutes,
   getCafeWeekday,
   getOpenStatus,
@@ -32,6 +33,7 @@ import {
 import {
   CheckoutRecoveryRequiredError,
   allowCheckoutRetry,
+  checkoutAttemptOwnsCart,
   clearCheckoutAttempt,
   ensureCheckoutAttempt,
   getCheckoutRecoveryAttempt,
@@ -41,12 +43,18 @@ import {
   saveOrderStatusSession,
   type CheckoutMaterial,
 } from "@/lib/orders/checkout-attempt";
-import type { CafeInfo, PublicOrderReceipt } from "@/lib/types";
+import { createOrderAvailabilityController } from "@/lib/orders/availability-client";
+import type {
+  CafeInfo,
+  OrderAvailability,
+  PublicOrderReceipt,
+} from "@/lib/types";
 
 type Props = {
   locale: string;
   cafeInfo: CafeInfo | null;
   recoveryPhone: string | null;
+  availabilityRefreshDisabled?: boolean;
 };
 
 type CheckoutPhase =
@@ -70,6 +78,7 @@ type SubmitError = {
   translationKey:
     | "errorSubmitting"
     | "errorService"
+    | "errorOrderingPaused"
     | "errorHours"
     | "errorMenuChanged"
     | "errorChallenge"
@@ -92,11 +101,11 @@ declare global {
   }
 }
 
-function generateTimeSlots(cafeInfo: CafeInfo): string[] {
+function generateTimeSlots(cafeInfo: OrderAvailability): string[] {
   const today = cafeInfo.hours.find((hour) => hour.day === getCafeWeekday());
   if (!today || today.closed) return [];
 
-  const leadTime = cafeInfo.pickupLeadTime || 15;
+  const leadTime = cafeInfo.pickupLeadTime ?? 15;
   const [openHour, openMinute] = today.open.split(":").map(Number);
   const [closeHour, closeMinute] = today.close.split(":").map(Number);
   const openMinutes = openHour * 60 + openMinute;
@@ -117,6 +126,16 @@ function generateTimeSlots(cafeInfo: CafeInfo): string[] {
     );
   }
   return slots.slice(0, 8);
+}
+
+function checkoutCartItems(items: CartItem[]): CheckoutMaterial["items"] {
+  return items.map((item) => ({
+    menuItemId: item.menuItemId,
+    quantity: item.quantity,
+    optionIds: item.modifiers.flatMap((modifier) =>
+      modifier.optionId ? [modifier.optionId] : [],
+    ),
+  }));
 }
 
 function cafeLocalDate(): string {
@@ -147,17 +166,21 @@ function mapSubmitError(code: string): SubmitError {
   if (code === "INVALID_REQUEST" || code === "PAYLOAD_TOO_LARGE") {
     return { translationKey: "errorInputLimits", showMenuLink: false };
   }
-  if (
-    code === "ORDERING_UNAVAILABLE" ||
-    code === "ORDERING_PAUSED" ||
-    code === "DEPENDENCY_UNAVAILABLE"
-  ) {
+  if (code === "ORDERING_PAUSED") {
+    return { translationKey: "errorOrderingPaused", showMenuLink: false };
+  }
+  if (code === "ORDERING_UNAVAILABLE" || code === "DEPENDENCY_UNAVAILABLE") {
     return { translationKey: "errorService", showMenuLink: false };
   }
   return { translationKey: "errorSubmitting", showMenuLink: false };
 }
 
-export function OrderContent({ locale, cafeInfo, recoveryPhone }: Props) {
+export function OrderContent({
+  locale,
+  cafeInfo,
+  recoveryPhone,
+  availabilityRefreshDisabled = false,
+}: Props) {
   const t = useTranslations("order");
   const common = useTranslations("common");
   const items = useCartStore((state) => state.items);
@@ -167,8 +190,13 @@ export function OrderContent({ locale, cafeInfo, recoveryPhone }: Props) {
   const getSubtotal = useCartStore((state) => state.getSubtotal);
   const getTax = useCartStore((state) => state.getTax);
   const getTotal = useCartStore((state) => state.getTotal);
-  const clearCart = useCartStore((state) => state.clearCart);
+  const clearCartIfRevision = useCartStore(
+    (state) => state.clearCartIfRevision,
+  );
 
+  const [availability, setAvailability] = useState<OrderAvailability | null>(
+    cafeInfo,
+  );
   const [customer, setCustomer] = useState({ name: "", phone: "" });
   const [pickupTime, setPickupTime] = useState<string | null>(null);
   const [phase, setPhase] = useState<CheckoutPhase>("idle");
@@ -190,6 +218,7 @@ export function OrderContent({ locale, cafeInfo, recoveryPhone }: Props) {
   const clearedAttemptsRef = useRef(new Set<string>());
   const submissionInFlightRef = useRef(false);
   const recoveryStartedRef = useRef(false);
+  const mountedRef = useRef(false);
 
   const invalidateRemovalUndos = useCallback(() => {
     cartGenerationRef.current += 1;
@@ -203,9 +232,37 @@ export function OrderContent({ locale, cafeInfo, recoveryPhone }: Props) {
     setChallengeGeneration((generation) => generation + 1);
   }, []);
 
-  const openStatus = cafeInfo ? getOpenStatus(cafeInfo.hours) : null;
+  const applyAvailability = useCallback(
+    (nextAvailability: OrderAvailability | null) => {
+      setAvailability(nextAvailability);
+      if (
+        !nextAvailability ||
+        !nextAvailability.orderingEnabled ||
+        !canAcceptAsapOrder(
+          nextAvailability.hours,
+          nextAvailability.pickupLeadTime ?? 15,
+        )
+      ) {
+        setChallengeToken(null);
+        setChallengeState("loading");
+      }
+    },
+    [],
+  );
+
+  const openStatus = availability ? getOpenStatus(availability.hours) : null;
   const cafeOpen = openStatus?.isOpen ?? false;
-  const timeSlots = cafeInfo ? generateTimeSlots(cafeInfo) : [];
+  const pickupWindowOpen = availability
+    ? canAcceptAsapOrder(
+        availability.hours,
+        availability.pickupLeadTime ?? 15,
+      )
+    : false;
+  const canAcceptOrders =
+    cafeOpen &&
+    pickupWindowOpen &&
+    availability?.orderingEnabled === true;
+  const timeSlots = availability ? generateTimeSlots(availability) : [];
   const nameInvalid = attempted && !customer.name.trim();
   const phoneInvalid =
     attempted &&
@@ -218,6 +275,46 @@ export function OrderContent({ locale, cafeInfo, recoveryPhone }: Props) {
     phase === "accepted-tracking-unavailable" ||
     busy;
   const materialLocked = submissionLocked || phase === "confirmed-not-found";
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (availabilityRefreshDisabled) return;
+    const availabilityController = createOrderAvailabilityController({
+      fetcher: fetch,
+      onAvailability: applyAvailability,
+    });
+
+    const refreshAvailability = () => {
+      if (document.visibilityState === "visible") {
+        void availabilityController.refresh();
+      }
+    };
+
+    const refreshWhenVisible = () => {
+      refreshAvailability();
+    };
+    const interval = window.setInterval(() => {
+      refreshAvailability();
+    }, 15_000);
+    window.addEventListener("focus", refreshWhenVisible);
+    window.addEventListener("online", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    refreshAvailability();
+
+    return () => {
+      availabilityController.dispose();
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshWhenVisible);
+      window.removeEventListener("online", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [applyAvailability, availabilityRefreshDisabled]);
 
   useEffect(() => {
     if (error) errorSummaryRef.current?.focus();
@@ -237,54 +334,74 @@ export function OrderContent({ locale, cafeInfo, recoveryPhone }: Props) {
   useEffect(() => {
     const pending = getCheckoutRecoveryAttempt();
     if (!pending || recoveryStartedRef.current) return;
+    let active = true;
     recoveryStartedRef.current = true;
     submissionInFlightRef.current = true;
+    const cartState = useCartStore.getState();
+    const recoveryCartRevision = cartState.revision;
+    const ownsCart = checkoutAttemptOwnsCart(
+      pending,
+      checkoutCartItems(cartState.items),
+      cartState.cartGeneration,
+    );
     queueMicrotask(() => setPhase("checking"));
 
-    void recoverCheckoutAttempt<PublicOrderReceipt>(fetch, pending).then(
-      (result) => {
-        if (result.kind === "recovered") {
-          try {
-            saveOrderStatusSession(sessionStorage, {
-              trackingSecret: pending.trackingSecret,
-              receipt: result.receipt,
-              recovered: true,
-            });
-          } catch {
-            requireCheckoutRecovery(pending.attemptId, true);
-            setAcceptedFallback(result.receipt);
-            setPhase("accepted-tracking-unavailable");
-            return;
-          }
-          if (!clearedAttemptsRef.current.has(pending.attemptId)) {
-            clearedAttemptsRef.current.add(pending.attemptId);
-            invalidateRemovalUndos();
-            clearCart();
-          }
-          clearCheckoutAttempt(pending.attemptId);
-          window.location.assign(
-            new URL(
-              `/${locale === "fr" ? "fr" : "en"}/order/status#${pending.trackingSecret}`,
-              window.location.origin,
-            ).toString(),
-          );
+    void Promise.all([
+      recoverCheckoutAttempt<PublicOrderReceipt>(fetch, pending),
+      ownsCart,
+    ]).then(([result, attemptOwnsCart]) => {
+      if (!active) return;
+      if (result.kind === "recovered") {
+        try {
+          saveOrderStatusSession(sessionStorage, {
+            trackingSecret: pending.trackingSecret,
+            receipt: result.receipt,
+            recovered: true,
+          });
+        } catch {
+          requireCheckoutRecovery(pending.attemptId, true);
+          setAcceptedFallback(result.receipt);
+          setPhase("accepted-tracking-unavailable");
           return;
         }
+        if (!clearedAttemptsRef.current.has(pending.attemptId)) {
+          clearedAttemptsRef.current.add(pending.attemptId);
+          invalidateRemovalUndos();
+          if (attemptOwnsCart) {
+            clearCartIfRevision(recoveryCartRevision);
+          }
+        }
+        clearCheckoutAttempt(pending.attemptId);
+        window.location.assign(
+          new URL(
+            `/${locale === "fr" ? "fr" : "en"}/order/status#${pending.trackingSecret}`,
+            window.location.origin,
+          ).toString(),
+        );
+        return;
+      }
 
-        if (
-          result.kind === "confirmed-not-found" &&
-          !pending.acceptanceKnown &&
-          allowCheckoutRetry(pending.attemptId)
-        ) {
-          submissionInFlightRef.current = false;
-          setPhase("confirmed-not-found");
-          requestFreshChallenge();
-          return;
-        }
-        setPhase("still-uncertain");
-      },
-    );
-  }, [clearCart, invalidateRemovalUndos, locale, requestFreshChallenge]);
+      if (
+        result.kind === "confirmed-not-found" &&
+        !pending.acceptanceKnown &&
+        allowCheckoutRetry(pending.attemptId)
+      ) {
+        submissionInFlightRef.current = false;
+        setPhase("confirmed-not-found");
+        requestFreshChallenge();
+        return;
+      }
+      setPhase("still-uncertain");
+    });
+    return () => {
+      active = false;
+    };
+  }, [
+    clearCartIfRevision,
+    invalidateRemovalUndos,
+    locale,
+    requestFreshChallenge,
+  ]);
 
   if (items.length === 0 && phase === "idle") {
     return (
@@ -360,7 +477,7 @@ export function OrderContent({ locale, cafeInfo, recoveryPhone }: Props) {
       phoneInputRef.current?.focus();
       return;
     }
-    if (!cafeOpen) return;
+    if (!canAcceptOrders) return;
     if (
       items.some((item) =>
         item.modifiers.some(
@@ -393,6 +510,9 @@ export function OrderContent({ locale, cafeInfo, recoveryPhone }: Props) {
       return;
     }
     if (submissionInFlightRef.current) return;
+    const submittedCartState = useCartStore.getState();
+    const submittedCartRevision = submittedCartState.revision;
+    const submittedCartGeneration = submittedCartState.cartGeneration;
     submissionInFlightRef.current = true;
     setPhase("submitting");
 
@@ -406,17 +526,15 @@ export function OrderContent({ locale, cafeInfo, recoveryPhone }: Props) {
       customer,
       locale: locale === "fr" ? "fr" : "en",
       pickup,
-      items: items.map((item) => ({
-        menuItemId: item.menuItemId,
-        quantity: item.quantity,
-        optionIds: item.modifiers.flatMap((modifier) =>
-          modifier.optionId ? [modifier.optionId] : [],
-        ),
-      })),
+      items: checkoutCartItems(items),
     };
     let attempt;
     try {
-      attempt = await ensureCheckoutAttempt(material);
+      attempt = await ensureCheckoutAttempt(
+        material,
+        window.sessionStorage,
+        submittedCartGeneration,
+      );
     } catch (error) {
       if (error instanceof CheckoutRecoveryRequiredError) {
         setPhase("still-uncertain");
@@ -447,10 +565,13 @@ export function OrderContent({ locale, cafeInfo, recoveryPhone }: Props) {
         turnstileToken: challengeToken,
       },
       onPhase: (nextPhase) => {
+        if (!mountedRef.current) return;
         if (nextPhase === "submitting") setPhase("submitting");
         if (nextPhase === "checking") setPhase("checking");
       },
     });
+
+    if (!mountedRef.current) return;
 
     if (result.kind === "accepted" || result.kind === "recovered") {
       try {
@@ -468,7 +589,7 @@ export function OrderContent({ locale, cafeInfo, recoveryPhone }: Props) {
       if (!clearedAttemptsRef.current.has(attempt.attemptId)) {
         clearedAttemptsRef.current.add(attempt.attemptId);
         invalidateRemovalUndos();
-        clearCart();
+        clearCartIfRevision(submittedCartRevision);
       }
       clearCheckoutAttempt(attempt.attemptId);
       window.location.assign(
@@ -511,7 +632,7 @@ export function OrderContent({ locale, cafeInfo, recoveryPhone }: Props) {
     <div className="mx-auto max-w-5xl px-5 pb-28 pt-10 md:pb-16">
       <h1 className="text-h1">{t("title")}</h1>
 
-      {!cafeOpen && (
+      {!canAcceptOrders && (
         <div
           className="mt-6 flex items-start gap-3 rounded-2xl border border-accent-border bg-accent-surface p-4"
           role="status"
@@ -522,9 +643,15 @@ export function OrderContent({ locale, cafeInfo, recoveryPhone }: Props) {
           />
           <div>
             <p className="font-medium text-accent-text">
-              {cafeInfo ? t("orderingClosed") : t("orderingUnavailable")}
+              {!availability
+                ? t("orderingUnavailable")
+                : !availability.orderingEnabled
+                  ? t("orderingPaused")
+                  : cafeOpen
+                    ? t("pickupUnavailable")
+                    : t("orderingClosed")}
             </p>
-            {nextOpenLabel && (
+            {nextOpenLabel && availability?.orderingEnabled && (
               <p className="mt-0.5 text-caption text-accent-text">
                 {t("opensAt", { time: nextOpenLabel })}
               </p>
@@ -621,7 +748,7 @@ export function OrderContent({ locale, cafeInfo, recoveryPhone }: Props) {
             </ul>
           </div>
 
-          {cafeOpen && (
+          {canAcceptOrders && (
             <fieldset className={`${card} p-5`} disabled={materialLocked}>
               <legend className="px-1 text-caption font-semibold text-foreground">
                 {t("pickupTime")}
@@ -649,7 +776,7 @@ export function OrderContent({ locale, cafeInfo, recoveryPhone }: Props) {
             </fieldset>
           )}
 
-          {cafeOpen && (
+          {canAcceptOrders && (
             <div className={`${card} p-5`}>
               <h2 className="text-caption font-semibold text-foreground">
                 {t("customerInfo")}
@@ -748,13 +875,15 @@ export function OrderContent({ locale, cafeInfo, recoveryPhone }: Props) {
             {t("payInPerson")}
           </p>
 
-          <TurnstileChallenge
-            key={challengeGeneration}
-            regionRef={challengeRegionRef}
-            onToken={setChallengeToken}
-            onStateChange={setChallengeState}
-            onRetry={requestFreshChallenge}
-          />
+          {canAcceptOrders && (
+            <TurnstileChallenge
+              key={challengeGeneration}
+              regionRef={challengeRegionRef}
+              onToken={setChallengeToken}
+              onStateChange={setChallengeState}
+              onRetry={requestFreshChallenge}
+            />
+          )}
 
           {phase === "checking" && (
             <RecoveryMessage
@@ -862,7 +991,7 @@ export function OrderContent({ locale, cafeInfo, recoveryPhone }: Props) {
             size="lg"
             className="mt-5 h-12 w-full rounded-full"
             disabled={
-              !cafeOpen ||
+              !canAcceptOrders ||
               submissionLocked ||
               phase === "confirmed-not-found" ||
               challengeState !== "ready"
@@ -871,10 +1000,14 @@ export function OrderContent({ locale, cafeInfo, recoveryPhone }: Props) {
             aria-busy={busy}
             aria-describedby={error ? "payment-note submit-error" : "payment-note"}
           >
-            {!cafeOpen
-              ? cafeInfo
-                ? t("orderingClosed")
-                : t("orderingUnavailable")
+            {!canAcceptOrders
+              ? !availability
+                ? t("orderingUnavailable")
+                : !availability.orderingEnabled
+                  ? t("orderingPaused")
+                  : cafeOpen
+                    ? t("pickupUnavailable")
+                    : t("orderingClosed")
               : phase === "checking"
                 ? t("checkingReceipt")
                 : phase === "submitting"

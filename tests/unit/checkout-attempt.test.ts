@@ -108,7 +108,21 @@ describe("checkout attempt identity", () => {
         attemptId: "legacy-attempt",
         trackingSecret: "legacy-secret",
       }),
-    ).toEqual({ items: [{ id: "line-1", menuItemId: "item-1" }] });
+    ).toEqual({
+      items: [{ id: "line-1", menuItemId: "item-1" }],
+      cartGeneration: 0,
+    });
+  });
+
+  it("rotates an otherwise identical attempt after the cart generation changes", async () => {
+    const storage = new MemoryStorage();
+    const first = await ensureCheckoutAttempt(material(), storage, 4);
+    const unchanged = await ensureCheckoutAttempt(material(), storage, 4);
+    const rebuilt = await ensureCheckoutAttempt(material(), storage, 6);
+
+    expect(unchanged).toEqual(first);
+    expect(rebuilt.attemptId).not.toBe(first.attemptId);
+    expect(rebuilt.trackingSecret).not.toBe(first.trackingSecret);
   });
 
   it("keeps prior secret-only status sessions when a later checkout starts", async () => {
@@ -134,9 +148,10 @@ describe("checkout attempt identity", () => {
     const storage = new MemoryStorage();
     const attempt = await ensureCheckoutAttempt(material(), storage);
     expect(requireCheckoutRecovery(attempt.attemptId, false, storage)).toBe(true);
-    expect(getCheckoutRecoveryAttempt(storage)).toEqual({
+    expect(getCheckoutRecoveryAttempt(storage)).toMatchObject({
       ...attempt,
       acceptanceKnown: false,
+      cartTag: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/),
     });
 
     await expect(

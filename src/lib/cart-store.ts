@@ -25,10 +25,13 @@ export type CartItem = {
 
 type CartState = {
   items: CartItem[];
+  revision: number;
+  cartGeneration: number;
   addItem: (item: Omit<CartItem, "id">) => void;
   removeItem: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
+  clearCartIfRevision: (revision: number) => boolean;
   getSubtotal: () => number;
   getTax: () => { gst: number; qst: number; total: number };
   getTotal: () => number;
@@ -41,17 +44,23 @@ export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
       items: [],
+      revision: 0,
+      cartGeneration: 0,
 
       addItem: (item) => {
         const id = `${item.menuItemId}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
         set((state) => ({
           items: [...state.items, { ...item, id }],
+          revision: state.revision + 1,
+          cartGeneration: state.cartGeneration + 1,
         }));
       },
 
       removeItem: (id) => {
         set((state) => ({
           items: state.items.filter((item) => item.id !== id),
+          revision: state.revision + 1,
+          cartGeneration: state.cartGeneration + 1,
         }));
       },
 
@@ -64,10 +73,31 @@ export const useCartStore = create<CartState>()(
           items: state.items.map((item) =>
             item.id === id ? { ...item, quantity } : item
           ),
+          revision: state.revision + 1,
+          cartGeneration: state.cartGeneration + 1,
         }));
       },
 
-      clearCart: () => set({ items: [] }),
+      clearCart: () =>
+        set((state) => ({
+          items: [],
+          revision: state.revision + 1,
+          cartGeneration: state.cartGeneration + 1,
+        })),
+
+      clearCartIfRevision: (revision) => {
+        let cleared = false;
+        set((state) => {
+          if (state.revision !== revision) return state;
+          cleared = true;
+          return {
+            items: [],
+            revision: state.revision + 1,
+            cartGeneration: state.cartGeneration + 1,
+          };
+        });
+        return cleared;
+      },
 
       getSubtotal: () => {
         return get().items.reduce((sum, item) => {
@@ -94,8 +124,11 @@ export const useCartStore = create<CartState>()(
     }),
     {
       name: "cafe-leden-cart",
-      version: 1,
-      partialize: (state) => ({ items: state.items }),
+      version: 2,
+      partialize: (state) => ({
+        items: state.items,
+        cartGeneration: state.cartGeneration,
+      }),
       migrate: (persistedState) => migratePersistedCart(persistedState),
     }
   )
@@ -103,16 +136,24 @@ export const useCartStore = create<CartState>()(
 
 export function migratePersistedCart(
   persistedState: unknown,
-): Pick<CartState, "items"> {
+): Pick<CartState, "items" | "cartGeneration"> {
   if (
     typeof persistedState !== "object" ||
     persistedState === null ||
     !("items" in persistedState) ||
     !Array.isArray((persistedState as { items?: unknown }).items)
   ) {
-    return { items: [] };
+    return { items: [], cartGeneration: 0 };
   }
+  const generation = (persistedState as { cartGeneration?: unknown })
+    .cartGeneration;
   return {
     items: (persistedState as { items: CartItem[] }).items,
+    cartGeneration:
+      typeof generation === "number" &&
+      Number.isSafeInteger(generation) &&
+      generation >= 0
+        ? generation
+        : 0,
   };
 }

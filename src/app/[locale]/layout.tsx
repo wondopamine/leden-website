@@ -26,9 +26,9 @@ export default async function LocaleLayout({ children, params }: Props) {
 
   setRequestLocale(locale);
 
-  const cafeInfo = await fetchCafeInfo();
+  const cafeInfo = await fetchCafeInfo().catch(() => null);
   const t = await getTranslations("common");
-  const announcement = cafeInfo.announcement;
+  const announcement = cafeInfo?.announcement;
   const announcementText = announcement
     ? (locale === "fr" ? announcement.fr : announcement.en)
     : null;
@@ -46,7 +46,7 @@ export default async function LocaleLayout({ children, params }: Props) {
       <main id="main" tabIndex={-1} className="flex-1">
         {children}
       </main>
-      <Footer locale={locale} info={cafeInfo} />
+      {cafeInfo && <Footer locale={locale} info={cafeInfo} />}
       <Toaster position="bottom-center" />
     </NextIntlClientProvider>
   );

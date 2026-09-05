@@ -46,6 +46,8 @@
     }
   },
   "landing": {
+    "unavailableTitle": "Le site du café est temporairement indisponible",
+    "unavailableBody": "Nous ne pouvons pas confirmer les heures, le menu ni les commandes en ligne pour le moment. Réessayez dans quelques minutes.",
     "hero": {
       "tag": "Village Valois, Pointe-Claire",
       "title": "Café Le Den",
@@ -86,6 +88,8 @@
     "required": "· Obligatoire",
     "optional": "· Facultatif",
     "cartLimit": "Votre panier a atteint la limite de commande en ligne. Vérifiez-le avant d’ajouter d’autres articles.",
+    "unavailableTitle": "Le menu est temporairement indisponible",
+    "unavailableBody": "Nous ne pouvons pas confirmer les articles ni les prix actuels du café. Réessayez dans quelques minutes.",
     "search": "Rechercher dans le menu..."
   },
   "order": {
@@ -108,6 +112,7 @@
     "payInPerson": "Le paiement se fait en personne lors de la cueillette.",
     "errorSubmitting": "Nous n’avons pas pu passer votre commande. Votre panier est conservé. Vérifiez votre connexion et réessayez.",
     "errorService": "Les commandes sont temporairement indisponibles. Votre panier est conservé. Réessayez dans quelques minutes.",
+    "errorOrderingPaused": "Les commandes en ligne ont été mises en pause. Votre panier est conservé. Réessayez plus tard.",
     "errorOrderDetails": "Votre commande a peut-être été reçue, mais nous ne pouvons pas confirmer ses détails. Conservez votre panier et appelez le café avant de réessayer.",
     "errorHours": "La cueillette n’est plus offerte à cette heure. Choisissez une autre heure et réessayez.",
     "errorMenuChanged": "Un article ou un prix a changé. Vérifiez le menu et mettez votre panier à jour avant de réessayer.",
@@ -135,6 +140,8 @@
     "acceptedFallbackBody": "Commande {order}, total {total}. Ce navigateur n’a pas pu enregistrer le lien privé. Ne soumettez pas de nouveau; gardez cette page ouverte et appelez le café au besoin.",
     "callCafe": "Appeler le café : {phone}",
     "orderingClosed": "Les commandes sont présentement fermées",
+    "orderingPaused": "Les commandes en ligne sont en pause",
+    "pickupUnavailable": "Les commandes en ligne sont terminées pour aujourd’hui",
     "orderingUnavailable": "Les commandes en ligne sont temporairement indisponibles",
     "opensAt": "Nous ouvrons à {time}",
     "itemsInCart": "{count, plural, =0 {Aucun article} =1 {1 article} other {# articles}}"

@@ -87,6 +87,17 @@ export function getCafeMinutes(now: Date = new Date()): number {
   return cafeNow(now).minutes;
 }
 
+/** Whether an ASAP promise can still land before today's close. */
+export function canAcceptAsapOrder(
+  hours: DayHours[],
+  pickupLeadTime: number,
+  now: Date = new Date(),
+): boolean {
+  const status = getOpenStatus(hours, now);
+  if (!status.isOpen || status.closeAt === "24:00") return status.isOpen;
+  return getCafeMinutes(now) + pickupLeadTime < toMinutes(status.closeAt);
+}
+
 type Translator = (key: string, values?: Record<string, string | number>) => string;
 
 /**

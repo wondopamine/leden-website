@@ -294,6 +294,7 @@ export const sampleCafeInfo: CafeInfo = {
   ],
   address: "121 Donegani, Pointe-Claire, QC",
   phone: "(514) 000-0000",
+  orderingEnabled: true,
   pickupLeadTime: 15,
   maxAdvanceOrderDays: 3,
 };

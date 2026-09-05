@@ -37,12 +37,16 @@ export type OrderStatusSession<Receipt = unknown> = {
 type PersistedCheckoutAttempt = CheckoutAttempt & {
   version: 1;
   materialTag: string;
+  cartTag?: string;
+  cartGeneration?: number | null;
   recoveryRequired: boolean;
   acceptanceKnown: boolean;
 };
 
 export type CheckoutRecoveryAttempt = CheckoutAttempt & {
   acceptanceKnown: boolean;
+  cartTag: string | null;
+  cartGeneration: number | null;
 };
 
 export class CheckoutRecoveryRequiredError extends Error {
@@ -123,15 +127,7 @@ function base64UrlToBytes(value: string): Uint8Array {
 }
 
 function canonicalizeMaterial(material: CheckoutMaterial): string {
-  const items = material.items
-    .map((item) => ({
-      menuItemId: item.menuItemId.toLowerCase(),
-      quantity: item.quantity,
-      optionIds: item.optionIds.map((id) => id.toLowerCase()).sort(),
-    }))
-    .sort((left, right) =>
-      JSON.stringify(left).localeCompare(JSON.stringify(right), "en"),
-    );
+  const items = canonicalizeCart(material.items);
   return JSON.stringify({
     customer: {
       name: material.customer.name.trim(),
@@ -143,9 +139,21 @@ function canonicalizeMaterial(material: CheckoutMaterial): string {
   });
 }
 
-async function createMaterialTag(
+function canonicalizeCart(items: CheckoutMaterial["items"]) {
+  return items
+    .map((item) => ({
+      menuItemId: item.menuItemId.toLowerCase(),
+      quantity: item.quantity,
+      optionIds: item.optionIds.map((id) => id.toLowerCase()).sort(),
+    }))
+    .sort((left, right) =>
+      JSON.stringify(left).localeCompare(JSON.stringify(right), "en"),
+    );
+}
+
+async function createAttemptTag(
   trackingSecret: string,
-  material: CheckoutMaterial,
+  value: string,
 ): Promise<string> {
   const secretBytes = base64UrlToBytes(trackingSecret);
   const secretKeyData = secretBytes.buffer.slice(
@@ -162,9 +170,26 @@ async function createMaterialTag(
   const signature = await crypto.subtle.sign(
     "HMAC",
     key,
-    new TextEncoder().encode(canonicalizeMaterial(material)),
+    new TextEncoder().encode(value),
   );
   return bytesToBase64Url(new Uint8Array(signature));
+}
+
+function createMaterialTag(
+  trackingSecret: string,
+  material: CheckoutMaterial,
+): Promise<string> {
+  return createAttemptTag(trackingSecret, canonicalizeMaterial(material));
+}
+
+function createCartTag(
+  trackingSecret: string,
+  items: CheckoutMaterial["items"],
+): Promise<string> {
+  return createAttemptTag(
+    trackingSecret,
+    JSON.stringify(canonicalizeCart(items)),
+  );
 }
 
 function readPersistedAttempt(storage: StorageLike): PersistedCheckoutAttempt | null {
@@ -179,6 +204,14 @@ function readPersistedAttempt(storage: StorageLike): PersistedCheckoutAttempt | 
       typeof parsed.trackingSecret !== "string" ||
       !TRACKING_SECRET_PATTERN.test(parsed.trackingSecret) ||
       typeof parsed.materialTag !== "string" ||
+      (parsed.cartTag !== undefined &&
+        (typeof parsed.cartTag !== "string" ||
+          !TRACKING_SECRET_PATTERN.test(parsed.cartTag))) ||
+      (parsed.cartGeneration !== undefined &&
+        parsed.cartGeneration !== null &&
+        (typeof parsed.cartGeneration !== "number" ||
+          !Number.isSafeInteger(parsed.cartGeneration) ||
+          parsed.cartGeneration < 0)) ||
       (parsed.recoveryRequired !== undefined &&
         typeof parsed.recoveryRequired !== "boolean") ||
       (parsed.acceptanceKnown !== undefined &&
@@ -201,6 +234,7 @@ function readPersistedAttempt(storage: StorageLike): PersistedCheckoutAttempt | 
 export async function ensureCheckoutAttempt(
   material: CheckoutMaterial,
   storage: StorageLike = window.sessionStorage,
+  cartGeneration: number | null = null,
 ): Promise<CheckoutAttempt> {
   const existing = readPersistedAttempt(storage);
   if (existing) {
@@ -208,7 +242,10 @@ export async function ensureCheckoutAttempt(
       throw new CheckoutRecoveryRequiredError();
     }
     const materialTag = await createMaterialTag(existing.trackingSecret, material);
-    if (materialTag === existing.materialTag) {
+    if (
+      materialTag === existing.materialTag &&
+      (existing.cartGeneration ?? null) === cartGeneration
+    ) {
       return {
         attemptId: existing.attemptId,
         trackingSecret: existing.trackingSecret,
@@ -222,10 +259,12 @@ export async function ensureCheckoutAttempt(
     attemptId: crypto.randomUUID(),
     trackingSecret: bytesToBase64Url(secretBytes),
     materialTag: "",
+    cartGeneration,
     recoveryRequired: false,
     acceptanceKnown: false,
   };
   next.materialTag = await createMaterialTag(next.trackingSecret, material);
+  next.cartTag = await createCartTag(next.trackingSecret, material.items);
   storage.setItem(CHECKOUT_ATTEMPT_SESSION_KEY, JSON.stringify(next));
   return { attemptId: next.attemptId, trackingSecret: next.trackingSecret };
 }
@@ -249,7 +288,26 @@ export function getCheckoutRecoveryAttempt(
     attemptId: current.attemptId,
     trackingSecret: current.trackingSecret,
     acceptanceKnown: current.acceptanceKnown,
+    cartTag: current.cartTag ?? null,
+    cartGeneration: current.cartGeneration ?? null,
   };
+}
+
+export async function checkoutAttemptOwnsCart(
+  attempt: CheckoutRecoveryAttempt,
+  items: CheckoutMaterial["items"],
+  cartGeneration: number,
+): Promise<boolean> {
+  if (
+    !attempt.cartTag ||
+    attempt.cartGeneration === null ||
+    attempt.cartGeneration !== cartGeneration
+  ) {
+    return false;
+  }
+  return (
+    (await createCartTag(attempt.trackingSecret, items)) === attempt.cartTag
+  );
 }
 
 function updateCheckoutRecoveryState(

@@ -97,6 +97,37 @@ async function openLanguageMenu(page: Page, triggerName: string) {
   return trigger;
 }
 
+test("the homepage fails closed with a localized unavailable state", async ({
+  page,
+}) => {
+  for (const expected of [
+    {
+      locale: "en",
+      title: "The café website is temporarily unavailable",
+      body: "We can’t confirm today’s hours, menu, or online ordering right now. Please try again in a few minutes.",
+      order: "Order for pickup",
+    },
+    {
+      locale: "fr",
+      title: "Le site du café est temporairement indisponible",
+      body: "Nous ne pouvons pas confirmer les heures, le menu ni les commandes en ligne pour le moment. Réessayez dans quelques minutes.",
+      order: "Commander pour cueillette",
+    },
+  ]) {
+    await page.goto(`/${expected.locale}?homeConfig=unavailable`, {
+      waitUntil: "domcontentloaded",
+    });
+    const unavailable = page.getByRole("status");
+    await expect(
+      unavailable.getByRole("heading", { name: expected.title }),
+    ).toBeVisible();
+    await expect(unavailable).toContainText(expected.body);
+    await expect(
+      page.locator("main").getByRole("link", { name: expected.order }),
+    ).toHaveCount(0);
+  }
+});
+
 for (const { locale, skipLabel, homeTitle, orderForPickup, reviewsTitle } of locales) {
   for (const viewport of viewports) {
     test(`${locale} home preserves the ${viewport.name} shell`, async ({ page }) => {
@@ -501,6 +532,186 @@ test("checkout fails honestly when authoritative café configuration is unavaila
         .state.items.length,
     ),
   ).toBe(1);
+});
+
+test("an open checkout follows the authoritative ordering pause in both languages", async ({
+  page,
+}) => {
+  const item = {
+    id: "pause-line",
+    menuItemId: "11111111-1111-4111-8111-111111111111",
+    name: "Oat Latte",
+    nameEn: "Oat Latte",
+    nameFr: "Latté à l’avoine",
+    price: 5.25,
+    quantity: 1,
+    modifiers: [],
+  };
+  let orderingEnabled = true;
+  await page.clock.install({ time: new Date("2026-08-17T14:00:00.000Z") });
+  await page.addInitScript((persistedItem) => {
+    window.localStorage.setItem(
+      "cafe-leden-cart",
+      JSON.stringify({ state: { items: [persistedItem] }, version: 1 }),
+    );
+  }, item);
+  await page.route("**/api/order/availability", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        availability: {
+          hours: [
+            {
+              day: "Monday",
+              open: "07:30",
+              close: "15:00",
+              closed: false,
+            },
+          ],
+          orderingEnabled,
+          pickupLeadTime: 15,
+        },
+      }),
+    });
+  });
+
+  await page.goto("/en/order", { waitUntil: "domcontentloaded" });
+  await expect(page.getByRole("button", { name: "Place order" })).toBeEnabled();
+
+  orderingEnabled = false;
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect(
+    page
+      .getByRole("status")
+      .getByText("Online ordering is paused", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Online ordering is paused" }),
+  ).toBeDisabled();
+
+  orderingEnabled = true;
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect(page.getByRole("button", { name: "Place order" })).toBeEnabled();
+  await page.route("**/api/order", async (route) => {
+    await route.fulfill({
+      status: 409,
+      contentType: "application/json",
+      body: JSON.stringify({ error: { code: "ORDERING_PAUSED" } }),
+    });
+  });
+  await page.getByRole("textbox", { name: "Name" }).fill("Paused customer");
+  await page.getByRole("textbox", { name: "Phone" }).fill("5145550199");
+  await page.getByRole("button", { name: "Place order" }).click();
+  await expect(page.locator("#submit-error")).toContainText(
+    "Online ordering has been paused. Your cart is saved. Please try again later.",
+  );
+
+  orderingEnabled = false;
+  await page.goto("/fr/order", { waitUntil: "domcontentloaded" });
+  await expect(
+    page
+      .getByRole("status")
+      .getByText("Les commandes en ligne sont en pause", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", {
+      name: "Les commandes en ligne sont en pause",
+    }),
+  ).toBeDisabled();
+});
+
+test("a late checkout success cannot clear a newer cart or redirect its page", async ({
+  page,
+}) => {
+  const submittedItem = {
+    id: "submitted-line",
+    menuItemId: "77777777-7777-4777-8777-777777777777",
+    name: "Croissant",
+    nameEn: "Croissant",
+    nameFr: "Croissant",
+    price: 4,
+    quantity: 1,
+    modifiers: [],
+  };
+  let releaseCreate!: () => void;
+  const createGate = new Promise<void>((resolve) => {
+    releaseCreate = resolve;
+  });
+  let createStarted!: () => void;
+  const createRequest = new Promise<void>((resolve) => {
+    createStarted = resolve;
+  });
+  let createReleased = false;
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.clock.install({ time: new Date("2026-08-17T14:00:00.000Z") });
+  await page.addInitScript((persistedItem) => {
+    window.localStorage.setItem(
+      "cafe-leden-cart",
+      JSON.stringify({ state: { items: [persistedItem] }, version: 1 }),
+    );
+  }, submittedItem);
+  await page.route("**/api/order", async (route) => {
+    createStarted();
+    await createGate;
+    await route.fulfill({
+      status: 201,
+      contentType: "application/json",
+      body: JSON.stringify({
+        receipt: {
+          receipt_id: "receipt-late-success",
+          order_number: "LATE-SAFE-1",
+          status: "new",
+          status_version: 1,
+          promised_pickup_at: "2026-08-17T14:30:00.000Z",
+          subtotal: 4,
+          tax_gst: 0.2,
+          tax_qst: 0.4,
+          total: 4.6,
+          gst_rate: 0.05,
+          qst_rate: 0.09975,
+          created_at: "2026-08-17T14:00:00.000Z",
+          items: [],
+        },
+      }),
+    });
+    createReleased = true;
+  });
+
+  await page.goto("/en/order", { waitUntil: "domcontentloaded" });
+  await page.getByRole("textbox", { name: "Name" }).fill("Late customer");
+  await page.getByRole("textbox", { name: "Phone" }).fill("5145550199");
+  await page.getByRole("button", { name: "Place order" }).click();
+  await createRequest;
+
+  await page.getByRole("link", { name: "Menu", exact: true }).first().click();
+  await expect(page).toHaveURL(/\/en\/menu$/);
+  const firstItem = page.locator("main button:has(h3)").first();
+  await firstItem.click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: /Add to order/ })
+    .click();
+  await expect
+    .poll(async () =>
+      page.evaluate(
+        () =>
+          JSON.parse(window.localStorage.getItem("cafe-leden-cart") ?? "{}")
+            .state.items.length,
+      ),
+    )
+    .toBe(2);
+
+  releaseCreate();
+  await expect.poll(() => createReleased).toBe(true);
+  await expect(page).toHaveURL(/\/en\/menu$/);
+  expect(
+    await page.evaluate(
+      () =>
+        JSON.parse(window.localStorage.getItem("cafe-leden-cart") ?? "{}")
+          .state.items.length,
+    ),
+  ).toBe(2);
 });
 
 test("private status polling is visible-only, monotonic, stale-safe, and terminal", async ({

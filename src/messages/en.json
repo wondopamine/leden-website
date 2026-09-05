@@ -46,6 +46,8 @@
     }
   },
   "landing": {
+    "unavailableTitle": "The café website is temporarily unavailable",
+    "unavailableBody": "We can’t confirm today’s hours, menu, or online ordering right now. Please try again in a few minutes.",
     "hero": {
       "tag": "Valois Village, Pointe-Claire",
       "title": "Café Le Den",
@@ -86,6 +88,8 @@
     "required": "· Required",
     "optional": "· Optional",
     "cartLimit": "Your cart has reached the online order limit. Review it before adding more.",
+    "unavailableTitle": "The menu is temporarily unavailable",
+    "unavailableBody": "We can’t confirm the café’s current items or prices right now. Please try again in a few minutes.",
     "search": "Search menu..."
   },
   "order": {
@@ -108,6 +112,7 @@
     "payInPerson": "Payment is collected in person at pickup.",
     "errorSubmitting": "We couldn’t place your order. Your cart is saved. Check your connection and try again.",
     "errorService": "Ordering is temporarily unavailable. Your cart is saved. Please try again in a few minutes.",
+    "errorOrderingPaused": "Online ordering has been paused. Your cart is saved. Please try again later.",
     "errorOrderDetails": "Your order may have been received, but we couldn’t confirm its details. Keep your cart and call the cafe before trying again.",
     "errorHours": "Pickup is no longer available at that time. Choose another available time and try again.",
     "errorMenuChanged": "A menu item or price changed. Review the menu and update your cart before trying again.",
@@ -135,6 +140,8 @@
     "acceptedFallbackBody": "Order {order}, total {total}. This browser could not save the private status link. Do not submit again; keep this page open and call the café if you need help.",
     "callCafe": "Call the café: {phone}",
     "orderingClosed": "Ordering is currently closed",
+    "orderingPaused": "Online ordering is paused",
+    "pickupUnavailable": "Online ordering has ended for today",
     "orderingUnavailable": "Online ordering is temporarily unavailable",
     "opensAt": "We open at {time}",
     "itemsInCart": "{count, plural, =0 {No items} =1 {1 item} other {# items}}"
